@@ -19,6 +19,7 @@ import {
 	QuantelControlMode,
 	MappingVMixType,
 	MappingOBSType,
+	MappingTypeDSOM,
 } from 'timeline-state-resolver'
 
 const PLAYOUT_SUBDEVICE_COMMON: SubDeviceConfigManifestEntry[] = [
@@ -437,6 +438,7 @@ const PLAYOUT_SUBDEVICE_CONFIG: ImplementedSubDeviceConfig = {
 			type: ConfigManifestEntryType.STRING,
 		},
 	],
+	[TSRDeviceType.DSOM]: [...PLAYOUT_SUBDEVICE_COMMON, ...PLAYOUT_SUBDEVICE_HOST],
 }
 
 // TODO: should come from types
@@ -648,6 +650,23 @@ const MAPPING_MANIFEST: ImplementedMappingsManifest = {
 			name: 'Scene Name',
 			includeInSummary: true,
 			optional: true,
+		},
+	],
+	[TSRDeviceType.DSOM]: [
+		{
+			id: 'mappingType',
+			type: ConfigManifestEntryType.ENUM,
+			values: MappingTypeDSOM,
+			name: 'Mapping Type',
+			includeInSummary: true,
+		},
+		{
+			id: 'dsomAddress',
+			type: ConfigManifestEntryType.STRING,
+			name: 'DSOM Address',
+			includeInSummary: true,
+			optional: false,
+			hint: 'Address on the Device Service',
 		},
 	],
 }
