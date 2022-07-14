@@ -20,6 +20,7 @@ import {
 	MappingVMixType,
 	MappingOBSType,
 	MappingTypeDSOM,
+	DSOMDeviceType,
 } from 'timeline-state-resolver'
 
 const PLAYOUT_SUBDEVICE_COMMON: SubDeviceConfigManifestEntry[] = [
@@ -438,7 +439,32 @@ const PLAYOUT_SUBDEVICE_CONFIG: ImplementedSubDeviceConfig = {
 			type: ConfigManifestEntryType.STRING,
 		},
 	],
-	[TSRDeviceType.DSOM]: [...PLAYOUT_SUBDEVICE_COMMON, ...PLAYOUT_SUBDEVICE_HOST],
+	[TSRDeviceType.DSOM]: [
+		...PLAYOUT_SUBDEVICE_COMMON,
+		{
+			id: 'options.URL',
+			name: 'Device URL',
+			type: ConfigManifestEntryType.STRING,
+		},
+		{
+			id: 'options.studioDevices',
+			name: 'Available Studio Devices',
+			type: ConfigManifestEntryType.TABLE,
+			defaultType: 'default',
+			config: {
+				default: [
+					{
+						id: 'studioDevice',
+						name: 'Type',
+						columnName: 'Device',
+						defaultVal: DSOMDeviceType.Switcher,
+						type: ConfigManifestEntryType.ENUM,
+						values: DSOMDeviceType,
+					},
+				],
+			},
+		},
+	],
 }
 
 // TODO: should come from types
@@ -667,6 +693,12 @@ const MAPPING_MANIFEST: ImplementedMappingsManifest = {
 			includeInSummary: true,
 			optional: false,
 			hint: 'Address on the Device Service',
+		},
+		{
+			id: 'enabled',
+			type: ConfigManifestEntryType.BOOLEAN,
+			name: 'Enabled',
+			includeInSummary: true,
 		},
 	],
 }
