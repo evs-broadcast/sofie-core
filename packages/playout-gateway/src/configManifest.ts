@@ -19,7 +19,7 @@ import {
 	QuantelControlMode,
 	MappingVMixType,
 	MappingOBSType,
-	MappingTypeDSOM,
+	MappingDSOMType,
 	DSOMDeviceType,
 } from 'timeline-state-resolver'
 
@@ -682,7 +682,7 @@ const MAPPING_MANIFEST: ImplementedMappingsManifest = {
 		{
 			id: 'mappingType',
 			type: ConfigManifestEntryType.ENUM,
-			values: MappingTypeDSOM,
+			values: MappingDSOMType,
 			name: 'Mapping Type',
 			includeInSummary: true,
 		},
@@ -699,6 +699,14 @@ const MAPPING_MANIFEST: ImplementedMappingsManifest = {
 			type: ConfigManifestEntryType.BOOLEAN,
 			name: 'Enabled',
 			includeInSummary: true,
+		},
+		{
+			id: 'objectPath',
+			type: ConfigManifestEntryType.STRING,
+			name: 'Object Path',
+			includeInSummary: true,
+			optional: false,
+			hint: 'Path within device',
 		},
 	],
 }
