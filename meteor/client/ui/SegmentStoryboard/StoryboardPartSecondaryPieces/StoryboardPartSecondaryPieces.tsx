@@ -1,6 +1,7 @@
 import { SourceLayerType } from '@sofie-automation/blueprints-integration'
 import React from 'react'
 import { ISourceLayerExtended, PartExtended } from '../../../../lib/Rundown'
+import { getShowHiddenSourceLayers } from '../../../lib/localStorage'
 import { IOutputLayerUi } from '../../SegmentContainer/withResolvedSegment'
 import { StoryboardSourceLayer } from './StoryboardSourceLayer'
 
@@ -9,10 +10,14 @@ interface IProps {
 	outputLayers: Record<string, IOutputLayerUi>
 }
 
+const showHiddenSourceLayers = getShowHiddenSourceLayers()
+
 export function filterSecondarySourceLayers(sourceLayers: ISourceLayerExtended[]) {
 	return sourceLayers.filter(
 		(sourceLayer) =>
-			!sourceLayer.isHidden && !sourceLayer.onPresenterScreen && sourceLayer.type !== SourceLayerType.TRANSITION
+			(showHiddenSourceLayers || !sourceLayer.isHidden) &&
+			!sourceLayer.onPresenterScreen &&
+			sourceLayer.type !== SourceLayerType.TRANSITION
 	)
 }
 
@@ -30,7 +35,13 @@ export const StoryboardPartSecondaryPieces = React.memo(function StoryboardPartS
 					if (sourceLayers.length === 0) return null
 
 					return (
-						<div key={outputLayer._id} className="segment-storyboard__part__output-group" data-obj-id={outputLayer._id}>
+						<div
+							key={outputLayer._id}
+							className="segment-storyboard__part__output-group"
+							data-obj-id={outputLayer._id}
+							role="log"
+							aria-live="assertive"
+						>
 							{sourceLayers.map((sourceLayer) => (
 								<StoryboardSourceLayer
 									key={sourceLayer._id}

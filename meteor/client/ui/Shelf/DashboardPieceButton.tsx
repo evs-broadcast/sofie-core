@@ -2,7 +2,6 @@ import * as React from 'react'
 import { Meteor } from 'meteor/meteor'
 import ClassNames from 'classnames'
 import { Translated } from '../../lib/ReactMeteorData/react-meteor-data'
-import { RundownAPI } from '../../../lib/api/rundown'
 import { MeteorReactComponent } from '../../lib/MeteorReactComponent'
 import { RundownUtils } from '../../lib/rundown'
 import {
@@ -11,11 +10,12 @@ import {
 	SourceLayerType,
 	VTContent,
 	NoraContent,
+	IBlueprintPieceType,
 } from '@sofie-automation/blueprints-integration'
 import { AdLibPieceUi } from './AdLibPanel'
 import { RundownPlaylist } from '../../../lib/collections/RundownPlaylists'
 import { IAdLibListItem } from './AdLibListItem'
-import SplitInputIcon from '../PieceIcons/Renderers/SplitInput'
+import SplitInputIcon from '../PieceIcons/Renderers/SplitInputIcon'
 import { PieceDisplayStyle } from '../../../lib/collections/RundownLayouts'
 import { DashboardPieceButtonSplitPreview } from './DashboardPieceButtonSplitPreview'
 import { StyledTimecode } from '../../lib/StyledTimecode'
@@ -26,6 +26,7 @@ import { protectString } from '../../../lib/lib'
 import { Studio } from '../../../lib/collections/Studios'
 import { withMediaObjectStatus } from '../SegmentTimeline/withMediaObjectStatus'
 import { getThumbnailUrlForAdLibPieceUi } from '../../lib/ui/clipPreview'
+import { PieceStatusCode } from '@sofie-automation/corelib/dist/dataModel/Piece'
 
 export interface IDashboardButtonProps {
 	piece: IAdLibListItem
@@ -118,7 +119,13 @@ export class DashboardPieceButtonBase<T = {}> extends MeteorReactComponent<
 					}}
 					typeClass={this.props.layer && RundownUtils.getSourceLayerClassName(this.props.layer.type)}
 					itemElement={this.element}
-					piece={{ ...adLib, enable: { start: 0 }, startPartId: protectString(''), invalid: false }}
+					piece={{
+						...adLib,
+						enable: { start: 0 },
+						startPartId: protectString(''),
+						invalid: false,
+						pieceType: IBlueprintPieceType.Normal,
+					}}
 					pieceRenderedDuration={adLib.expectedDuration || null}
 					pieceRenderedIn={null}
 					displayOn="viewport"
@@ -143,7 +150,9 @@ export class DashboardPieceButtonBase<T = {}> extends MeteorReactComponent<
 				)}
 				{sourceDuration && (
 					<span className="dashboard-panel__panel__button__sub-label">
-						{sourceDuration ? <StyledTimecode time={sourceDuration || 0} /> : null}
+						{sourceDuration ? (
+							<StyledTimecode time={sourceDuration || 0} studioSettings={this.props.studio?.settings} />
+						) : null}
 					</span>
 				)}
 				<VTFloatingInspector
@@ -361,9 +370,9 @@ export class DashboardPieceButtonBase<T = {}> extends MeteorReactComponent<
 						floated: this.props.piece.floated,
 						active: this.state.active,
 
-						'source-missing': this.props.piece.status === RundownAPI.PieceStatusCode.SOURCE_MISSING,
-						'source-broken': this.props.piece.status === RundownAPI.PieceStatusCode.SOURCE_BROKEN,
-						'unknown-state': this.props.piece.status === RundownAPI.PieceStatusCode.UNKNOWN,
+						'source-missing': this.props.piece.status === PieceStatusCode.SOURCE_MISSING,
+						'source-broken': this.props.piece.status === PieceStatusCode.SOURCE_BROKEN,
+						'unknown-state': this.props.piece.status === PieceStatusCode.UNKNOWN,
 
 						live: this.props.isOnAir,
 						disabled: this.props.disabled,

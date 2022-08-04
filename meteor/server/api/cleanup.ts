@@ -35,7 +35,6 @@ import { Studios, StudioId } from '../../lib/collections/Studios'
 import { Timeline } from '../../lib/collections/Timeline'
 import { UserActionsLog } from '../../lib/collections/UserActionsLog'
 import { PieceInstances } from '../../lib/collections/PieceInstances'
-import { isAnyQueuedWorkRunning } from '../codeControl'
 import { getActiveRundownPlaylistsInStudioFromDb } from './studio/lib'
 import { ExpectedPackages } from '../../lib/collections/ExpectedPackages'
 import { ExpectedPackageWorkStatuses } from '../../lib/collections/ExpectedPackageWorkStatuses'
@@ -43,7 +42,8 @@ import { PackageContainerPackageStatuses } from '../../lib/collections/PackageCo
 import { PackageInfos } from '../../lib/collections/PackageInfos'
 import { Settings } from '../../lib/Settings'
 import { TriggeredActions } from '../../lib/collections/TriggeredActions'
-import { AsyncTransformedCollection } from '../../lib/collections/lib'
+import { AsyncMongoCollection } from '../../lib/collections/lib'
+import { CollectionName } from '@sofie-automation/corelib/dist/dataModel/Collections'
 
 export function cleanupOldDataInner(actuallyCleanup: boolean = false): CollectionCleanupResult | string {
 	if (actuallyCleanup) {
@@ -52,7 +52,7 @@ export function cleanupOldDataInner(actuallyCleanup: boolean = false): Collectio
 	}
 
 	const result: CollectionCleanupResult = {}
-	const addToResult = (collectionName: string, docsToRemove: number) => {
+	const addToResult = (collectionName: CollectionName, docsToRemove: number) => {
 		if (!result[collectionName]) {
 			result[collectionName] = {
 				collectionName: collectionName,
@@ -63,8 +63,8 @@ export function cleanupOldDataInner(actuallyCleanup: boolean = false): Collectio
 	}
 
 	// Preparations: ------------------------------------------------------------------------------
-	const getAllIdsInCollection = <Class extends DBInterface, DBInterface extends { _id: ProtectedString<any> }>(
-		collection: TransformedCollection<Class, DBInterface>
+	const getAllIdsInCollection = <DBInterface extends { _id: ProtectedString<any> }>(
+		collection: TransformedCollection<DBInterface, DBInterface>
 	): DBInterface['_id'][] => {
 		return collection
 			.find(
@@ -83,9 +83,9 @@ export function cleanupOldDataInner(actuallyCleanup: boolean = false): Collectio
 	const rundownIds = getAllIdsInCollection(Rundowns)
 	const playlistIds = getAllIdsInCollection(RundownPlaylists)
 
-	const removeByQuery = <Class extends DBInterface, DBInterface extends { _id: ProtectedString<any> }>(
+	const removeByQuery = <DBInterface extends { _id: ProtectedString<any> }>(
 		// collectionName: string,
-		collection: AsyncTransformedCollection<Class, DBInterface>,
+		collection: AsyncMongoCollection<DBInterface>,
 		query: MongoQuery<DBInterface>
 	): void => {
 		const collectionName = getCollectionKey(collection)
@@ -97,43 +97,33 @@ export function cleanupOldDataInner(actuallyCleanup: boolean = false): Collectio
 		addToResult(collectionName, count)
 	}
 
-	const ownedByRundownId = <
-		Class extends DBInterface,
-		DBInterface extends { _id: ProtectedString<any>; rundownId: RundownId }
-	>(
-		collection: TransformedCollection<Class, DBInterface>
+	const ownedByRundownId = <DBInterface extends { _id: ProtectedString<any>; rundownId: RundownId }>(
+		collection: TransformedCollection<DBInterface, DBInterface>
 	): void => {
-		removeByQuery(collection as AsyncTransformedCollection<any, any>, {
+		removeByQuery(collection as AsyncMongoCollection<any>, {
 			rundownId: { $nin: rundownIds },
 		})
 	}
-	const ownedByRundownPlaylistId = <
-		Class extends DBInterface,
-		DBInterface extends { _id: ProtectedString<any>; playlistId: RundownPlaylistId }
-	>(
-		collection: TransformedCollection<Class, DBInterface>
+	const ownedByRundownPlaylistId = <DBInterface extends { _id: ProtectedString<any>; playlistId: RundownPlaylistId }>(
+		collection: TransformedCollection<DBInterface, DBInterface>
 	): void => {
-		removeByQuery(collection as AsyncTransformedCollection<any, any>, {
+		removeByQuery(collection as AsyncMongoCollection<any>, {
 			playlistId: { $nin: playlistIds },
 		})
 	}
-	const ownedByStudioId = <
-		Class extends DBInterface,
-		DBInterface extends { _id: ProtectedString<any>; studioId: StudioId }
-	>(
-		collection: TransformedCollection<Class, DBInterface>
+	const ownedByStudioId = <DBInterface extends { _id: ProtectedString<any>; studioId: StudioId }>(
+		collection: TransformedCollection<DBInterface, DBInterface>
 	): void => {
-		removeByQuery(collection as AsyncTransformedCollection<any, any>, {
+		removeByQuery(collection as AsyncMongoCollection<any>, {
 			studioId: { $nin: studioIds },
 		})
 	}
 	const ownedByRundownIdOrStudioId = <
-		Class extends DBInterface,
 		DBInterface extends { _id: ProtectedString<any>; rundownId?: RundownId; studioId: StudioId }
 	>(
-		collection: TransformedCollection<Class, DBInterface>
+		collection: TransformedCollection<DBInterface, DBInterface>
 	): void => {
-		removeByQuery(collection as AsyncTransformedCollection<any, any>, {
+		removeByQuery(collection as AsyncMongoCollection<any>, {
 			$or: [
 				{
 					rundownId: { $exists: true, $nin: rundownIds },
@@ -146,12 +136,11 @@ export function cleanupOldDataInner(actuallyCleanup: boolean = false): Collectio
 		})
 	}
 	const ownedByOrganizationId = <
-		Class extends DBInterface,
 		DBInterface extends { _id: ProtectedString<any>; organizationId: OrganizationId | null | undefined }
 	>(
-		collection: TransformedCollection<Class, DBInterface>
+		collection: TransformedCollection<DBInterface, DBInterface>
 	): void => {
-		removeByQuery(collection as AsyncTransformedCollection<any, any>, {
+		removeByQuery(collection as AsyncMongoCollection<any>, {
 			$and: [
 				{
 					organizationId: { $nin: [organizationIds] },
@@ -165,13 +154,10 @@ export function cleanupOldDataInner(actuallyCleanup: boolean = false): Collectio
 			],
 		})
 	}
-	const ownedByDeviceId = <
-		Class extends DBInterface,
-		DBInterface extends { _id: ProtectedString<any>; deviceId: PeripheralDeviceId }
-	>(
-		collection: TransformedCollection<Class, DBInterface>
+	const ownedByDeviceId = <DBInterface extends { _id: ProtectedString<any>; deviceId: PeripheralDeviceId }>(
+		collection: TransformedCollection<DBInterface, DBInterface>
 	): void => {
-		removeByQuery(collection as AsyncTransformedCollection<any, any>, {
+		removeByQuery(collection as AsyncMongoCollection<any>, {
 			deviceId: { $nin: deviceIds },
 		})
 	}
@@ -179,7 +165,7 @@ export function cleanupOldDataInner(actuallyCleanup: boolean = false): Collectio
 	// Going Through data and removing old data: --------------------------------------------------
 	// CoreSystem:
 	{
-		addToResult('CoreSystem', 0) // Do nothing
+		addToResult(CollectionName.CoreSystem, 0) // Do nothing
 	}
 	// AdLibActions
 	{
@@ -241,8 +227,8 @@ export function cleanupOldDataInner(actuallyCleanup: boolean = false): Collectio
 			},
 			{ fields: { _id: 1 } }
 		).fetch()
-		addToResult('ExpectedMediaItems', emiFromBuckets.length)
-		addToResult('ExpectedMediaItems', emiFromRundowns.length)
+		addToResult(CollectionName.ExpectedMediaItems, emiFromBuckets.length)
+		addToResult(CollectionName.ExpectedMediaItems, emiFromRundowns.length)
 		if (actuallyCleanup) {
 			ExpectedMediaItems.remove({
 				_id: { $in: [...emiFromBuckets, ...emiFromRundowns].map((o) => o._id) },
@@ -289,7 +275,7 @@ export function cleanupOldDataInner(actuallyCleanup: boolean = false): Collectio
 	}
 	// Organizations
 	{
-		addToResult('Organizations', 0) // Do nothing
+		addToResult(CollectionName.Organizations, 0) // Do nothing
 	}
 	// PackageContainerPackageStatuses
 	{
@@ -399,15 +385,16 @@ export function cleanupOldDataInner(actuallyCleanup: boolean = false): Collectio
 	}
 	// Users
 	{
-		addToResult('Users', 0) // Do nothing
+		addToResult(CollectionName.Users, 0) // Do nothing
 	}
 
 	return result
 }
 function isAllowedToRunCleanup(): string | void {
-	if (isAnyQueuedWorkRunning()) return `Another sync-function is running, try again later`
+	// HACK: TODO - should we check this?
+	// if (isAnyQueuedWorkRunning()) return `Another sync-function is running, try again later`
 
-	const studios = Studios.find().fetch()
+	const studios = Studios.find({}, { fields: { _id: 1 } }).fetch()
 	for (const studio of studios) {
 		const activePlaylist: RundownPlaylist | undefined = waitForPromise(
 			getActiveRundownPlaylistsInStudioFromDb(studio._id)

@@ -50,11 +50,11 @@ export function fetchFrom(input: RequestInfo, init?: RequestInit) {
 	})
 }
 
-export function ensureHasTrailingSlash(input: string | null): string | null {
+export function ensureHasTrailingSlash(input: string | null): string | undefined {
 	if (input) {
 		return input.substr(-1) === '/' ? input : input + '/'
 	} else {
-		return input
+		return undefined
 	}
 }
 
@@ -134,4 +134,11 @@ export function useInvalidateTimeout<K>(func: () => [K, number], deps: any[]): K
 	}, [...deps])
 
 	return value
+}
+
+export function isRunningInPWA() {
+	if (window.matchMedia('(display-mode: browser)').matches) {
+		return false
+	}
+	return true
 }

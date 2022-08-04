@@ -16,12 +16,14 @@ import {
 	isAdLibNext,
 } from './DashboardPanel'
 import ClassNames from 'classnames'
-import { AdLibPieceUi, IAdLibPanelProps, AdLibFetchAndFilterProps, fetchAndFilter, matchFilter } from './AdLibPanel'
+import { AdLibPieceUi, IAdLibPanelProps, AdLibFetchAndFilterProps, fetchAndFilter } from './AdLibPanel'
+import { matchFilter } from './AdLibListView'
 import { doUserAction, UserAction } from '../../lib/userAction'
 import { translateWithTracker, Translated } from '../../lib/ReactMeteorData/ReactMeteorData'
 import { MeteorReactComponent } from '../../lib/MeteorReactComponent'
 import { NotificationCenter, Notification, NoticeLevel } from '../../lib/notifications/notifications'
 import { MeteorCall } from '../../../lib/api/methods'
+import { RundownPlaylistCollectionUtil } from '../../../lib/collections/RundownPlaylists'
 
 interface IState {}
 
@@ -181,7 +183,7 @@ export const AdLibRegionPanel = translateWithTracker<
 	AdLibFetchAndFilterProps & IAdLibRegionPanelTrackedProps
 >(
 	(props: Translated<IAdLibPanelProps & IAdLibRegionPanelProps>) => {
-		const studio = props.playlist.getStudio()
+		const studio = RundownPlaylistCollectionUtil.getStudio(props.playlist)
 		const { unfinishedAdLibIds, unfinishedTags } = getUnfinishedPieceInstancesGrouped(
 			props.playlist,
 			props.showStyleBase

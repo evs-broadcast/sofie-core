@@ -1,7 +1,11 @@
 import * as React from 'react'
 import * as _ from 'underscore'
 import { NoteSeverity, PieceLifespan } from '@sofie-automation/blueprints-integration'
-import { RundownPlaylist, RundownPlaylistId } from '../../../lib/collections/RundownPlaylists'
+import {
+	RundownPlaylist,
+	RundownPlaylistCollectionUtil,
+	RundownPlaylistId,
+} from '../../../lib/collections/RundownPlaylists'
 import { withTracker } from '../../lib/ReactMeteorData/react-meteor-data'
 import { Segments, SegmentId } from '../../../lib/collections/Segments'
 import { Studio } from '../../../lib/collections/Studios'
@@ -14,7 +18,6 @@ import {
 } from '../../../lib/Rundown'
 import { IContextMenuContext } from '../RundownView'
 import { ShowStyleBase, ShowStyleBaseId } from '../../../lib/collections/ShowStyleBases'
-import { SegmentNote, TrackedNote } from '../../../lib/api/notes'
 import { equalSets } from '../../../lib/lib'
 import { RundownUtils } from '../../lib/rundown'
 import { Rundown, RundownId, Rundowns } from '../../../lib/collections/Rundowns'
@@ -24,11 +27,12 @@ import { PartId, Part } from '../../../lib/collections/Parts'
 import { memoizedIsolatedAutorun, slowDownReactivity } from '../../lib/reactiveData/reactiveDataHelper'
 import { ScanInfoForPackages } from '../../../lib/mediaObjects'
 import { getBasicNotesForSegment } from '../../../lib/rundownNotifications'
-import { PlaylistTiming } from '../../../lib/rundown/rundownTiming'
 import { getIsFilterActive } from '../../lib/rundownLayouts'
 import { RundownViewLayout } from '../../../lib/collections/RundownLayouts'
 import { getMinimumReactivePieceNotesForPart } from './getMinimumReactivePieceNotesForPart'
 import { SegmentViewMode } from './SegmentViewModes'
+import { SegmentNote, TrackedNote } from '@sofie-automation/corelib/dist/dataModel/Notes'
+import { PlaylistTiming } from '@sofie-automation/corelib/dist/playout/rundownTiming'
 
 export interface SegmentUi extends SegmentExtended {
 	/** Output layers available in the installation used by this segment */
@@ -54,6 +58,9 @@ export interface PieceUi extends PieceExtended {
 	contentPackageInfos?: ScanInfoForPackages
 	message?: string | null
 }
+
+export type MinimalRundown = Pick<Rundown, '_id' | 'name' | 'timing' | 'showStyleBaseId' | 'endOfRundownIsShowBreak'>
+
 export interface IProps {
 	// id: string
 	rundownId: RundownId
@@ -64,7 +71,7 @@ export interface IProps {
 	studio: Studio
 	showStyleBase: ShowStyleBase
 	playlist: RundownPlaylist
-	rundown: Rundown
+	rundown: MinimalRundown
 	timeScale: number
 	onPieceDoubleClick?: (item: PieceUi, e: React.MouseEvent<HTMLDivElement>) => void
 	onPieceClick?: (piece: PieceUi, e: React.MouseEvent<HTMLDivElement>) => void
@@ -153,19 +160,22 @@ export function withResolvedSegment<T extends IProps, IState = {}>(
 						memoizedIsolatedAutorun(
 							(_playlistId: RundownPlaylistId) =>
 								(
-									props.playlist.getAllOrderedParts(undefined, {
-										fields: {
-											segmentId: 1,
-											_rank: 1,
-										},
-									}) as Pick<Part, '_id' | 'segmentId' | '_rank'>[]
+									RundownPlaylistCollectionUtil.getSegmentsAndPartsSync(
+										props.playlist,
+										undefined,
+										undefined,
+										undefined,
+										{
+											fields: { _id: 1 },
+										}
+									).parts as Pick<Part, '_id' | 'segmentId' | '_rank'>[]
 								).map((part) => part._id),
 							'playlist.getAllOrderedParts',
 							props.playlist._id
 						),
 						memoizedIsolatedAutorun(
 							(_playlistId: RundownPlaylistId, _currentPartInstanceId, _nextPartInstanceId) =>
-								props.playlist.getSelectedPartInstances(),
+								RundownPlaylistCollectionUtil.getSelectedPartInstances(props.playlist),
 							'playlist.getSelectedPartInstances',
 							props.playlist._id,
 							props.playlist.currentPartInstanceId,
@@ -185,7 +195,7 @@ export function withResolvedSegment<T extends IProps, IState = {}>(
 					: Math.random() * 2000 + 500
 			)
 
-			const rundownOrder = props.playlist.getRundownIDs()
+			const rundownOrder = RundownPlaylistCollectionUtil.getRundownIDs(props.playlist)
 			const rundownIndex = rundownOrder.indexOf(segment.rundownId)
 
 			const o = RundownUtils.getResolvedSegment(

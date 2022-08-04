@@ -1,9 +1,7 @@
-import { Meteor } from 'meteor/meteor'
-import { Random } from 'meteor/random'
 import '../../../__mocks__/_extendJest'
 import { testInFiber } from '../../../__mocks__/helpers/jest'
 import { setupDefaultStudioEnvironment, DefaultEnvironment } from '../../../__mocks__/helpers/database'
-import { protectString, literal, unprotectString } from '../../../lib/lib'
+import { protectString, literal, unprotectString, getRandomString } from '../../../lib/lib'
 import { PickerMock, parseResponseBuffer, MockResponseDataString } from '../../../__mocks__/meteorhacks-picker'
 import { Response as MockResponse, Request as MockRequest } from 'mock-http'
 import {
@@ -11,52 +9,49 @@ import {
 	RundownLayouts,
 	RundownLayout,
 	CustomizableRegions,
+	RundownLayoutId,
 } from '../../../lib/collections/RundownLayouts'
+import { MeteorCall } from '../../../lib/api/methods'
 
 require('../client') // include in order to create the Meteor methods needed
 require('../rundownLayouts') // include in order to create the Meteor methods needed
-
-enum RundownLayoutsAPIMethods { // Using our own method definition, to catch external API changes
-	'removeRundownLayout' = 'rundownLayout.removeRundownLayout',
-	'createRundownLayout' = 'rundownLayout.createRundownLayout',
-}
 
 describe('Rundown Layouts', () => {
 	let env: DefaultEnvironment
 	beforeAll(async () => {
 		env = await setupDefaultStudioEnvironment()
 	})
-	let rundownLayoutId: string
-	testInFiber('Create rundown layout', () => {
-		const res = Meteor.call(
-			RundownLayoutsAPIMethods.createRundownLayout,
+	let rundownLayoutId: RundownLayoutId
+	testInFiber('Create rundown layout', async () => {
+		const res = await MeteorCall.rundownLayout.createRundownLayout(
 			'Test',
 			RundownLayoutType.RUNDOWN_LAYOUT,
-			env.showStyleBaseId
+			env.showStyleBaseId,
+			'shelf_layouts'
 		)
 		expect(typeof res).toBe('string') // this should contain the ID for the rundown layout
 		rundownLayoutId = res
 
-		const item = RundownLayouts.findOne(protectString(rundownLayoutId))
+		const item = RundownLayouts.findOne(rundownLayoutId)
 		expect(item).toMatchObject({
 			_id: rundownLayoutId,
 		})
 	})
-	testInFiber('Remove rundown layout', () => {
-		const item0 = RundownLayouts.findOne(protectString(rundownLayoutId))
+	testInFiber('Remove rundown layout', async () => {
+		const item0 = RundownLayouts.findOne(rundownLayoutId)
 		expect(item0).toMatchObject({
 			_id: rundownLayoutId,
 		})
 
-		Meteor.call(RundownLayoutsAPIMethods.removeRundownLayout, rundownLayoutId)
+		await MeteorCall.rundownLayout.removeRundownLayout(rundownLayoutId)
 
-		const item1 = RundownLayouts.findOne(protectString(rundownLayoutId))
+		const item1 = RundownLayouts.findOne(rundownLayoutId)
 		expect(item1).toBeUndefined()
 	})
 
 	describe('HTTP API', () => {
 		function makeMockLayout(env: DefaultEnvironment) {
-			const rundownLayoutId = Random.id()
+			const rundownLayoutId = getRandomString()
 			const mockLayout = literal<RundownLayout>({
 				_id: protectString(rundownLayoutId),
 				name: 'MOCK LAYOUT',
@@ -72,7 +67,7 @@ describe('Rundown Layouts', () => {
 			return { rundownLayout: mockLayout, rundownLayoutId }
 		}
 
-		testInFiber('download shelf layout', () => {
+		testInFiber('download shelf layout', async () => {
 			const { rundownLayout: mockLayout, rundownLayoutId } = makeMockLayout(env)
 			RundownLayouts.insert(mockLayout)
 
@@ -88,7 +83,7 @@ describe('Rundown Layouts', () => {
 					url: `/shelfLayouts/download/${fakeId}`,
 				})
 
-				route.handler({ id: fakeId }, req, res, jest.fn())
+				await route.handler({ id: fakeId }, req, res, jest.fn())
 
 				const resStr = parseResponseBuffer(res)
 				expect(resStr).toMatchObject(
@@ -108,7 +103,7 @@ describe('Rundown Layouts', () => {
 					url: `/shelfLayouts/download/${rundownLayoutId}`,
 				})
 
-				route.handler({ id: rundownLayoutId }, req, res, jest.fn())
+				await route.handler({ id: rundownLayoutId }, req, res, jest.fn())
 
 				const resStr = parseResponseBuffer(res)
 				expect(resStr).toMatchObject(
@@ -127,7 +122,7 @@ describe('Rundown Layouts', () => {
 			}
 		})
 
-		testInFiber('upload shelf layout', () => {
+		testInFiber('upload shelf layout', async () => {
 			const { rundownLayout: mockLayout } = makeMockLayout(env)
 			const routeName = '/shelfLayouts/upload/:showStyleBaseId'
 			const route = PickerMock.mockRoutes[routeName]
@@ -143,7 +138,7 @@ describe('Rundown Layouts', () => {
 				})
 				req.body = JSON.stringify(mockLayout)
 
-				route.handler({ showStyleBaseId: fakeId }, req, res, jest.fn())
+				await route.handler({ showStyleBaseId: fakeId }, req, res, jest.fn())
 
 				const resStr = parseResponseBuffer(res)
 				expect(resStr).toMatchObject(
@@ -164,7 +159,7 @@ describe('Rundown Layouts', () => {
 					url: `/shelfLayouts/upload/${env.showStyleBaseId}`,
 				})
 
-				route.handler({ showStyleBaseId: unprotectString(env.showStyleBaseId) }, req, res, jest.fn())
+				await route.handler({ showStyleBaseId: unprotectString(env.showStyleBaseId) }, req, res, jest.fn())
 
 				const resStr = parseResponseBuffer(res)
 				expect(resStr).toMatchObject(
@@ -186,7 +181,7 @@ describe('Rundown Layouts', () => {
 				})
 				req.body = 'sdf'
 
-				route.handler({ showStyleBaseId: unprotectString(env.showStyleBaseId) }, req, res, jest.fn())
+				await route.handler({ showStyleBaseId: unprotectString(env.showStyleBaseId) }, req, res, jest.fn())
 
 				const resStr = parseResponseBuffer(res)
 				expect(resStr).toMatchObject(
@@ -208,7 +203,7 @@ describe('Rundown Layouts', () => {
 				})
 				req.body = '{ type: dsfgsdfgsdf gsdfgsdfg sdfgsdfg sdf gsdfgsdfg sdfg }'
 
-				route.handler({ showStyleBaseId: unprotectString(env.showStyleBaseId) }, req, res, jest.fn())
+				await route.handler({ showStyleBaseId: unprotectString(env.showStyleBaseId) }, req, res, jest.fn())
 
 				const resStr = parseResponseBuffer(res)
 				expect(resStr).toMatchObject(
@@ -229,7 +224,7 @@ describe('Rundown Layouts', () => {
 				})
 				req.body = JSON.stringify(mockLayout)
 
-				route.handler({ showStyleBaseId: unprotectString(env.showStyleBaseId) }, req, res, jest.fn())
+				await route.handler({ showStyleBaseId: unprotectString(env.showStyleBaseId) }, req, res, jest.fn())
 
 				const resStr = parseResponseBuffer(res)
 				expect(resStr).toMatchObject(

@@ -1,9 +1,8 @@
 import * as React from 'react'
 import * as _ from 'underscore'
 import { ISourceLayerUi, IOutputLayerUi, PartUi, PieceUi } from './SegmentTimelineContainer'
-import { SourceLayerType, PieceLifespan, PieceTransitionType } from '@sofie-automation/blueprints-integration'
+import { SourceLayerType, PieceLifespan, IBlueprintPieceType } from '@sofie-automation/blueprints-integration'
 import { RundownUtils } from '../../lib/rundown'
-import ClassNames from 'classnames'
 import { DefaultLayerItemRenderer } from './Renderers/DefaultLayerItemRenderer'
 import { MicSourceRenderer } from './Renderers/MicSourceRenderer'
 import { VTSourceRenderer } from './Renderers/VTSourceRenderer'
@@ -319,6 +318,7 @@ export const SourceLayerItem = withTranslation()(
 
 		getItemStyle(): { [key: string]: string } {
 			const piece = this.props.piece
+			const innerPiece = piece.instance.piece
 
 			// If this is a live line, take duration verbatim from SegmentLayerItemContainer with a fallback on expectedDuration.
 			// If not, as-run part "duration" limits renderdDuration which takes priority over MOS-import
@@ -328,31 +328,33 @@ export const SourceLayerItem = withTranslation()(
 
 			if (this.props.relative) {
 				const itemDuration = this.getItemDuration()
+
+				if (innerPiece.pieceType === IBlueprintPieceType.OutTransition) {
+					return {
+						left: 'auto',
+						right: '0',
+						width: ((itemDuration / (this.props.partDuration || 1)) * 100).toString() + '%',
+					}
+				}
 				return {
 					// also: don't render transitions in relative mode
 					left: (((piece.renderedInPoint || 0) / (this.props.partDuration || 1)) * 100).toString() + '%',
 					width: ((itemDuration / (this.props.partDuration || 1)) * 100).toString() + '%',
 				}
 			} else {
+				if (innerPiece.pieceType === IBlueprintPieceType.OutTransition) {
+					return {
+						left: 'auto',
+						right: '0',
+						width: this.getElementAbsoluteWidth().toString() + 'px',
+					}
+				}
 				return {
 					left: this.convertTimeToPixels(piece.renderedInPoint || 0).toString() + 'px',
 					width: this.getElementAbsoluteWidth().toString() + 'px',
 				}
 			}
 		}
-
-		// TODO(Performance): use ResizeObserver to avoid style recalculations
-		// checkElementWidth = () => {
-		// 	if (this.state.itemElement && this._forceSizingRecheck) {
-		// 		this._forceSizingRecheck = false
-		// 		const width = getElementWidth(this.state.itemElement) || 0
-		// 		if (this.state.elementWidth !== width) {
-		// 			this.setState({
-		// 				elementWidth: width
-		// 			})
-		// 		}
-		// 	}
-		// }
 
 		private highlightTimeout: NodeJS.Timer
 
@@ -628,41 +630,19 @@ export const SourceLayerItem = withTranslation()(
 						style={this.getItemStyle()}
 					>
 						{this.renderInsideItem(typeClass)}
-						{DEBUG_MODE && (
+						{DEBUG_MODE && this.props.studio && (
 							<div className="segment-timeline__debug-info">
-								{innerPiece.enable.start} / {RundownUtils.formatTimeToTimecode(this.props.partDuration).substr(-5)} /{' '}
-								{piece.renderedDuration ? RundownUtils.formatTimeToTimecode(piece.renderedDuration).substr(-5) : 'X'} /{' '}
+								{innerPiece.enable.start} /{' '}
+								{RundownUtils.formatTimeToTimecode(this.props.studio.settings, this.props.partDuration).substr(-5)} /{' '}
+								{piece.renderedDuration
+									? RundownUtils.formatTimeToTimecode(this.props.studio.settings, piece.renderedDuration).substr(-5)
+									: 'X'}{' '}
+								/{' '}
 								{typeof innerPiece.enable.duration === 'number'
-									? RundownUtils.formatTimeToTimecode(innerPiece.enable.duration).substr(-5)
+									? RundownUtils.formatTimeToTimecode(this.props.studio.settings, innerPiece.enable.duration).substr(-5)
 									: ''}
 							</div>
 						)}
-						{innerPiece.transitions &&
-						innerPiece.transitions.inTransition &&
-						(innerPiece.transitions.inTransition.duration || 0) > 0 ? (
-							<div
-								className={ClassNames('segment-timeline__piece__transition', 'in', {
-									mix: innerPiece.transitions.inTransition.type === PieceTransitionType.MIX,
-									wipe: innerPiece.transitions.inTransition.type === PieceTransitionType.WIPE,
-								})}
-								style={{
-									width: this.convertTimeToPixels(innerPiece.transitions.inTransition.duration || 0).toString() + 'px',
-								}}
-							/>
-						) : null}
-						{innerPiece.transitions &&
-						innerPiece.transitions.outTransition &&
-						(innerPiece.transitions.outTransition.duration || 0) > 0 ? (
-							<div
-								className={ClassNames('segment-timeline__piece__transition', 'out', {
-									mix: innerPiece.transitions.outTransition.type === PieceTransitionType.MIX,
-									wipe: innerPiece.transitions.outTransition.type === PieceTransitionType.WIPE,
-								})}
-								style={{
-									width: this.convertTimeToPixels(innerPiece.transitions.outTransition.duration || 0).toString() + 'px',
-								}}
-							/>
-						) : null}
 					</div>
 				)
 			} else {

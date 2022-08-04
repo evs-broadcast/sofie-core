@@ -67,7 +67,7 @@ function getPreviewUrlFromExpectedPackages(
 		const sideEffect = getSideEffect(expPackage, studio)
 
 		packagePreviewPath = sideEffect.previewPackageSettings?.path
-		previewContainerId = sideEffect.previewContainerId
+		previewContainerId = sideEffect.previewContainerId ?? undefined
 		expectedPackage = expPackage
 
 		if (packagePreviewPath && previewContainerId) {
@@ -94,7 +94,7 @@ function getThumbnailUrlFromExpectedPackages(
 		const sideEffect = getSideEffect(expPackage, studio)
 
 		packageThumbnailPath = sideEffect.thumbnailPackageSettings?.path
-		thumbnailContainerId = sideEffect.thumbnailContainerId
+		thumbnailContainerId = sideEffect.thumbnailContainerId ?? undefined
 		expectedPackage = expPackage
 
 		if (packageThumbnailPath && thumbnailContainerId) {

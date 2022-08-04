@@ -2,8 +2,8 @@ import { Meteor } from 'meteor/meteor'
 import { check } from '../../lib/check'
 import * as _ from 'underscore'
 import { ISourceLayer, ScriptContent, SourceLayerType } from '@sofie-automation/blueprints-integration'
-import { RundownPlaylists, RundownPlaylistId } from '../collections/RundownPlaylists'
-import { getRandomId, normalizeArray, normalizeArrayToMap } from '../lib'
+import { RundownPlaylists, RundownPlaylistId, RundownPlaylistCollectionUtil } from '../collections/RundownPlaylists'
+import { normalizeArray, normalizeArrayToMap, protectString } from '../lib'
 import { SegmentId } from '../collections/Segments'
 import { Piece, PieceId, Pieces } from '../collections/Pieces'
 import { getPieceInstancesForPartInstance, getSegmentsWithPartInstances } from '../Rundown'
@@ -13,7 +13,7 @@ import { FindOptions } from '../typings/meteor'
 import { PieceInstance, PieceInstances } from '../collections/PieceInstances'
 import { Rundown, RundownId } from '../collections/Rundowns'
 import { ShowStyleBase, ShowStyleBaseId, ShowStyleBases } from '../collections/ShowStyleBases'
-import { processAndPrunePieceInstanceTimings } from '../rundown/infinites'
+import { processAndPrunePieceInstanceTimings } from '@sofie-automation/corelib/dist/playout/infinites'
 
 // export interface NewPrompterAPI {
 // 	getPrompterData (playlistId: RundownPlaylistId): Promise<PrompterData>
@@ -49,10 +49,11 @@ export namespace PrompterAPI {
 		check(playlistId, String)
 
 		const playlist = RundownPlaylists.findOne(playlistId)
+
 		if (!playlist) {
 			return null
 		}
-		const rundowns = playlist.getRundowns()
+		const rundowns = RundownPlaylistCollectionUtil.getRundowns(playlist)
 		const rundownIdsToShowStyleBaseIds: Map<RundownId, ShowStyleBaseId> = new Map()
 		const rundownIdsToShowStyleBase: Map<RundownId, [ShowStyleBase, Record<string, ISourceLayer>] | undefined> =
 			new Map()
@@ -66,7 +67,8 @@ export namespace PrompterAPI {
 		}
 		const rundownMap = normalizeArrayToMap(rundowns, '_id')
 
-		const { currentPartInstance, nextPartInstance } = playlist.getSelectedPartInstances()
+		const { currentPartInstance, nextPartInstance } =
+			RundownPlaylistCollectionUtil.getSelectedPartInstances(playlist)
 
 		const groupedParts = getSegmentsWithPartInstances(
 			playlist,
@@ -229,7 +231,7 @@ export namespace PrompterAPI {
 				if (partData.pieces.length === 0) {
 					// insert an empty line
 					partData.pieces.push({
-						id: getRandomId(),
+						id: protectString(`part_${partData.id}_empty`),
 						text: '',
 					})
 				}

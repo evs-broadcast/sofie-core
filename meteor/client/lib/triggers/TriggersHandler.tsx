@@ -7,8 +7,13 @@ import { PubSub } from '../../../lib/api/pubsub'
 import { ShowStyleBase, ShowStyleBaseId, ShowStyleBases } from '../../../lib/collections/ShowStyleBases'
 import { TriggeredActionId, TriggeredActions } from '../../../lib/collections/TriggeredActions'
 import { useSubscription, useTracker } from '../ReactMeteorData/ReactMeteorData'
-import { RundownPlaylist, RundownPlaylistId, RundownPlaylists } from '../../../lib/collections/RundownPlaylists'
-import { ISourceLayer, SomeAction, TriggerType } from '@sofie-automation/blueprints-integration'
+import {
+	RundownPlaylist,
+	RundownPlaylistCollectionUtil,
+	RundownPlaylistId,
+	RundownPlaylists,
+} from '../../../lib/collections/RundownPlaylists'
+import { ISourceLayer, ITranslatableMessage, SomeAction, TriggerType } from '@sofie-automation/blueprints-integration'
 import { RundownId } from '../../../lib/collections/Rundowns'
 import {
 	ActionContext,
@@ -24,7 +29,6 @@ import { AdLibActionId } from '../../../lib/collections/AdLibActions'
 import { RundownBaselineAdLibActionId } from '../../../lib/collections/RundownBaselineAdLibActions'
 import { PieceId } from '../../../lib/collections/Pieces'
 import { ReactiveVar } from 'meteor/reactive-var'
-import { ITranslatableMessage } from '../../../lib/api/TranslatableMessage'
 import { preventDefault } from '../SorensenContext'
 import { logger } from '../../../lib/logging'
 
@@ -370,7 +374,7 @@ export const TriggersHandler: React.FC<IProps> = function TriggersHandler(
 				},
 			})
 			if (playlist) {
-				return playlist.getRundownUnorderedIDs()
+				return RundownPlaylistCollectionUtil.getRundownUnorderedIDs(playlist)
 			}
 			return []
 		}, [props.rundownPlaylistId]) || []

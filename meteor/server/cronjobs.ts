@@ -1,8 +1,8 @@
 import { Rundowns } from '../lib/collections/Rundowns'
 import { PeripheralDeviceAPI } from '../lib/api/peripheralDevice'
-import { PeripheralDevices } from '../lib/collections/PeripheralDevices'
+import { PeripheralDevices, PeripheralDeviceType } from '../lib/collections/PeripheralDevices'
 import * as _ from 'underscore'
-import { getCurrentTime, waitForPromiseAll } from '../lib/lib'
+import { getCurrentTime, stringifyError, waitForPromiseAll } from '../lib/lib'
 import { logger } from './logging'
 import { Meteor } from 'meteor/meteor'
 import { IngestDataCache } from '../lib/collections/IngestDataCache'
@@ -10,8 +10,9 @@ import { TSR } from '@sofie-automation/blueprints-integration'
 import { UserActionsLog } from '../lib/collections/UserActionsLog'
 import { Snapshots } from '../lib/collections/Snapshots'
 import { CASPARCG_RESTART_TIME } from '../lib/constants'
-import { removeEmptyPlaylists } from './api/rundownPlaylist'
 import { getCoreSystem } from '../lib/collections/CoreSystem'
+import { QueueStudioJob } from './worker/worker'
+import { StudioJobs } from '@sofie-automation/corelib/dist/worker/studio'
 import { fetchStudioIds } from '../lib/collections/optimizations'
 
 const lowPrioFcn = (fcn: () => any) => {
@@ -90,46 +91,44 @@ Meteor.startup(() => {
 			// Restart casparcg
 			if (system?.cron?.casparCGRestart?.enabled) {
 				PeripheralDevices.find({
-					type: PeripheralDeviceAPI.DeviceType.PLAYOUT,
+					type: PeripheralDeviceType.PLAYOUT,
 				}).forEach((device) => {
 					PeripheralDevices.find({
 						parentDeviceId: device._id,
 					}).forEach((subDevice) => {
 						if (
-							subDevice.type === PeripheralDeviceAPI.DeviceType.PLAYOUT &&
+							subDevice.type === PeripheralDeviceType.PLAYOUT &&
 							subDevice.subType === TSR.DeviceType.CASPARCG
 						) {
 							logger.info('Cronjob: Trying to restart CasparCG on device "' + subDevice._id + '"')
 
 							ps.push(
-								new Promise<void>((resolve, reject) => {
-									PeripheralDeviceAPI.executeFunctionWithCustomTimeout(
-										subDevice._id,
-										(err) => {
-											if (err) {
-												logger.error(
-													'Cronjob: "' + subDevice._id + '": CasparCG restart error',
-													err
-												)
-												if ((err + '').match(/timeout/i)) {
-													// If it was a timeout, maybe we could try again later?
-													if (failedRetries < 5) {
-														failedRetries++
-														lastNightlyCronjob = previousLastNightlyCronjob // try again later
-													}
-													resolve()
-												} else {
-													reject(err)
-												}
-											} else {
-												logger.info('Cronjob: "' + subDevice._id + '": CasparCG restart done')
-												resolve()
+								PeripheralDeviceAPI.executeFunctionWithCustomTimeout(
+									subDevice._id,
+									CASPARCG_RESTART_TIME,
+									'restartCasparCG'
+								)
+									.then(() => {
+										logger.info('Cronjob: "' + subDevice._id + '": CasparCG restart done')
+									})
+									.catch((err) => {
+										logger.error(
+											`Cronjob: "${subDevice._id}": CasparCG restart error: ${stringifyError(
+												err
+											)}`
+										)
+
+										if ((err + '').match(/timeout/i)) {
+											// If it was a timeout, maybe we could try again later?
+											if (failedRetries < 5) {
+												failedRetries++
+												lastNightlyCronjob = previousLastNightlyCronjob // try again later
 											}
-										},
-										CASPARCG_RESTART_TIME,
-										'restartCasparCG'
-									)
-								})
+										} else {
+											// Propogate the error
+											throw err
+										}
+									})
 							)
 						}
 					})
@@ -151,9 +150,16 @@ Meteor.startup(() => {
 
 	function cleanupPlaylists(force?: boolean) {
 		if (isLowSeason() || force) {
-			// Ensure there are no empty playlists:
+			// Ensure there are no empty playlists on an interval
 			const studioIds = fetchStudioIds({})
-			waitForPromiseAll(studioIds.map(async (studioId) => removeEmptyPlaylists(studioId)))
+			Promise.all(
+				studioIds.map(async (studioId) => {
+					const job = await QueueStudioJob(StudioJobs.CleanupEmptyPlaylists, studioId, undefined)
+					await job.complete
+				})
+			).catch((e) => {
+				logger.error(`Cron: CleanupPlaylists error: ${e}`)
+			})
 		}
 	}
 	Meteor.setInterval(cleanupPlaylists, 30 * 60 * 1000) // every 30 minutes

@@ -5,7 +5,12 @@ import ClassNames from 'classnames'
 import { Meteor } from 'meteor/meteor'
 import { Route } from 'react-router-dom'
 import { translateWithTracker, Translated } from '../../lib/ReactMeteorData/ReactMeteorData'
-import { RundownPlaylist, RundownPlaylists, RundownPlaylistId } from '../../../lib/collections/RundownPlaylists'
+import {
+	RundownPlaylist,
+	RundownPlaylists,
+	RundownPlaylistId,
+	RundownPlaylistCollectionUtil,
+} from '../../../lib/collections/RundownPlaylists'
 import { Studios, Studio, StudioId } from '../../../lib/collections/Studios'
 import { parse as queryStringParse } from 'query-string'
 
@@ -20,7 +25,11 @@ import { documentTitle } from '../../lib/DocumentTitleProvider'
 import { StudioScreenSaver } from '../StudioScreenSaver/StudioScreenSaver'
 import { RundownTimingProvider } from '../RundownView/RundownTiming/RundownTimingProvider'
 import { OverUnderTimer } from './OverUnderTimer'
-import { Rundowns } from '../../../lib/collections/Rundowns'
+import { Rundown, Rundowns } from '../../../lib/collections/Rundowns'
+import { PieceId } from '@sofie-automation/corelib/dist/dataModel/Ids'
+
+const DEFAULT_UPDATE_THROTTLE = 250 //ms
+const PIECE_MISSING_UPDATE_THROTTLE = 2000 //ms
 
 interface PrompterConfig {
 	mirror?: boolean
@@ -587,17 +596,23 @@ export const Prompter = translateWithTracker<IPrompterProps, {}, IPrompterTracke
 			this.subscribe(PubSub.rundowns, { playlistId: this.props.rundownPlaylistId })
 
 			this.autorun(() => {
-				const playlist = RundownPlaylists.findOne(this.props.rundownPlaylistId)
+				const playlist = RundownPlaylists.findOne(this.props.rundownPlaylistId, {
+					fields: {
+						_id: 1,
+						activationId: 1,
+					},
+				}) as Pick<RundownPlaylist, '_id' | 'activationId'> | undefined
 				if (playlist) {
-					const rundownIDs = playlist.getRundownIDs()
+					const rundownIDs = RundownPlaylistCollectionUtil.getRundownIDs(playlist)
 					this.subscribe(PubSub.segments, {
 						rundownId: { $in: rundownIDs },
 					})
 					this.subscribe(PubSub.parts, {
 						rundownId: { $in: rundownIDs },
 					})
-					this.subscribe(PubSub.partInstancesSimple, {
+					this.subscribe(PubSub.partInstances, {
 						rundownId: { $in: rundownIDs },
+						playlistActivationId: playlist.activationId,
 						reset: { $ne: true },
 					})
 					this.subscribe(PubSub.pieces, {
@@ -611,7 +626,15 @@ export const Prompter = translateWithTracker<IPrompterProps, {}, IPrompterTracke
 			})
 
 			this.autorun(() => {
-				const rundowns = Rundowns.find({ playlistId: this.props.rundownPlaylistId }).fetch()
+				const rundowns = Rundowns.find(
+					{ playlistId: this.props.rundownPlaylistId },
+					{
+						fields: {
+							_id: 1,
+							showStyleBaseId: 1,
+						},
+					}
+				).fetch() as Pick<Rundown, '_id' | 'showStyleBaseId'>[]
 				this.subscribe(PubSub.showStyleBases, {
 					_id: {
 						$in: rundowns.map((rundown) => rundown.showStyleBaseId),
@@ -643,7 +666,7 @@ export const Prompter = translateWithTracker<IPrompterProps, {}, IPrompterTracke
 			Array.from(document.querySelectorAll('.prompter .prompter-line:not(.empty)')).forEach((anchor) => {
 				const { top, bottom } = anchor.getBoundingClientRect()
 				// find a prompter line that is in the read area of the viewport
-				if (top <= window.innerHeight && bottom >= readPosition) foundPositions.push([top, anchor.id])
+				if (top <= windowInnerHeight && bottom >= readPosition) foundPositions.push([top, anchor.id])
 			})
 
 			// if we didn't find any text, let's use scroll-anchors instead (Segment and Part names)
@@ -677,9 +700,45 @@ export const Prompter = translateWithTracker<IPrompterProps, {}, IPrompterTracke
 			}
 		}
 
-		shouldComponentUpdate(_nextProps, _nextState): boolean {
+		shouldComponentUpdate(nextProps: Translated<IPrompterProps & IPrompterTrackedProps>): boolean {
+			const { prompterData } = this.props
+			const { prompterData: nextPrompterData } = nextProps
+
+			const currentPrompterPieces = _.flatten(
+				prompterData?.segments.map((segment) =>
+					segment.parts.map((part) =>
+						// collect all the PieceId's of all the non-empty pieces of script
+						_.compact(part.pieces.map((dataPiece) => (dataPiece.text !== '' ? dataPiece.id : null)))
+					)
+				) ?? []
+			) as PieceId[]
+			const nextPrompterPieces = _.flatten(
+				nextPrompterData?.segments.map((segment) =>
+					segment.parts.map((part) =>
+						// collect all the PieceId's of all the non-empty pieces of script
+						_.compact(part.pieces.map((dataPiece) => (dataPiece.text !== '' ? dataPiece.id : null)))
+					)
+				) ?? []
+			) as PieceId[]
+
+			// Flag for marking that a Piece is going missing during the update (was present in prompterData
+			// no longer present in nextPrompterData)
+			let missingPiece = false
+			for (const pieceId of currentPrompterPieces) {
+				if (!nextPrompterPieces.includes(pieceId)) {
+					missingPiece = true
+					break
+				}
+			}
+
+			// Default delay for updating the prompter (for providing stability/batching the updates)
+			let delay = DEFAULT_UPDATE_THROTTLE
+			// If a Piece has gone missing, delay the update by up to 2 seconds, so that it has a chance to stream in.
+			// When the Piece streams in, shouldComponentUpdate will run again, and then, if the piece is available
+			// we will use the shorter value and update sooner
+			if (missingPiece) delay = PIECE_MISSING_UPDATE_THROTTLE
 			clearTimeout(this._debounceUpdate)
-			this._debounceUpdate = setTimeout(() => this.forceUpdate(), 250)
+			this._debounceUpdate = setTimeout(() => this.forceUpdate(), delay)
 			return false
 		}
 

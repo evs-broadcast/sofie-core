@@ -11,14 +11,18 @@ import {
 	buildPiecesStartingInThisPartQuery,
 	buildPastInfinitePiecesForThisPartQuery,
 	PieceInstanceWithTimings,
-} from './rundown/infinites'
+} from '@sofie-automation/corelib/dist/playout/infinites'
 import { FindOptions } from './typings/meteor'
 import { invalidateAfter } from '../client/lib/invalidatingTime'
 import { getCurrentTime, mongoWhereFilter, ProtectedString, protectString, unprotectString } from './lib'
-import { RundownPlaylist, RundownPlaylistActivationId } from './collections/RundownPlaylists'
+import {
+	RundownPlaylist,
+	RundownPlaylistActivationId,
+	RundownPlaylistCollectionUtil,
+} from './collections/RundownPlaylists'
 import { Rundown, RundownId } from './collections/Rundowns'
 import { ShowStyleBaseId } from './collections/ShowStyleBases'
-import { isTranslatableMessage } from './api/TranslatableMessage'
+import { isTranslatableMessage } from '@sofie-automation/corelib/dist/TranslatableMessage'
 
 export interface SegmentExtended extends DBSegment {
 	/** Output layers available in the installation used by this segment */
@@ -137,7 +141,7 @@ const SIMULATION_INVALIDATION = 3000
  */
 export function getPieceInstancesForPartInstance(
 	playlistActivationId: RundownPlaylistActivationId | undefined,
-	rundown: Rundown,
+	rundown: Pick<Rundown, '_id' | 'showStyleBaseId'>,
 	partInstance: PartInstanceLimited,
 	partsBeforeThisInSegmentSet: Set<PartId>,
 	segmentsBeforeThisInRundownSet: Set<SegmentId>,
@@ -249,13 +253,18 @@ export function getSegmentsWithPartInstances(
 	partsOptions?: FindOptions<DBPart>,
 	partInstancesOptions?: FindOptions<PartInstance>
 ): Array<{ segment: Segment; partInstances: PartInstance[] }> {
-	const { segments, parts: rawParts } = playlist.getSegmentsAndPartsSync(
+	const { segments, parts: rawParts } = RundownPlaylistCollectionUtil.getSegmentsAndPartsSync(
+		playlist,
 		segmentsQuery,
 		partsQuery,
 		segmentsOptions,
 		partsOptions
 	)
-	const rawPartInstances = playlist.getActivePartInstances(partInstancesQuery, partInstancesOptions)
+	const rawPartInstances = RundownPlaylistCollectionUtil.getActivePartInstances(
+		playlist,
+		partInstancesQuery,
+		partInstancesOptions
+	)
 	const playlistActivationId = playlist.activationId ?? protectString('')
 
 	const partsBySegment = _.groupBy(rawParts, (p) => p.segmentId)
