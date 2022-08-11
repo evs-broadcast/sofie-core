@@ -40,7 +40,7 @@
 	],
 	"dependencies": {
 		"moment": "2.29.3",
-		"timeline-state-resolver-types": "7.0.0-release41.2",
+		"timeline-state-resolver-types": "npm:@evs/timeline-state-resolver-types@7.0.2",
 		"tslib": "^2.3.1",
 		"type-fest": "^2.11.1"
 	},
