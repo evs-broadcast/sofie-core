@@ -1,6 +1,6 @@
 {
 	"name": "mos-gateway",
-	"version": "1.41.0-in-testing.1",
+	"version": "1.41.0",
 	"private": true,
 	"description": "MOS-Gateway for the Sofie project",
 	"license": "MIT",
@@ -43,7 +43,8 @@
 		"validate:dev-dependencies": "yarn audit --groups devDependencies",
 		"license-validate": "node-license-validator -p -d --allow-licenses MIT 0BSD BSD BSD-2-Clause BSD-3-Clause ISC Apache Apache-2.0 Unlicense WTFPL ",
 		"start": "node dist/index.js",
-		"precommit": "lint-staged"
+		"precommit": "lint-staged",
+		"evs-rename:dependency": "node rename-deps.mjs"
 	},
 	"engines": {
 		"node": "^14.18 || ^16.14"
@@ -63,7 +64,7 @@
 		"production"
 	],
 	"dependencies": {
-		"@sofie-automation/server-core-integration": "^1.41.0-in-testing.1",
+		"@sofie-automation/server-core-integration": "^1.41.0",
 		"mos-connection": "^1.0.6",
 		"tslib": "^2.3.1",
 		"underscore": "^1.12.1",
