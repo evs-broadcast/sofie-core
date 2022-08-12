@@ -62,8 +62,8 @@ if (logPath) {
 	console.log = function (...args: any[]) {
 		// orgConsoleLog('a')
 		if (args.length >= 1) {
-			// @ts-expect-error one or more arguments
-			logger.debug(...args)
+			// Does something weird if passing array of strings
+			logger.debug(args.join())
 		}
 	}
 }
@@ -77,10 +77,10 @@ function getCurrentTime() {
 
 // Because the default NodeJS-handler sucks and wont display error properly
 process.on('warning', (e: any) => {
-	logger.warn('Unhandled warning, see below')
-	logger.error('error', e)
-	logger.error('error.reason', e.reason || e.message)
-	logger.error('error.stack', e.stack)
+	if (e.stack) {
+		if (e.reason) logger.error(e.reason)
+		logger.error(e.stack)
+	} else logger.error(`${e.name}: ${e.reason || e.message}`)
 })
 
 logger.info('------------------------------------------------------------------')
