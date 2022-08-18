@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:experimental
 # BUILD IMAGE
-FROM node:16.14
+FROM node:16.17
 WORKDIR /opt
 
 COPY package.json lerna.json yarn.lock tsconfig.json ./
