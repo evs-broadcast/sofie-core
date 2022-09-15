@@ -1,11 +1,16 @@
 import * as React from 'react'
 import { Translated, translateWithTracker } from '../../lib/ReactMeteorData/react-meteor-data'
-import { PeripheralDevice, PeripheralDevices, PeripheralDeviceType } from '../../../lib/collections/PeripheralDevices'
+import {
+	PeripheralDevice,
+	PeripheralDeviceId,
+	PeripheralDevices,
+	PeripheralDeviceType,
+} from '../../../lib/collections/PeripheralDevices'
 import * as reacti18next from 'react-i18next'
 import * as i18next from 'i18next'
 import { PeripheralDeviceAPI } from '../../../lib/api/peripheralDevice'
 import Moment from 'react-moment'
-import { assertNever, getCurrentTime, getHash, unprotectString } from '../../../lib/lib'
+import { assertNever, getCurrentTime, getHash, protectString, unprotectString } from '../../../lib/lib'
 import { Link } from 'react-router-dom'
 import Tooltip from 'rc-tooltip'
 import { faTrash, faEye } from '@fortawesome/free-solid-svg-icons'
@@ -33,6 +38,8 @@ interface IDeviceItemProps {
 	showRemoveButtons?: boolean
 	toplevel?: boolean
 	hasChildren?: boolean
+
+	debugState: object | undefined
 }
 interface IDeviceItemState {}
 
@@ -196,6 +203,48 @@ export const DeviceItem = reacti18next.withTranslation()(
 			})
 		}
 
+		private getDebugStateTableBody(debugState: object) {
+			/**
+			 * Flattens object such that deeply-nested keys are moved to the top-level and are prefixed by
+			 *   their parent keys.
+			 *
+			 * # Example
+			 *
+			 * { "key1": { "key2": [ { "key3": "example" } ] } }
+			 *
+			 * becomes
+			 *
+			 * { "key1.key2.0.key3": "example" }
+			 * @param acc Accumulator object, should be passed an empty object to begin
+			 * @param obj Object to recurse
+			 * @param currentKey Current key within the object being recursed (initially blank)
+			 * @returns "Flattened" object
+			 */
+			function toDotNotation(acc: object, obj: object, currentKey?: string): object {
+				for (const key in obj) {
+					const value = obj[key]
+					const newKey = currentKey ? currentKey + '.' + key : key // joined key with dot
+					if (value && typeof value === 'object' && Object.keys(value).length) {
+						acc = toDotNotation(acc, value, newKey) // it's a nested object, so do it again
+					} else {
+						acc[newKey] = value // it's not an object, so set the property
+					}
+				}
+
+				return acc
+			}
+
+			const objectInDotNotation = toDotNotation({}, debugState)
+			return Object.entries(objectInDotNotation).map(([key, value]) => {
+				return (
+					<tr key={key}>
+						<td>{key}</td>
+						<td>{JSON.stringify(value)}</td>
+					</tr>
+				)
+			})
+		}
+
 		render() {
 			const { t } = this.props
 
@@ -244,6 +293,15 @@ export const DeviceItem = reacti18next.withTranslation()(
 									{this.props.device.versions._process || 'N/A'}
 								</a>
 							</div>
+						</div>
+					) : null}
+
+					{this.props.debugState ? (
+						<div className="device-item__debugState">
+							<label>{t('Debug State')}</label>
+							<table className="table">
+								<tbody>{this.getDebugStateTableBody(this.props.debugState)}</tbody>
+							</table>
 						</div>
 					) : null}
 
@@ -549,7 +607,9 @@ export const CoreItem = reacti18next.withTranslation()(
 interface ISystemStatusProps {}
 interface ISystemStatusState {
 	systemStatus: StatusResponse | undefined
+	deviceDebugState: Map<PeripheralDeviceId, object>
 }
+
 interface ISystemStatusTrackedProps {
 	coreSystem: ICoreSystem | undefined
 	devices: Array<PeripheralDevice>
@@ -571,6 +631,7 @@ export default translateWithTracker<ISystemStatusProps, ISystemStatusState, ISys
 		ISystemStatusState
 	> {
 		private refreshInterval: NodeJS.Timer | undefined = undefined
+		private refreshDebugStatesInterval: NodeJS.Timer | undefined = undefined
 		private destroyed: boolean = false
 
 		constructor(props) {
@@ -578,12 +639,14 @@ export default translateWithTracker<ISystemStatusProps, ISystemStatusState, ISys
 
 			this.state = {
 				systemStatus: undefined,
+				deviceDebugState: new Map(),
 			}
 		}
 
 		componentDidMount() {
 			this.refreshSystemStatus()
 			this.refreshInterval = setInterval(this.refreshSystemStatus, 5000)
+			this.refreshDebugStatesInterval = setInterval(this.refreshDebugStates, 1000)
 
 			// Subscribe to data:
 			this.subscribe(PubSub.peripheralDevices, {})
@@ -591,6 +654,7 @@ export default translateWithTracker<ISystemStatusProps, ISystemStatusState, ISys
 
 		componentWillUnmount() {
 			if (this.refreshInterval) clearInterval(this.refreshInterval)
+			if (this.refreshDebugStatesInterval) clearInterval(this.refreshDebugStatesInterval)
 			this.destroyed = true
 		}
 
@@ -618,6 +682,26 @@ export default translateWithTracker<ISystemStatusProps, ISystemStatusState, ISys
 					)
 					return
 				})
+		}
+
+		refreshDebugStates = () => {
+			for (const device of this.props.devices) {
+				if (device.type === PeripheralDeviceType.PLAYOUT && device.settings && device.settings['debugState']) {
+					PeripheralDeviceAPI.executeFunction(device._id, 'getDebugStates')
+						.then((result) => {
+							const states: Map<PeripheralDeviceId, object> = new Map()
+							for (const [key, state] of Object.entries(result)) {
+								states.set(protectString(key), state as any)
+							}
+							this.setState({
+								deviceDebugState: states,
+							})
+						})
+						.catch((error) => {
+							console.log(`Error fetching device states: ${error}`)
+						})
+				}
+			}
 		}
 
 		renderPeripheralDevices() {
@@ -655,6 +739,7 @@ export default translateWithTracker<ISystemStatusProps, ISystemStatusState, ISys
 						device={d.device}
 						toplevel={toplevel}
 						hasChildren={d.children.length !== 0}
+						debugState={this.state.deviceDebugState.get(d.device._id)}
 					/>,
 				]
 				if (d.children.length) {
