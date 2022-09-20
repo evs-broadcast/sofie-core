@@ -164,6 +164,9 @@ export interface IBlueprintSegment<TMetadata = unknown> {
 
 	/** Segment display mode. Default mode is *SegmentDisplayMode.Timeline* */
 	displayAs?: SegmentDisplayMode
+
+	/** Contextual information, primarily for consumption by external systems */
+	tags?: string[]
 }
 /** The Segment sent from Core */
 export interface IBlueprintSegmentDB<TMetadata = unknown> extends IBlueprintSegment<TMetadata> {
@@ -228,6 +231,9 @@ export interface IBlueprintMutatablePart<TMetadata = unknown> {
 
 	/** User-facing identifier that can be used by the User to identify the contents of a segment in the Rundown source system */
 	identifier?: string
+
+	/** Contextual information, primarily for consumption by external systems */
+	tags?: string[]
 }
 /** The Part generated from Blueprint */
 export interface IBlueprintPart<TMetadata = unknown> extends IBlueprintMutatablePart<TMetadata> {

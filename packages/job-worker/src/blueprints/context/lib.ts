@@ -90,6 +90,7 @@ export const IBlueprintMutatablePartSampleKeys = allKeysOfObject<IBlueprintMutat
 	displayDurationGroup: true,
 	displayDuration: true,
 	identifier: true,
+	tags: true,
 })
 
 /*
@@ -216,6 +217,7 @@ export function convertPartToBlueprints(part: DBPart): IBlueprintPartDB {
 		displayDurationGroup: part.displayDurationGroup,
 		displayDuration: part.displayDuration,
 		identifier: part.identifier,
+		tags: part.tags,
 	}
 
 	return obj
@@ -261,6 +263,7 @@ export function convertSegmentToBlueprints(segment: ReadonlyDeep<DBSegment>): IB
 		isHidden: segment.isHidden,
 		identifier: segment.identifier,
 		displayAs: segment.displayAs,
+		tags: segment.tags ? clone<string[]>(segment.tags) : undefined,
 	}
 
 	return obj
