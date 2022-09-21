@@ -1,10 +1,14 @@
 import { IngestWorkerChild } from './child'
 import { InvalidateWorkerDataCache } from '../caches'
-import { WorkerParentBase, WorkerParentBaseOptions } from '../parent-base'
+import { WorkerJobResult, WorkerParentBase, WorkerParentBaseOptions } from '../parent-base'
 import { AnyLockEvent } from '../locks'
 import { getIngestQueueName } from '@sofie-automation/corelib/dist/worker/ingest'
 import { Promisify, threadedClass, ThreadedClassManager } from 'threadedclass'
 import { FastTrackTimelineFunc, LogLineWithSourceFunc } from '../../main'
+
+const FREEZE_LIMIT = 10000 // how long to wait for a response to a Ping
+const RESTART_TIMEOUT = 10000 // how long to wait for a restart to complete before throwing an error
+const KILL_TIMOUT = 10000 // how long to wait for a thread to terminate before throwing an error
 
 export class IngestWorkerParent extends WorkerParentBase {
 	readonly #thread: Promisify<IngestWorkerChild>
@@ -32,6 +36,10 @@ export class IngestWorkerParent extends WorkerParentBase {
 			[baseOptions.studioId, emitLockEvent, baseOptions.jobManager.queueJob, logLine, fastTrackTimeline],
 			{
 				instanceName: `Ingest: ${baseOptions.studioId}`,
+				autoRestart: true,
+				freezeLimit: FREEZE_LIMIT,
+				restartTimeout: RESTART_TIMEOUT,
+				killTimeout: KILL_TIMOUT,
 			}
 		)
 
@@ -50,7 +58,7 @@ export class IngestWorkerParent extends WorkerParentBase {
 	protected async invalidateWorkerCaches(invalidations: InvalidateWorkerDataCache): Promise<void> {
 		return this.#thread.invalidateCaches(invalidations)
 	}
-	protected async runJobInWorker(name: string, data: unknown): Promise<any> {
+	protected async runJobInWorker(name: string, data: unknown): Promise<WorkerJobResult> {
 		return this.#thread.runJob(name, data)
 	}
 	protected async terminateWorkerThread(): Promise<void> {

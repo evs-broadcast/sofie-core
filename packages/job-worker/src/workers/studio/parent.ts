@@ -1,10 +1,14 @@
 import { getStudioQueueName } from '@sofie-automation/corelib/dist/worker/studio'
 import type { StudioWorkerChild } from './child'
 import { InvalidateWorkerDataCache } from '../caches'
-import { WorkerParentBase, WorkerParentOptions, WorkerParentBaseOptions } from '../parent-base'
+import { WorkerParentBase, WorkerParentOptions, WorkerParentBaseOptions, WorkerJobResult } from '../parent-base'
 import { AnyLockEvent } from '../locks'
 import { Promisify, threadedClass, ThreadedClassManager } from 'threadedclass'
 import { FastTrackTimelineFunc, LogLineWithSourceFunc } from '../../main'
+
+const FREEZE_LIMIT = 2500 // how long to wait for a response to a Ping
+const RESTART_TIMEOUT = 10000 // how long to wait for a restart to complete before throwing an error
+const KILL_TIMOUT = 10000 // how long to wait for a thread to terminate before throwing an error
 
 export class StudioWorkerParent extends WorkerParentBase {
 	readonly #thread: Promisify<StudioWorkerChild>
@@ -31,6 +35,10 @@ export class StudioWorkerParent extends WorkerParentBase {
 			[baseOptions.studioId, emitLockEvent, baseOptions.jobManager.queueJob, logLine, fastTrackTimeline],
 			{
 				instanceName: `Studio: ${baseOptions.studioId}`,
+				autoRestart: true,
+				freezeLimit: FREEZE_LIMIT,
+				restartTimeout: RESTART_TIMEOUT,
+				killTimeout: KILL_TIMOUT,
 			}
 		)
 
@@ -49,7 +57,7 @@ export class StudioWorkerParent extends WorkerParentBase {
 	protected async invalidateWorkerCaches(invalidations: InvalidateWorkerDataCache): Promise<void> {
 		return this.#thread.invalidateCaches(invalidations)
 	}
-	protected async runJobInWorker(name: string, data: unknown): Promise<any> {
+	protected async runJobInWorker(name: string, data: unknown): Promise<WorkerJobResult> {
 		return this.#thread.runJob(name, data)
 	}
 	protected async terminateWorkerThread(): Promise<void> {

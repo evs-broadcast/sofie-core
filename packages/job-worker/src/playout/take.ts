@@ -24,10 +24,11 @@ import { PieceInstance } from '@sofie-automation/corelib/dist/dataModel/PieceIns
 import { PartEventContext, RundownContext } from '../blueprints/context'
 import { WrappedShowStyleBlueprint } from '../blueprints/cache'
 import { innerStopPieces } from './adlib'
-import { reportPartInstanceHasStarted } from '../blueprints/events'
+import { reportPartInstanceHasStarted, reportPartInstanceHasStopped } from '../blueprints/events'
 import { EventsJobs } from '@sofie-automation/corelib/dist/worker/events'
 import { calculatePartTimings } from '@sofie-automation/corelib/dist/playout/timings'
 import { convertPartInstanceToBlueprints, convertResolvedPieceInstanceToBlueprints } from '../blueprints/context/lib'
+import { processAndPrunePieceInstanceTimings } from '@sofie-automation/corelib/dist/playout/infinites'
 
 export async function takeNextPartInnerSync(context: JobContext, cache: CacheForPlayout, now: number): Promise<void> {
 	const span = context.startSpan('takeNextPartInner')
@@ -39,15 +40,15 @@ export async function takeNextPartInnerSync(context: JobContext, cache: CacheFor
 
 	const { currentPartInstance, nextPartInstance, previousPartInstance } = getSelectedPartInstancesFromCache(cache)
 
-	// const partInstance = nextPartInstance || currentPartInstance
-	const partInstance = nextPartInstance // todo: we should always take the next, so it's this one, right?
-	if (!partInstance) throw new Error(`No partInstance could be found!`)
-	const currentRundown = partInstance ? cache.Rundowns.findOne(partInstance.rundownId) : undefined
+	const currentOrNextPartInstance = nextPartInstance || currentPartInstance
+	if (!currentOrNextPartInstance) throw new Error(`No partInstance could be found!`)
+	const currentRundown = currentOrNextPartInstance
+		? cache.Rundowns.findOne(currentOrNextPartInstance.rundownId)
+		: undefined
 	if (!currentRundown)
-		throw new Error(`Rundown "${(partInstance && partInstance.rundownId) || ''}" could not be found!`)
-
-	// it is only a first take if the Playlist has no startedPlayback and the taken PartInstance is not untimed
-	const isFirstTake = !cache.Playlist.doc.startedPlayback && !partInstance.part.untimed
+		throw new Error(
+			`Rundown "${(currentOrNextPartInstance && currentOrNextPartInstance.rundownId) || ''}" could not be found!`
+		)
 
 	const pShowStyle = context.getShowStyleCompound(currentRundown.showStyleVariantId, currentRundown.showStyleBaseId)
 
@@ -97,6 +98,9 @@ export async function takeNextPartInnerSync(context: JobContext, cache: CacheFor
 	if (!takePartInstance) throw new Error('takePart not found!')
 	const takeRundown: DBRundown | undefined = cache.Rundowns.findOne(takePartInstance.rundownId)
 	if (!takeRundown) throw new Error(`takeRundown: takeRundown not found! ("${takePartInstance.rundownId}")`)
+
+	// it is only a first take if the Playlist has no startedPlayback and the taken PartInstance is not untimed
+	const isFirstTake = !cache.Playlist.doc.startedPlayback && !takePartInstance.part.untimed
 
 	clearNextSegmentId(cache, takePartInstance)
 
@@ -231,7 +235,7 @@ async function afterTakeUpdateTimingsAndEvents(
 	isFirstTake: boolean,
 	takeDoneTime: number
 ): Promise<void> {
-	const { currentPartInstance: takePartInstance } = getSelectedPartInstancesFromCache(cache)
+	const { currentPartInstance: takePartInstance, previousPartInstance } = getSelectedPartInstancesFromCache(cache)
 	const takeRundown = takePartInstance ? cache.Rundowns.findOne(takePartInstance.rundownId) : undefined
 
 	// todo: should this be changed back to Meteor.defer, at least for the blueprint stuff?
@@ -251,6 +255,15 @@ async function afterTakeUpdateTimingsAndEvents(
 				}" to have started playback on timestamp ${new Date(takeDoneTime).toISOString()}`
 			)
 			reportPartInstanceHasStarted(context, cache, takePartInstance, takeDoneTime)
+
+			if (previousPartInstance) {
+				logger.info(
+					`Also reporting PartInstance "${
+						previousPartInstance._id
+					}" to have stopped playback on timestamp ${new Date(takeDoneTime).toISOString()}`
+				)
+				reportPartInstanceHasStopped(context, cache, previousPartInstance, takeDoneTime)
+			}
 		}
 
 		// let bp = getBlueprintOfRundown(rundown)
@@ -345,16 +358,23 @@ export function updatePartInstanceOnTake(
 		}
 	}
 
+	// calculate and cache playout timing properties, so that we don't depend on the previousPartInstance:
+	const tmpPieces = processAndPrunePieceInstanceTimings(
+		showStyle,
+		cache.PieceInstances.findFetch((p) => p.partInstanceId === takePartInstance._id),
+		0
+	)
+	const partPlayoutTimings = calculatePartTimings(
+		cache.Playlist.doc.holdState,
+		currentPartInstance?.part,
+		takePartInstance.part,
+		tmpPieces.filter((p) => !p.infinite || p.infinite.infiniteInstanceIndex === 0).map((p) => p.piece)
+	)
+
 	const partInstanceM: any = {
 		$set: literal<Partial<DBPartInstance>>({
 			isTaken: true,
-			// calculate and cache playout timing properties, so that we don't depend on the previousPartInstance:
-			partPlayoutTimings: calculatePartTimings(
-				cache.Playlist.doc.holdState,
-				currentPartInstance?.part,
-				takePartInstance.part,
-				cache.PieceInstances.findFetch((p) => p.partInstanceId === takePartInstance._id).map((p) => p.piece)
-			),
+			partPlayoutTimings: partPlayoutTimings,
 		}),
 	}
 	if (previousPartEndState) {
@@ -425,6 +445,7 @@ function startHold(
 				$set: {
 					infinite: {
 						infiniteInstanceId: infiniteInstanceId,
+						infiniteInstanceIndex: 0,
 						infinitePieceId: instance.piece._id,
 						fromPreviousPart: false,
 					},
@@ -445,6 +466,7 @@ function startHold(
 				},
 				infinite: {
 					infiniteInstanceId: infiniteInstanceId,
+					infiniteInstanceIndex: 1,
 					infinitePieceId: instance.piece._id,
 					fromPreviousPart: true,
 					fromHold: true,

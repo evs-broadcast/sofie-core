@@ -26,6 +26,10 @@ import * as path from 'path'
 import { LogEntry } from 'winston'
 import { initializeWorkerStatus, setWorkerStatus } from './workerStatus'
 
+const FREEZE_LIMIT = 1000 // how long to wait for a response to a Ping
+const RESTART_TIMEOUT = 30000 // how long to wait for a restart to complete before throwing an error
+const KILL_TIMOUT = 30000 // how long to wait for a thread to terminate before throwing an error
+
 interface JobEntry {
 	spec: JobSpec
 	/** The completionHandler is called when a job is completed. null implies "shoot-and-forget" */
@@ -33,9 +37,9 @@ interface JobEntry {
 }
 
 interface JobQueue {
-	jobs: JobEntry[]
+	jobs: Array<JobEntry | null>
 	/** Notify that there is a job waiting (aka worker is long-polling) */
-	notifyWorker: ManualPromise<JobSpec> | null
+	notifyWorker: ManualPromise<JobSpec | null> | null
 }
 
 type JobCompletionHandler = (startedTime: number, finishedTime: number, err: any, result: any) => void
@@ -70,7 +74,7 @@ async function jobFinished(
 	}
 }
 /** This is called by each Worker Thread, when it is idle and wants another job */
-async function getNextJob(queueName: string): Promise<JobSpec> {
+async function getNextJob(queueName: string): Promise<JobSpec | null> {
 	// Check if there is a job waiting:
 	const queue = getOrCreateQueue(queueName)
 	const job = queue.jobs.shift()
@@ -99,6 +103,26 @@ async function getNextJob(queueName: string): Promise<JobSpec> {
 	// Wait to be notified about a job
 	queue.notifyWorker = createManualPromise()
 	return queue.notifyWorker
+}
+/** This is called by each Worker Thread, when it is idle and wants another job */
+async function interruptJobStream(queueName: string): Promise<void> {
+	// Check if there is a job waiting:
+	const queue = getOrCreateQueue(queueName)
+	if (queue.notifyWorker) {
+		const oldNotify = queue.notifyWorker
+		queue.notifyWorker = null
+
+		Meteor.defer(() => {
+			try {
+				// Notify the worker in the background
+				oldNotify.manualResolve(null)
+			} catch (e) {
+				// Ignore
+			}
+		})
+	} else {
+		queue.jobs.unshift(null)
+	}
 }
 async function queueJobWithoutResult(queueName: string, jobName: string, jobData: unknown): Promise<void> {
 	queueJobInner(queueName, {
@@ -215,11 +239,23 @@ Meteor.startup(() => {
 		threadedClass<IpcJobWorker, typeof IpcJobWorker>(
 			workerEntrypoint,
 			'IpcJobWorker',
-			[workerId, jobFinished, getNextJob, queueJobWithoutResult, logLine, fastTrackTimeline],
-			{}
+			[workerId, jobFinished, interruptJobStream, getNextJob, queueJobWithoutResult, logLine, fastTrackTimeline],
+			{
+				autoRestart: true,
+				freezeLimit: FREEZE_LIMIT,
+				restartTimeout: RESTART_TIMEOUT,
+				killTimeout: KILL_TIMOUT,
+			}
 		)
 	)
 
+	ThreadedClassManager.onEvent(
+		worker,
+		'error',
+		Meteor.bindEnvironment((e0) => {
+			logger.error('Error in Worker threads IPC: ', e0)
+		})
+	)
 	ThreadedClassManager.onEvent(
 		worker,
 		'restarted',

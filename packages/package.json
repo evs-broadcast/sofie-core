@@ -19,7 +19,7 @@
 		"build": "yarn lerna run build",
 		"build:try": "yarn lerna run --no-bail build",
 		"watch": "lerna run --parallel build:main -- --watch --preserveWatchOutput",
-		"sync-version-and-changelog": "lerna version --conventional-commits --no-git-tag-version --no-push --yes $(node -p \"require('../meteor/package.json').version\")",
+		"sync-version-and-changelog": "lerna version --exact --force-publish --conventional-commits --no-git-tag-version --no-push --yes $(node -p \"require('../meteor/package.json').version\")",
 		"postsync-version-and-changelog": "yarn stage-versions",
 		"sync-version": "yarn set-version $(node -p \"require('../meteor/package.json').version\")",
 		"stage-versions": "git add -u */package.json */CHANGELOG.md lerna.json",
@@ -63,7 +63,9 @@
 	"name": "packages",
 	"resolutions": {
 		"node-license-validator/**/minimist": "^1.2.6",
+		"**/prebuild-install/minimist": "^1.2.6",
 		"lerna/**/trim-newlines": "^4.0.1",
-		"**/data-store/set-value": "^4.1.0"
+		"**/data-store/set-value": "^4.1.0",
+		"**/tv-automation-quantel-gateway-client/got": "^11.8.5"
 	}
 }
