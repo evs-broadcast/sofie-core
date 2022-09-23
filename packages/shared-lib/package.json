@@ -27,7 +27,8 @@
 		"cov-open": "open-cli coverage/lcov-report/index.html",
 		"validate:dependencies": "yarn audit --groups dependencies && yarn license-validate",
 		"validate:dev-dependencies": "yarn audit --groups devDependencies",
-		"license-validate": "yarn sofie-licensecheck"
+		"license-validate": "yarn sofie-licensecheck",
+		"evs-rename:package": "node rename-package.mjs"
 	},
 	"engines": {
 		"node": "^14.19 || ^16.14"
