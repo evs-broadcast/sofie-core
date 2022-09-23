@@ -4,7 +4,12 @@ import * as _ from 'underscore'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faTrash, faPencilAlt, faCheck, faPlus } from '@fortawesome/free-solid-svg-icons'
 import { withTranslation } from 'react-i18next'
-import { PeripheralDevices, PeripheralDeviceId, PeripheralDevice } from '../../../../lib/collections/PeripheralDevices'
+import {
+	PeripheralDevices,
+	PeripheralDeviceId,
+	PeripheralDevice,
+	PeripheralDeviceType,
+} from '../../../../lib/collections/PeripheralDevices'
 import { EditAttribute, EditAttributeBase } from '../../../lib/EditAttribute'
 import { ModalDialog } from '../../../lib/ModalDialog'
 import { Translated } from '../../../lib/ReactMeteorData/react-meteor-data'
@@ -18,13 +23,15 @@ import {
 } from '../../../../lib/api/deviceConfig'
 import { ConfigManifestEntryComponent } from './ConfigManifestEntryComponent'
 import { ConfigManifestOAuthFlowComponent } from './ConfigManifestOAuthFlow'
-import { unprotectString } from '../../../../lib/lib'
+import { protectString, unprotectString } from '../../../../lib/lib'
+import { PeripheralDeviceAPI } from '../../../../lib/api/peripheralDevice'
 
 type EditId = PeripheralDeviceId | string
 interface IGenericDeviceSettingsComponentState {
 	deleteConfirmItemPath: string | undefined
 	showDeleteConfirm: boolean
 	editedObjects: EditId[]
+	deviceDebugState: Map<PeripheralDeviceId, object>
 }
 
 interface IGenericDeviceSettingsComponentProps {
@@ -37,12 +44,45 @@ export const GenericDeviceSettingsComponent = withTranslation()(
 		Translated<IGenericDeviceSettingsComponentProps>,
 		IGenericDeviceSettingsComponentState
 	> {
+		private refreshDebugStatesInterval: NodeJS.Timer | undefined = undefined
+
 		constructor(props: Translated<IGenericDeviceSettingsComponentProps>) {
 			super(props)
 			this.state = {
 				deleteConfirmItemPath: undefined,
 				showDeleteConfirm: false,
 				editedObjects: [],
+				deviceDebugState: new Map(),
+			}
+		}
+
+		componentDidMount() {
+			this.refreshDebugStatesInterval = setInterval(this.refreshDebugStates, 1000)
+		}
+
+		componentWillUnmount() {
+			if (this.refreshDebugStatesInterval) clearInterval(this.refreshDebugStatesInterval)
+		}
+
+		refreshDebugStates = () => {
+			if (
+				this.props.device.type === PeripheralDeviceType.PLAYOUT &&
+				this.props.device.settings &&
+				this.props.device.settings['debugState']
+			) {
+				PeripheralDeviceAPI.executeFunction(this.props.device._id, 'getDebugStates')
+					.then((result) => {
+						const states: Map<PeripheralDeviceId, object> = new Map()
+						for (const [key, state] of Object.entries(result)) {
+							states.set(protectString(key), state as any)
+						}
+						this.setState({
+							deviceDebugState: states,
+						})
+					})
+					.catch((error) => {
+						console.log(`Error fetching device states: ${error}`)
+					})
 			}
 		}
 
@@ -692,7 +732,12 @@ export const GenericDeviceSettingsComponent = withTranslation()(
 						<React.Fragment>
 							<h2 className="mhn">{t('Attached Subdevices')}</h2>
 							{subDevices.map((device) => (
-								<DeviceItem key={unprotectString(device._id)} device={device} showRemoveButtons={true} />
+								<DeviceItem
+									key={unprotectString(device._id)}
+									device={device}
+									showRemoveButtons={true}
+									debugState={this.state.deviceDebugState.get(device._id)}
+								/>
 							))}
 						</React.Fragment>
 					)}

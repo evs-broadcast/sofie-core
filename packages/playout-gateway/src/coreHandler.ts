@@ -308,6 +308,9 @@ export class CoreHandler {
 	get logDebug(): boolean {
 		return !!this.deviceSettings['debugLogging']
 	}
+	get logState(): boolean {
+		return !!this.deviceSettings['debugState']
+	}
 	get estimateResolveTimeMultiplier(): number {
 		if (!isNaN(Number(this.deviceSettings['estimateResolveTimeMultiplier']))) {
 			return this.deviceSettings['estimateResolveTimeMultiplier'] || 1
@@ -317,7 +320,12 @@ export class CoreHandler {
 	executeFunction(cmd: PeripheralDeviceCommand, fcnObject: CoreHandler | CoreTSRDeviceHandler): void {
 		if (cmd) {
 			if (this._executedFunctions[cmd._id]) return // prevent it from running multiple times
-			this.logger.debug(`Executing function "${cmd.functionName}", args: ${JSON.stringify(cmd.args)}`)
+
+			// Ignore specific commands, to reduce noise:
+			if (cmd.functionName !== 'getDebugStates') {
+				this.logger.debug(`Executing function "${cmd.functionName}", args: ${JSON.stringify(cmd.args)}`)
+			}
+
 			this._executedFunctions[cmd._id] = true
 			// console.log('executeFunction', cmd)
 			const cb = (err: any, res?: any) => {
@@ -492,6 +500,11 @@ export class CoreHandler {
 		if (!device) throw new Error(`TSR Device "${deviceId}" not found!`)
 
 		await device.formatDisks()
+	}
+	async getDebugStates(): Promise<any> {
+		if (!this._tsrHandler) throw new Error('TSRHandler is not initialized')
+
+		return Object.fromEntries(this._tsrHandler.getDebugStates().entries())
 	}
 	async updateCoreStatus(): Promise<any> {
 		let statusCode = P.StatusCode.GOOD

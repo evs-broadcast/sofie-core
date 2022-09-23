@@ -19,12 +19,19 @@ import {
 	QuantelControlMode,
 	MappingVMixType,
 	MappingOBSType,
+	MappingDSOMType,
+	DSOMDeviceType,
 } from 'timeline-state-resolver'
 
 const PLAYOUT_SUBDEVICE_COMMON: SubDeviceConfigManifestEntry[] = [
 	{
 		id: 'debug',
 		name: 'Activate debug logging for device',
+		type: ConfigManifestEntryType.BOOLEAN,
+	},
+	{
+		id: 'debugState',
+		name: 'Activate State Debugging',
 		type: ConfigManifestEntryType.BOOLEAN,
 	},
 	{
@@ -437,6 +444,32 @@ const PLAYOUT_SUBDEVICE_CONFIG: ImplementedSubDeviceConfig = {
 			type: ConfigManifestEntryType.STRING,
 		},
 	],
+	[TSRDeviceType.DSOM]: [
+		...PLAYOUT_SUBDEVICE_COMMON,
+		{
+			id: 'options.URL',
+			name: 'Device URL',
+			type: ConfigManifestEntryType.STRING,
+		},
+		{
+			id: 'options.studioDevices',
+			name: 'Available Studio Devices',
+			type: ConfigManifestEntryType.TABLE,
+			defaultType: 'default',
+			config: {
+				default: [
+					{
+						id: 'studioDevice',
+						name: 'Type',
+						columnName: 'Device',
+						defaultVal: DSOMDeviceType.Switcher,
+						type: ConfigManifestEntryType.ENUM,
+						values: DSOMDeviceType,
+					},
+				],
+			},
+		},
+	],
 }
 
 // TODO: should come from types
@@ -650,6 +683,37 @@ const MAPPING_MANIFEST: ImplementedMappingsManifest = {
 			optional: true,
 		},
 	],
+	[TSRDeviceType.DSOM]: [
+		{
+			id: 'mappingType',
+			type: ConfigManifestEntryType.ENUM,
+			values: MappingDSOMType,
+			name: 'Mapping Type',
+			includeInSummary: true,
+		},
+		{
+			id: 'dsomAddress',
+			type: ConfigManifestEntryType.STRING,
+			name: 'DSOM Address',
+			includeInSummary: true,
+			optional: false,
+			hint: 'Address on the Device Service',
+		},
+		{
+			id: 'enabled',
+			type: ConfigManifestEntryType.BOOLEAN,
+			name: 'Enabled',
+			includeInSummary: true,
+		},
+		{
+			id: 'objectPath',
+			type: ConfigManifestEntryType.STRING,
+			name: 'Object Path',
+			includeInSummary: true,
+			optional: false,
+			hint: 'Path within device',
+		},
+	],
 }
 
 export const PLAYOUT_DEVICE_CONFIG: DeviceConfigManifest = {
@@ -657,6 +721,11 @@ export const PLAYOUT_DEVICE_CONFIG: DeviceConfigManifest = {
 		{
 			id: 'debugLogging',
 			name: 'Activate Debug Logging',
+			type: ConfigManifestEntryType.BOOLEAN,
+		},
+		{
+			id: 'debugState',
+			name: 'Activate State Debugging',
 			type: ConfigManifestEntryType.BOOLEAN,
 		},
 		{

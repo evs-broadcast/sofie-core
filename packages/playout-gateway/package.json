@@ -1,6 +1,6 @@
 {
 	"name": "playout-gateway",
-	"version": "1.41.0",
+	"version": "1.41.5",
 	"private": true,
 	"description": "Connect to Core, play stuff",
 	"license": "MIT",
@@ -32,15 +32,16 @@
 		"cov": "jest; open-cli coverage/lcov-report/index.html",
 		"cov-open": "open-cli coverage/lcov-report/index.html",
 		"ci": "yarn test",
-		"inspect": "node --inspect dist/index.js",
-		"start": "node dist/index.js",
+		"inspect": "node --experimental-fetch --inspect dist/index.js",
+		"start": "node --experimental-fetch dist/index.js",
 		"validate:dependencies": "yarn audit --groups dependencies && yarn license-validate",
 		"validate:dev-dependencies": "yarn audit --groups devDependencies",
 		"license-validate": "yarn sofie-licensecheck",
-		"precommit": "lint-staged"
+		"precommit": "lint-staged",
+		"evs-rename:dependency": "node rename-deps.mjs"
 	},
 	"engines": {
-		"node": "^14.18 || ^16.14"
+		"node": "^14.18 || ^16.14 || ^18.5"
 	},
 	"keywords": [
 		"broadcast",
@@ -56,12 +57,12 @@
 		"production"
 	],
 	"dependencies": {
-		"@sofie-automation/blueprints-integration": "^1.41.0",
-		"@sofie-automation/server-core-integration": "^1.41.0",
+		"@sofie-automation/blueprints-integration": "^1.41.5",
+		"@sofie-automation/server-core-integration": "^1.41.5",
 		"debug": "^4.3.2",
 		"fast-clone": "^1.5.13",
 		"influx": "^5.9.2",
-		"timeline-state-resolver": "7.0.1",
+		"timeline-state-resolver": "npm:@evs/timeline-state-resolver@7.0.9",
 		"tslib": "^2.3.1",
 		"underscore": "^1.12.1",
 		"winston": "^3.5.1"

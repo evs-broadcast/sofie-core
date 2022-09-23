@@ -127,6 +127,8 @@ export class TSRHandler {
 	private _triggerUpdateDevicesCheckAgain = false
 	private _triggerUpdateDevicesTimeout: NodeJS.Timeout | undefined
 
+	private _debugStates: Map<string, object> = new Map()
+
 	constructor(logger: Logger) {
 		this.logger = logger
 	}
@@ -647,6 +649,17 @@ export class TSRHandler {
 				}
 			}
 		}
+		// Set debugState on devices:
+		for (const device of this.tsr.getDevices()) {
+			const deviceOptions = devices.get(device.deviceId)
+			if (deviceOptions) {
+				const debug: boolean = deviceOptions.debugState || false
+				if (device.debugState !== debug) {
+					this.logger.info(`Setting debugState of device ${device.deviceId} to ${debug}`)
+					ps.push(device.setDebugState(debug))
+				}
+			}
+		}
 		await Promise.all(ps)
 
 		this._triggerupdateExpectedPlayoutItems() // So that any recently created devices will get all the ExpectedPlayoutItems
@@ -877,6 +890,14 @@ export class TSRHandler {
 				}
 			})
 
+			await device.device.on('debugState', (...args: any[]) => {
+				if (device.debugState) {
+					// Fetch the Id that core knows this device by
+					const coreId = this._coreTsrHandlers[device.deviceId].core.deviceId
+					this._debugStates.set(coreId, args[0])
+				}
+			})
+
 			await device.device.on('timeTrace', ((trace: FinishedTrace) => sendTrace(trace)) as () => void)
 
 			// now initialize it
@@ -1041,6 +1062,10 @@ export class TSRHandler {
 			}
 		})
 		return transformedTimeline
+	}
+
+	public getDebugStates(): Map<string, object> {
+		return this._debugStates
 	}
 }
 
