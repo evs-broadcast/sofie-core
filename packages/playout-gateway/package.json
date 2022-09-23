@@ -1,6 +1,6 @@
 {
 	"name": "playout-gateway",
-	"version": "1.41.5",
+	"version": "1.45.0",
 	"private": true,
 	"description": "Connect to Core, play stuff",
 	"license": "MIT",
@@ -21,7 +21,7 @@
 	"contributors": [],
 	"scripts": {
 		"build": "rimraf dist && yarn build:main",
-		"buildstart": "yarn build && yarn start",
+		"buildstart": "yarn build && yarn dev",
 		"buildinspect": "yarn build && yarn inspect",
 		"build:main": "tsc -p tsconfig.build.json",
 		"lint:raw": "eslint --ext .ts --ext .js --ignore-pattern dist",
@@ -37,7 +37,6 @@
 		"validate:dependencies": "yarn audit --groups dependencies && yarn license-validate",
 		"validate:dev-dependencies": "yarn audit --groups devDependencies",
 		"license-validate": "yarn sofie-licensecheck",
-		"precommit": "lint-staged",
 		"evs-rename:dependency": "node rename-deps.mjs"
 	},
 	"engines": {
@@ -57,15 +56,16 @@
 		"production"
 	],
 	"dependencies": {
-		"@sofie-automation/blueprints-integration": "^1.41.5",
-		"@sofie-automation/server-core-integration": "^1.41.5",
+		"@sofie-automation/blueprints-integration": "link:../blueprints-integration",
+		"@sofie-automation/server-core-integration": "link:../server-core-integration",
+		"@sofie-automation/shared-lib": "link:../shared-lib",
 		"debug": "^4.3.2",
 		"fast-clone": "^1.5.13",
 		"influx": "^5.9.2",
 		"timeline-state-resolver": "npm:@evs/timeline-state-resolver@7.0.9",
-		"tslib": "^2.3.1",
-		"underscore": "^1.12.1",
-		"winston": "^3.5.1"
+		"tslib": "^2.4.0",
+		"underscore": "^1.13.4",
+		"winston": "^3.8.1"
 	},
 	"lint-staged": {
 		"*.{css,json,md,scss}": [
@@ -74,8 +74,5 @@
 		"*.{ts,tsx,js,jsx}": [
 			"yarn lint:raw"
 		]
-	},
-	"devDependencies": {
-		"@types/debug": "^4.1.7"
 	}
 }

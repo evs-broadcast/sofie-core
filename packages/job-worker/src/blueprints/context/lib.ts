@@ -63,6 +63,7 @@ export const IBlueprintPieceObjectsSampleKeys = allKeysOfObject<IBlueprintPiece>
 	transitions: true,
 	lifespan: true,
 	prerollDuration: true,
+	postrollDuration: true,
 	toBeQueued: true,
 	expectedPlayoutItems: true,
 	tags: true,
@@ -161,6 +162,7 @@ function convertPieceGenericToBlueprintsInner(piece: PieceGeneric): Complete<IBl
 		outputLayerId: piece.outputLayerId,
 		transitions: clone(piece.transitions),
 		prerollDuration: piece.prerollDuration,
+		postrollDuration: piece.postrollDuration,
 		toBeQueued: piece.toBeQueued,
 		expectedPlayoutItems: clone(piece.expectedPlayoutItems),
 		tags: clone(piece.tags),
@@ -234,6 +236,7 @@ export function convertAdLibPieceToBlueprints(adLib: AdLibPiece): IBlueprintAdLi
 		currentPieceTags: clone(adLib.currentPieceTags),
 		nextPieceTags: clone(adLib.nextPieceTags),
 		uniquenessId: adLib.uniquenessId,
+		invertOnAirState: adLib.invertOnAirState,
 	}
 
 	return obj
@@ -264,6 +267,7 @@ export function convertSegmentToBlueprints(segment: ReadonlyDeep<DBSegment>): IB
 		identifier: segment.identifier,
 		displayAs: segment.displayAs,
 		tags: segment.tags ? clone<string[]>(segment.tags) : undefined,
+		showShelf: segment.showShelf,
 	}
 
 	return obj
@@ -281,7 +285,6 @@ export function convertRundownToBlueprints(rundown: ReadonlyDeep<DBRundown>): IB
 		_id: unprotectString(rundown._id),
 		showStyleVariantId: unprotectString(rundown.showStyleVariantId),
 		playlistId: unprotectString(rundown.playlistId),
-		_rank: rundown._rank,
 		airStatus: rundown.airStatus,
 	}
 

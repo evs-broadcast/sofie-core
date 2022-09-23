@@ -96,7 +96,7 @@ export const ConfigManifestOAuthFlowComponent = withTranslation()(
 				})
 		}
 
-		resetAuth() {
+		resetAuthentication() {
 			const { t } = this.props
 
 			fetchFrom(`/devices/${this.props.device._id}/resetAuth`, {
@@ -143,7 +143,7 @@ export const ConfigManifestOAuthFlowComponent = withTranslation()(
 								{t('Reset App Credentials')}
 							</button>
 
-							<button className="btn btn-secondary btn-tight" onClick={() => this.resetAuth()}>
+							<button className="btn btn-secondary btn-tight" onClick={() => this.resetAuthentication()}>
 								{t('Reset User Credentials')}
 							</button>
 						</div>

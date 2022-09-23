@@ -207,6 +207,12 @@
 }
 
 .table.user-action-log {
+	tr.hl {
+		font-weight: inherit;
+		> td {
+			background-color: #ffff42;
+		}
+	}
 	.user-action-log__timestamp {
 		min-width: 12em;
 	}
@@ -465,5 +471,11 @@
 				flex: 0 1 100%;
 			}
 		}
+	}
+}
+
+.system-status-table {
+	thead th {
+		padding-right: 1em;
 	}
 }
