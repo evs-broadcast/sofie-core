@@ -46,6 +46,7 @@
 		"validate:dependencies": "yarn audit --groups dependencies && yarn license-validate",
 		"validate:dev-dependencies": "yarn audit --groups devDependencies",
 		"license-validate": "yarn sofie-licensecheck",
+		"evs-rename:dependency": "node rename-deps.mjs",
 		"evs-rename:package": "node rename-package.mjs"
 	},
 	"engines": {
