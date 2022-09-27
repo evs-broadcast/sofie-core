@@ -457,6 +457,16 @@ const PLAYOUT_SUBDEVICE_CONFIG: ImplementedSubDeviceConfig = {
 			type: ConfigManifestEntryType.STRING,
 		},
 		{
+			id: 'options.username',
+			name: 'Username',
+			type: ConfigManifestEntryType.STRING,
+		},
+		{
+			id: 'options.password',
+			name: 'Password',
+			type: ConfigManifestEntryType.STRING,
+		},
+		{
 			id: 'options.studioDevices',
 			name: 'Available Studio Devices',
 			type: ConfigManifestEntryType.TABLE,
