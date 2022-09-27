@@ -455,7 +455,7 @@ const PLAYOUT_SUBDEVICE_CONFIG: ImplementedSubDeviceConfig = {
 			id: 'options.URL',
 			name: 'Device URL',
 			type: ConfigManifestEntryType.STRING,
-			placeholder: 'http://127.0.0.1:8080/v1',
+			placeholder: 'http://127.0.0.1:8080',
 		},
 		{
 			id: 'options.username',
