@@ -41,7 +41,7 @@
 	],
 	"dependencies": {
 		"@sofie-automation/shared-lib": "link:../shared-lib",
-		"timeline-state-resolver-types": "npm:@evs/timeline-state-resolver-types@7.4.0",
+		"timeline-state-resolver-types": "npm:@evs/timeline-state-resolver-types@7.4.0-cer-2245-composition-names.96",
 		"tslib": "^2.4.0",
 		"type-fest": "^2.16.0"
 	},
