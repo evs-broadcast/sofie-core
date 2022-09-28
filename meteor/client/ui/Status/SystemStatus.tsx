@@ -706,7 +706,7 @@ export default translateWithTracker<ISystemStatusProps, ISystemStatusState, ISys
 									deviceDebugState: states,
 								})
 							}
-	
+
 							return true
 						}
 					)
