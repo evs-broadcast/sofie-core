@@ -1628,10 +1628,10 @@
   resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/cortex-dsom-api/-/@evs/cortex-dsom-api-0.0.8.tgz#4aea9bad2dabbf73b8d450ccf6b37191badc18cf"
   integrity sha1-SuqbrS2rv3O41FDM9rNxkbrcGM8=
 
-"@evs/dsom-connection@0.1.6-CER-2304-username-password.45":
-  version "0.1.6-CER-2304-username-password.45"
-  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/dsom-connection/-/@evs/dsom-connection-0.1.6-CER-2304-username-password.45.tgz#4ea2cb1adf16a20a47cc1a1c3d9127d8d79967a9"
-  integrity sha1-TqLLGt8WogpHzBocPZEn2NeZZ6k=
+"@evs/dsom-connection@0.1.8":
+  version "0.1.8"
+  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/dsom-connection/-/@evs/dsom-connection-0.1.8.tgz#5f99a4c70874f74533514f294aff6f7f5f1b9ac9"
+  integrity sha1-X5mkxwh090UzUU8pSv9vf18bmsk=
   dependencies:
     "@evs/cortex-dsom-api" "^0.0.8"
 
@@ -2974,7 +2974,7 @@
   version "1.45.2"
   dependencies:
     "@sofie-automation/shared-lib" "link:shared-lib"
-    timeline-state-resolver-types "npm:@evs/timeline-state-resolver-types@7.4.0"
+    timeline-state-resolver-types "npm:@evs/timeline-state-resolver-types@7.4.2"
     tslib "^2.4.0"
     type-fest "^2.16.0"
 
@@ -13783,26 +13783,19 @@ timecode@0.0.4:
   resolved "https://registry.yarnpkg.com/timecode/-/timecode-0.0.4.tgz#cdea9d2352009700e50da657cb7fb7c1720f5704"
   integrity sha512-xFVZlWnqls5eVphtUJo0UuXeJa0grBmxESSn5QPQB7CMsaVgTnLdP9PTZqb4KyFmLdrE+PUu3eEt42zHsMxCtw==
 
-"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@7.4.0":
-  version "7.4.0"
-  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver-types/-/@evs/timeline-state-resolver-types-7.4.0.tgz#255330b6e2f743602b91c1d2751cb56db0eb850a"
-  integrity sha1-JVMwtuL3Q2ArkcHSdRy1bbDrhQo=
+"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@7.4.2":
+  version "7.4.2"
+  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver-types/-/@evs/timeline-state-resolver-types-7.4.2.tgz#09af5bac814a0a6f487d94ba000c93eb6e31c4a6"
+  integrity sha1-Ca9brIFKCm9IfZS6AAyT624xxKY=
   dependencies:
     tslib "^2.3.1"
 
-"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@7.4.0-CER-2304-username-password.101":
-  version "7.4.0-CER-2304-username-password.101"
-  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver-types/-/@evs/timeline-state-resolver-types-7.4.0-CER-2304-username-password.101.tgz#f40521a974d6cd952b3fa9536fd09a9b9b18af5d"
-  integrity sha1-9AUhqXTWzZUrP6lTb9Cam5sYr10=
+"timeline-state-resolver@npm:@evs/timeline-state-resolver@7.4.2":
+  version "7.4.2"
+  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver/-/@evs/timeline-state-resolver-7.4.2.tgz#660f846b19b5d351b21519bdef387f1aef29a944"
+  integrity sha1-Zg+Eaxm101GyFRm97zh/Gu8pqUQ=
   dependencies:
-    tslib "^2.3.1"
-
-"timeline-state-resolver@npm:@evs/timeline-state-resolver@7.4.0-CER-2304-username-password.101":
-  version "7.4.0-CER-2304-username-password.101"
-  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver/-/@evs/timeline-state-resolver-7.4.0-CER-2304-username-password.101.tgz#f272a408ca0af2bc08964b7b7ebf5c8116242e56"
-  integrity sha1-8nKkCMoK8rwIlkt7fr9cgRYkLlY=
-  dependencies:
-    "@evs/dsom-connection" "0.1.6-CER-2304-username-password.45"
+    "@evs/dsom-connection" "0.1.8"
     "@tv2media/v-connection" "^6.0.2"
     atem-connection "2.4.0"
     atem-state "^0.12.2"
@@ -13823,7 +13816,7 @@ timecode@0.0.4:
     sprintf-js "^1.1.2"
     superfly-timeline "^8.2.8"
     threadedclass "^1.0.2"
-    timeline-state-resolver-types "npm:@evs/timeline-state-resolver-types@7.4.0-CER-2304-username-password.101"
+    timeline-state-resolver-types "npm:@evs/timeline-state-resolver-types@7.4.2"
     tslib "^2.3.1"
     tv-automation-quantel-gateway-client "^2.0.5"
     underscore "^1.13.4"
