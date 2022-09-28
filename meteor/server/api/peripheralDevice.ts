@@ -360,6 +360,25 @@ export namespace ServerPeripheralDeviceAPI {
 			},
 		})
 	}
+	export async function getDebugStates(access: PeripheralDeviceContentWriteAccess.ContentAccess): Promise<object> {
+		if (
+			// Debug states are only valid for Playout devices and must be enabled with the `debugState` option
+			!(
+				access.device.type === PeripheralDeviceType.PLAYOUT &&
+				access.device.settings &&
+				access.device.settings['debugState']
+			)
+		) {
+			return {}
+		}
+
+		try {
+			return await PeripheralDeviceAPI.executeFunction(access.deviceId, 'getDebugStates')
+		} catch (e) {
+			logger.error(e)
+			return {}
+		}
+	}
 	export function testMethod(
 		context: MethodContext,
 		deviceId: PeripheralDeviceId,

@@ -24,7 +24,8 @@ import {
 import { ConfigManifestEntryComponent } from './ConfigManifestEntryComponent'
 import { ConfigManifestOAuthFlowComponent } from './ConfigManifestOAuthFlow'
 import { protectString, unprotectString } from '../../../../lib/lib'
-import { PeripheralDeviceAPI } from '../../../../lib/api/peripheralDevice'
+import { doUserAction, UserAction } from '../../../lib/userAction'
+import { MeteorCall } from '../../../../lib/api/methods'
 
 type EditId = PeripheralDeviceId | string
 interface IGenericDeviceSettingsComponentState {
@@ -65,24 +66,34 @@ export const GenericDeviceSettingsComponent = withTranslation()(
 		}
 
 		refreshDebugStates = () => {
+			const { t } = this.props
+
 			if (
 				this.props.device.type === PeripheralDeviceType.PLAYOUT &&
 				this.props.device.settings &&
 				this.props.device.settings['debugState']
 			) {
-				PeripheralDeviceAPI.executeFunction(this.props.device._id, 'getDebugStates')
-					.then((result) => {
-						const states: Map<PeripheralDeviceId, object> = new Map()
-						for (const [key, state] of Object.entries(result)) {
-							states.set(protectString(key), state as any)
+				doUserAction(
+					t,
+					'Debug States Refresh Timer',
+					UserAction.PERIPHERAL_DEVICE_REFRESH_DEBUG_STATES,
+					(e, ts) => MeteorCall.userAction.getDebugStates(e, ts, this.props.device._id),
+					(err, res) => {
+						if (err) {
+							console.log(`Error fetching device states: ${err}`)
+						} else if (res) {
+							const states: Map<PeripheralDeviceId, object> = new Map()
+							for (const [key, state] of Object.entries(res)) {
+								states.set(protectString(key), state)
+							}
+							this.setState({
+								deviceDebugState: states,
+							})
 						}
-						this.setState({
-							deviceDebugState: states,
-						})
-					})
-					.catch((error) => {
-						console.log(`Error fetching device states: ${error}`)
-					})
+
+						return true
+					}
+				)
 			}
 		}
 
