@@ -455,6 +455,17 @@ const PLAYOUT_SUBDEVICE_CONFIG: ImplementedSubDeviceConfig = {
 			id: 'options.URL',
 			name: 'Device URL',
 			type: ConfigManifestEntryType.STRING,
+			placeholder: 'http://127.0.0.1:8080/v1',
+		},
+		{
+			id: 'options.username',
+			name: 'Username',
+			type: ConfigManifestEntryType.STRING,
+		},
+		{
+			id: 'options.password',
+			name: 'Password',
+			type: ConfigManifestEntryType.STRING,
 		},
 		{
 			id: 'options.studioDevices',
