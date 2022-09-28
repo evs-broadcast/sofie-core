@@ -62,7 +62,7 @@
 		"debug": "^4.3.2",
 		"fast-clone": "^1.5.13",
 		"influx": "^5.9.2",
-		"timeline-state-resolver": "npm:@evs/timeline-state-resolver@7.4.0-CER-2304-username-password.99",
+		"timeline-state-resolver": "npm:@evs/timeline-state-resolver@7.4.0-CER-2304-username-password.101",
 		"tslib": "^2.4.0",
 		"underscore": "^1.13.4",
 		"winston": "^3.8.1"

@@ -1628,10 +1628,10 @@
   resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/cortex-dsom-api/-/@evs/cortex-dsom-api-0.0.8.tgz#4aea9bad2dabbf73b8d450ccf6b37191badc18cf"
   integrity sha1-SuqbrS2rv3O41FDM9rNxkbrcGM8=
 
-"@evs/dsom-connection@0.1.6-CER-2304-username-password.44":
-  version "0.1.6-CER-2304-username-password.44"
-  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/dsom-connection/-/@evs/dsom-connection-0.1.6-CER-2304-username-password.44.tgz#6ca5c47ef6148923f784d17ede1af3d0aa55e037"
-  integrity sha1-bKXEfvYUiSP3hNF+3hrz0KpV4Dc=
+"@evs/dsom-connection@0.1.6-CER-2304-username-password.45":
+  version "0.1.6-CER-2304-username-password.45"
+  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/dsom-connection/-/@evs/dsom-connection-0.1.6-CER-2304-username-password.45.tgz#4ea2cb1adf16a20a47cc1a1c3d9127d8d79967a9"
+  integrity sha1-TqLLGt8WogpHzBocPZEn2NeZZ6k=
   dependencies:
     "@evs/cortex-dsom-api" "^0.0.8"
 
@@ -13790,19 +13790,19 @@ timecode@0.0.4:
   dependencies:
     tslib "^2.3.1"
 
-"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@7.4.0-CER-2304-username-password.99":
-  version "7.4.0-CER-2304-username-password.99"
-  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver-types/-/@evs/timeline-state-resolver-types-7.4.0-CER-2304-username-password.99.tgz#4ab2e2dabc1a52b0430be5c5b8c4a0e4bc3239aa"
-  integrity sha1-SrLi2rwaUrBDC+XFuMSg5LwyOao=
+"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@7.4.0-CER-2304-username-password.101":
+  version "7.4.0-CER-2304-username-password.101"
+  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver-types/-/@evs/timeline-state-resolver-types-7.4.0-CER-2304-username-password.101.tgz#f40521a974d6cd952b3fa9536fd09a9b9b18af5d"
+  integrity sha1-9AUhqXTWzZUrP6lTb9Cam5sYr10=
   dependencies:
     tslib "^2.3.1"
 
-"timeline-state-resolver@npm:@evs/timeline-state-resolver@7.4.0-CER-2304-username-password.99":
-  version "7.4.0-CER-2304-username-password.99"
-  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver/-/@evs/timeline-state-resolver-7.4.0-CER-2304-username-password.99.tgz#783fb04440bb61dfea791e8097872be42e2eccbe"
-  integrity sha1-eD+wREC7Yd/qeR6Al4cr5C4uzL4=
+"timeline-state-resolver@npm:@evs/timeline-state-resolver@7.4.0-CER-2304-username-password.101":
+  version "7.4.0-CER-2304-username-password.101"
+  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver/-/@evs/timeline-state-resolver-7.4.0-CER-2304-username-password.101.tgz#f272a408ca0af2bc08964b7b7ebf5c8116242e56"
+  integrity sha1-8nKkCMoK8rwIlkt7fr9cgRYkLlY=
   dependencies:
-    "@evs/dsom-connection" "0.1.6-CER-2304-username-password.44"
+    "@evs/dsom-connection" "0.1.6-CER-2304-username-password.45"
     "@tv2media/v-connection" "^6.0.2"
     atem-connection "2.4.0"
     atem-state "^0.12.2"
@@ -13823,7 +13823,7 @@ timecode@0.0.4:
     sprintf-js "^1.1.2"
     superfly-timeline "^8.2.8"
     threadedclass "^1.0.2"
-    timeline-state-resolver-types "npm:@evs/timeline-state-resolver-types@7.4.0-CER-2304-username-password.99"
+    timeline-state-resolver-types "npm:@evs/timeline-state-resolver-types@7.4.0-CER-2304-username-password.101"
     tslib "^2.3.1"
     tv-automation-quantel-gateway-client "^2.0.5"
     underscore "^1.13.4"
