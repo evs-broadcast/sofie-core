@@ -892,7 +892,7 @@ export class TSRHandler {
 			await device.device.on('warning', ((e: any, ...args: any[]) => {
 				this.logger.warn(fixError(e), ...args)
 			}) as () => void)
-			await device.device.on('error', ((e: any, ...args: any[]) => {
+			await device.device.on('error', ((_context: any, e: any, ...args: any[]) => {
 				this.logger.error(fixError(e), ...args)
 			}) as () => void)
 
