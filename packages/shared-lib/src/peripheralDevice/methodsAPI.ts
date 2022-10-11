@@ -330,6 +330,7 @@ export enum PeripheralDeviceAPIMethods {
 	'playoutPlaybackChanged' = 'peripheralDevice.playout.playbackChanged',
 
 	'reportCommandError' = 'peripheralDevice.playout.reportCommandError',
+	'getDebugStates' = 'peripheralDevice.playout.getDebugStates',
 
 	'mosRoCreate' = 'peripheralDevice.mos.roCreate',
 	'mosRoReplace' = 'peripheralDevice.mos.roReplace',

@@ -685,21 +685,31 @@ export default translateWithTracker<ISystemStatusProps, ISystemStatusState, ISys
 		}
 
 		refreshDebugStates = () => {
+			const { t } = this.props
+
 			for (const device of this.props.devices) {
 				if (device.type === PeripheralDeviceType.PLAYOUT && device.settings && device.settings['debugState']) {
-					PeripheralDeviceAPI.executeFunction(device._id, 'getDebugStates')
-						.then((result) => {
-							const states: Map<PeripheralDeviceId, object> = new Map()
-							for (const [key, state] of Object.entries(result)) {
-								states.set(protectString(key), state as any)
+					doUserAction(
+						t,
+						'Debug States Refresh Timer',
+						UserAction.PERIPHERAL_DEVICE_REFRESH_DEBUG_STATES,
+						(e, ts) => MeteorCall.userAction.getDebugStates(e, ts, device._id),
+						(err, res) => {
+							if (err) {
+								console.log(`Error fetching device states: ${err}`)
+							} else if (res) {
+								const states: Map<PeripheralDeviceId, object> = new Map()
+								for (const [key, state] of Object.entries(res)) {
+									states.set(protectString(key), state)
+								}
+								this.setState({
+									deviceDebugState: states,
+								})
 							}
-							this.setState({
-								deviceDebugState: states,
-							})
-						})
-						.catch((error) => {
-							console.log(`Error fetching device states: ${error}`)
-						})
+
+							return true
+						}
+					)
 				}
 			}
 		}
