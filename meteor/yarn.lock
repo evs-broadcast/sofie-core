@@ -9821,10 +9821,10 @@ timecode@0.0.4:
   resolved "https://registry.yarnpkg.com/timecode/-/timecode-0.0.4.tgz#cdea9d2352009700e50da657cb7fb7c1720f5704"
   integrity sha512-xFVZlWnqls5eVphtUJo0UuXeJa0grBmxESSn5QPQB7CMsaVgTnLdP9PTZqb4KyFmLdrE+PUu3eEt42zHsMxCtw==
 
-"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@7.0.9":
-  version "7.0.9"
-  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver-types/-/@evs/timeline-state-resolver-types-7.0.9.tgz#9fb1e500d95cdf48bbb247786d12a99d7fdd1b39"
-  integrity sha1-n7HlANlc30i7skd4bRKpnX/dGzk=
+"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@7.4.5":
+  version "7.4.5"
+  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver-types/-/@evs/timeline-state-resolver-types-7.4.5.tgz#e4b91c90a7911c6f8a3891ca1eacb0a523636ecb"
+  integrity sha1-5LkckKeRHG+KOJHKHqywpSNjbss=
   dependencies:
     tslib "^2.3.1"
 
