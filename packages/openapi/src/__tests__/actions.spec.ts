@@ -44,6 +44,6 @@ describe('Network client', () => {
 	const actionsApi = new UserActionsApi(config)
 
 	test('can send take action to the Sofie application', async () => {
-		await expect(actionsApi.take({ playlistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_' })).resolves.toBeTruthy()
+		await expect(actionsApi.take({ rundownPlaylistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_' })).resolves.toBeTruthy()
 	})
 })
