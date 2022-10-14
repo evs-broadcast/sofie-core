@@ -16,7 +16,7 @@
 		]
 	},
 	"scripts": {
-		"prepare": "cd .. && husky install",
+		"prepare": "yarn lerna run prepare && cd .. && husky install",
 		"postinstall": "yarn lerna bootstrap",
 		"build": "yarn lerna run build",
 		"build:try": "yarn lerna run --no-bail build",
