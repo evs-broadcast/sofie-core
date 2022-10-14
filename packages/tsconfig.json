@@ -5,6 +5,7 @@
 		{ "path": "server-core-integration" },
 		{ "path": "mos-gateway" },
 		{ "path": "playout-gateway" },
-		{ "path": "shared-lib" }
+		{ "path": "shared-lib" },
+		{ "path": "openapi" }
 	]
 }

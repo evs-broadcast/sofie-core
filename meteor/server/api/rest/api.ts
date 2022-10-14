@@ -343,9 +343,10 @@ koaRouter.post('/take/:rundownPlaylistId', BodyParser(), async (ctx, next) => {
 		ctx.body = ClientAPI.responseSuccess(await MeteorCall.rest.take(rundownPlaylistId))
 		ctx.status = 200
 	} catch (e) {
-		ctx.status = 500
-		logger.error('POST take failed: ' + e)
-		ctx.body = e + ''
+		logger.error('POST take failed - ' + (e as UserError).message.key)
+		ctx.type = 'application/json'
+		ctx.body = JSON.stringify({ message: (e as UserError).message.key })
+		ctx.status = 412
 	}
 	await next()
 })
@@ -390,7 +391,7 @@ koaRouter.post('/executeAdLib/:rundownPlaylistId/:adLibId', BodyParser(), async 
 })
 
 Meteor.startup(() => {
-	let app = new Koa()
+	const app = new Koa()
 	if (!Meteor.isAppTest) {
 		WebApp.connectHandlers.use('/api2', Meteor.bindEnvironment(app.callback()))
 	}

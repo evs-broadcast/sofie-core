@@ -1,0 +1,48 @@
+title: userActions
+description: Definitions for user actions to control the Sofie application
+resources:
+  take:
+    post:
+      operationId: take
+      tags:
+        - userActions
+      summary: Performs a take in the given Playlist.
+      parameters:
+        - $ref: '#/parameters/path/rundownPlaylistId'
+      responses:
+        200:
+          $ref: '#/components/responses/success'
+        412:
+          $ref: '#/components/responses/preconditionFailed'
+parameters:
+  path:
+    rundownPlaylistId:
+      name: rundownPlaylistId
+      in: path
+      description: Target Playlist
+      required: true
+      schema:
+        type: string
+components:
+  schemas:
+    message:
+      type: string
+  responses:
+    success:
+      description: Action successfully sent
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                $ref: '#/components/schemas/message'
+    preconditionFailed:
+      description: Specified Playlist is not active or specified Playlist does not have a next Part
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                $ref: '#/components/schemas/message'
