@@ -1623,17 +1623,17 @@
     minimatch "^3.1.2"
     strip-json-comments "^3.1.1"
 
-"@evs/cortex-dsom-api@0.0.8":
-  version "0.0.8"
-  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/cortex-dsom-api/-/@evs/cortex-dsom-api-0.0.8.tgz#4aea9bad2dabbf73b8d450ccf6b37191badc18cf"
-  integrity sha1-SuqbrS2rv3O41FDM9rNxkbrcGM8=
+"@evs/cortex-dsom-api@0.0.9":
+  version "0.0.9"
+  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/cortex-dsom-api/-/@evs/cortex-dsom-api-0.0.9.tgz#4e4a341c2e7c9192753bf868e35770c87d1351c6"
+  integrity sha512-vbTMm7UfBgc5lHx7sEczab1zv93Os3Gd4GpD6OKua3l/2Y5JDF2d9oDrWpjWd8mVhzlVKA/BxvXL8289QtU1QA==
 
-"@evs/dsom-connection@0.1.11":
-  version "0.1.11"
-  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/dsom-connection/-/@evs/dsom-connection-0.1.11.tgz#dd32a1f838e36a92aee23adb2977cf06c00e5b50"
-  integrity sha1-3TKh+DjjapKu4jrbKXfPBsAOW1A=
+"@evs/dsom-connection@0.1.12":
+  version "0.1.12"
+  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/dsom-connection/-/@evs/dsom-connection-0.1.12.tgz#6a684e08b2b7aba4570d9efc78fff56458d464fc"
+  integrity sha512-Cz8xMq7gPTsvyWv3QAMzShwRZkqXpQQxVCMxFu1SdtkZCgAY8xojUKjBoElJtdIP5QwlflQ+yDHxv8T1hK/gDw==
   dependencies:
-    "@evs/cortex-dsom-api" "0.0.8"
+    "@evs/cortex-dsom-api" "0.0.9"
 
 "@gar/promisify@^1.0.1":
   version "1.1.3"
@@ -2974,7 +2974,7 @@
   version "1.45.4"
   dependencies:
     "@sofie-automation/shared-lib" "link:shared-lib"
-    timeline-state-resolver-types "npm:@evs/timeline-state-resolver-types@7.4.5"
+    timeline-state-resolver-types "npm:@evs/timeline-state-resolver-types@7.4.6"
     tslib "^2.4.0"
     type-fest "^2.16.0"
 
@@ -13783,19 +13783,19 @@ timecode@0.0.4:
   resolved "https://registry.yarnpkg.com/timecode/-/timecode-0.0.4.tgz#cdea9d2352009700e50da657cb7fb7c1720f5704"
   integrity sha512-xFVZlWnqls5eVphtUJo0UuXeJa0grBmxESSn5QPQB7CMsaVgTnLdP9PTZqb4KyFmLdrE+PUu3eEt42zHsMxCtw==
 
-"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@7.4.5":
-  version "7.4.5"
-  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver-types/-/@evs/timeline-state-resolver-types-7.4.5.tgz#e4b91c90a7911c6f8a3891ca1eacb0a523636ecb"
-  integrity sha1-5LkckKeRHG+KOJHKHqywpSNjbss=
+"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@7.4.6":
+  version "7.4.6"
+  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver-types/-/@evs/timeline-state-resolver-types-7.4.6.tgz#e5ccf5557b8380ef8bc7fc767ff8033429692158"
+  integrity sha512-S5e4xYbDZPW/kUGuofSoUM/cIs8jzgYVmuWSY9J7KjesnVdYYDxsD2JkrTLWW2jTKP+/VlV5DWrfjb7YkbB9lw==
   dependencies:
     tslib "^2.3.1"
 
-"timeline-state-resolver@npm:@evs/timeline-state-resolver@7.4.5":
-  version "7.4.5"
-  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver/-/@evs/timeline-state-resolver-7.4.5.tgz#cc9e9f83361033a54d5e19c2f37ce56153686189"
-  integrity sha1-zJ6fgzYQM6VNXhnC83zlYVNoYYk=
+"timeline-state-resolver@npm:@evs/timeline-state-resolver@7.4.6":
+  version "7.4.6"
+  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver/-/@evs/timeline-state-resolver-7.4.6.tgz#6a79d3dc0ac53371cf58045aea5a3a3247d97491"
+  integrity sha512-t//mUo0YeAksgTtDrmz0Ah7PYfLfCkGS5sHKb8eNg12+7uC5Ocrih0zPZpC0amcZJStfyc3/ivh5AmODH/Xp3A==
   dependencies:
-    "@evs/dsom-connection" "0.1.11"
+    "@evs/dsom-connection" "0.1.12"
     "@tv2media/v-connection" "^6.0.2"
     atem-connection "2.4.0"
     atem-state "^0.12.2"
@@ -13816,7 +13816,7 @@ timecode@0.0.4:
     sprintf-js "^1.1.2"
     superfly-timeline "^8.2.8"
     threadedclass "^1.0.2"
-    timeline-state-resolver-types "npm:@evs/timeline-state-resolver-types@7.4.5"
+    timeline-state-resolver-types "npm:@evs/timeline-state-resolver-types@7.4.6"
     tslib "^2.3.1"
     tv-automation-quantel-gateway-client "^2.0.5"
     underscore "^1.13.4"
