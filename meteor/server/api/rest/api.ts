@@ -1,6 +1,5 @@
 import Koa from 'koa'
 import KoaRouter from 'koa-router'
-import BodyParser from 'koa-bodyparser'
 import { logger } from '../../logging'
 import { WebApp } from 'meteor/webapp'
 import { check, Match } from '../../../lib/check'
@@ -305,36 +304,199 @@ registerClassToMeteorMethods(RestAPIMethods, ServerRestAPI, false)
 const koaRouter = new KoaRouter()
 
 koaRouter.get('/', async (ctx, next) => {
-	ctx.body = await MeteorCall.rest.index()
+	ctx.type = 'application/json'
+	ctx.body = ClientAPI.responseSuccess(await MeteorCall.rest.index())
+	ctx.status = 200
 	await next()
 })
 
-koaRouter.get('/rundownPlaylist/:rundownPlaylistId', async (ctx, next) => {
+koaRouter.post('/activate/:rundownPlaylistId', async (ctx, next) => {
 	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.rundownPlaylistId)
 	check(rundownPlaylistId, String)
-	logger.info(`koa GET: rundownPlaylist ${rundownPlaylistId}`)
-
-	const playlist = await RundownPlaylists.findOneAsync(rundownPlaylistId)
-	if (!playlist) {
-		ctx.status = 404
-		ctx.body = 'PlaylistID not found'
-		return
-	}
+	const rehearsal = (ctx.req.body as { rehearsal: boolean }).rehearsal
+	logger.info(`koa POST: activate ${rundownPlaylistId} - ${rehearsal ? 'rehearsal' : 'live'}`)
 
 	try {
-		ctx.body = JSON.stringify(playlist, undefined, 2)
-		ctx.header['content-disposition'] = `attachment; filename*=UTF-8''${encodeURIComponent(playlist.name)}.json`
-		ctx.header['content-type'] = 'application/json'
+		ctx.body = ClientAPI.responseSuccess(await MeteorCall.rest.activate(rundownPlaylistId, rehearsal))
 		ctx.status = 200
 	} catch (e) {
-		ctx.status = 500
-		logger.error('GET rundownPlaylist failed: ' + e)
-		ctx.body = e + ''
+		logger.error('POST activate failed - ' + (e as UserError).message.key)
+		ctx.type = 'application/json'
+		ctx.body = JSON.stringify({ message: (e as UserError).message.key })
+		ctx.status = 412
 	}
 	await next()
 })
 
-koaRouter.post('/take/:rundownPlaylistId', BodyParser(), async (ctx, next) => {
+koaRouter.post('/deactivate/:rundownPlaylistId', async (ctx, next) => {
+	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.rundownPlaylistId)
+	check(rundownPlaylistId, String)
+	logger.info(`koa POST: deactivate ${rundownPlaylistId}`)
+
+	try {
+		ctx.body = ClientAPI.responseSuccess(await MeteorCall.rest.deactivate(rundownPlaylistId))
+		ctx.status = 200
+	} catch (e) {
+		logger.error('POST deactivate failed - ' + (e as UserError).message.key)
+		ctx.type = 'application/json'
+		ctx.body = JSON.stringify({ message: (e as UserError).message.key })
+		ctx.status = 412
+	}
+	await next()
+})
+
+koaRouter.post('/executeAction/:rundownPlaylistId/:actionId', async (ctx, next) => {
+	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.rundownPlaylistId)
+	check(rundownPlaylistId, String)
+	const actionId = ctx.params.actionId
+	check(actionId, String)
+	const userData = (ctx.req.body as { userData: string }).userData
+	logger.info(`koa POST: executeAction ${rundownPlaylistId} ${actionId} - ${userData}`)
+
+	try {
+		ctx.body = ClientAPI.responseSuccess(await MeteorCall.rest.executeAction(rundownPlaylistId, actionId, userData))
+		ctx.status = 200
+	} catch (e) {
+		logger.error('POST executeAction failed - ' + (e as UserError).message.key)
+		ctx.type = 'application/json'
+		ctx.body = JSON.stringify({ message: (e as UserError).message.key })
+		ctx.status = 412
+	}
+	await next()
+})
+
+koaRouter.post('/executeAdLib/:rundownPlaylistId/:adLibId', async (ctx, next) => {
+	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.rundownPlaylistId)
+	check(rundownPlaylistId, String)
+	const adLibId = protectString<AdLibActionId | RundownBaselineAdLibActionId | PieceId | BucketAdLibId>(
+		ctx.params.adLibId
+	)
+	check(adLibId, String)
+	logger.info(`koa POST: executeAdLib ${rundownPlaylistId} ${adLibId}`)
+
+	try {
+		ctx.body = ClientAPI.responseSuccess(await MeteorCall.rest.executeAdLib(rundownPlaylistId, adLibId))
+		ctx.status = 200
+	} catch (e) {
+		logger.error('POST executeAdLib failed - ' + (e as UserError).message.key)
+		ctx.type = 'application/json'
+		ctx.body = JSON.stringify({ message: (e as UserError).message.key })
+		ctx.status = 412
+	}
+	await next()
+})
+
+koaRouter.post('/moveNextPart/:rundownPlaylistId/:delta', async (ctx, next) => {
+	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.rundownPlaylistId)
+	check(rundownPlaylistId, String)
+	const delta = parseInt(ctx.params.delta)
+	check(delta, Number)
+	logger.info(`koa POST: moveNextPart ${rundownPlaylistId} ${delta}`)
+
+	try {
+		ctx.body = ClientAPI.responseSuccess(await MeteorCall.rest.moveNextPart(rundownPlaylistId, delta))
+		ctx.status = 200
+	} catch (e) {
+		logger.error('POST moveNextPart failed - ' + (e as UserError).message.key)
+		ctx.type = 'application/json'
+		ctx.body = JSON.stringify({ message: (e as UserError).message.key })
+		ctx.status = 412
+	}
+	await next()
+})
+
+koaRouter.post('/moveNextSegment/:rundownPlaylistId/:delta', async (ctx, next) => {
+	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.rundownPlaylistId)
+	check(rundownPlaylistId, String)
+	const delta = parseInt(ctx.params.delta)
+	check(delta, Number)
+	logger.info(`koa POST: moveNextSegment ${rundownPlaylistId} ${delta}`)
+
+	try {
+		ctx.body = ClientAPI.responseSuccess(await MeteorCall.rest.moveNextSegment(rundownPlaylistId, delta))
+		ctx.status = 200
+	} catch (e) {
+		logger.error('POST moveNextSegment failed - ' + (e as UserError).message.key)
+		ctx.type = 'application/json'
+		ctx.body = JSON.stringify({ message: (e as UserError).message.key })
+		ctx.status = 412
+	}
+	await next()
+})
+
+koaRouter.post('/reloadPlaylist/:rundownPlaylistId', async (ctx, next) => {
+	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.rundownPlaylistId)
+	check(rundownPlaylistId, String)
+	logger.info(`koa POST: reloadPlaylist ${rundownPlaylistId}`)
+
+	try {
+		ctx.body = ClientAPI.responseSuccess(await MeteorCall.rest.reloadPlaylist(rundownPlaylistId))
+		ctx.status = 200
+	} catch (e) {
+		logger.error('POST reloadPlaylist failed - ' + (e as UserError).message.key)
+		ctx.type = 'application/json'
+		ctx.body = JSON.stringify({ message: (e as UserError).message.key })
+		ctx.status = 412
+	}
+	await next()
+})
+
+koaRouter.post('/resetPlaylist/:rundownPlaylistId', async (ctx, next) => {
+	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.rundownPlaylistId)
+	check(rundownPlaylistId, String)
+	logger.info(`koa POST: resetPlaylist ${rundownPlaylistId}`)
+
+	try {
+		ctx.body = ClientAPI.responseSuccess(await MeteorCall.rest.resetPlaylist(rundownPlaylistId))
+		ctx.status = 200
+	} catch (e) {
+		logger.error('POST resetPlaylist failed - ' + (e as UserError).message.key)
+		ctx.type = 'application/json'
+		ctx.body = JSON.stringify({ message: (e as UserError).message.key })
+		ctx.status = 412
+	}
+	await next()
+})
+
+koaRouter.post('/setNextPart/:rundownPlaylistId/:partId', async (ctx, next) => {
+	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.rundownPlaylistId)
+	check(rundownPlaylistId, String)
+	const partId = protectString<PartId>(ctx.params.partId)
+	check(partId, String)
+	logger.info(`koa POST: setNextPart ${rundownPlaylistId} ${partId}`)
+
+	try {
+		ctx.body = ClientAPI.responseSuccess(await MeteorCall.rest.setNextPart(rundownPlaylistId, partId))
+		ctx.status = 200
+	} catch (e) {
+		logger.error('POST setNextPart failed - ' + (e as UserError).message.key)
+		ctx.type = 'application/json'
+		ctx.body = JSON.stringify({ message: (e as UserError).message.key })
+		ctx.status = 412
+	}
+	await next()
+})
+
+koaRouter.post('/setNextSegment/:rundownPlaylistId/:segmentId', async (ctx, next) => {
+	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.rundownPlaylistId)
+	check(rundownPlaylistId, String)
+	const segmentId = protectString<SegmentId>(ctx.params.segmentId)
+	check(segmentId, String)
+	logger.info(`koa POST: setNextSegment ${rundownPlaylistId} ${segmentId}`)
+
+	try {
+		ctx.body = ClientAPI.responseSuccess(await MeteorCall.rest.setNextSegment(rundownPlaylistId, segmentId))
+		ctx.status = 200
+	} catch (e) {
+		logger.error('POST setNextSegment failed - ' + (e as UserError).message.key)
+		ctx.type = 'application/json'
+		ctx.body = JSON.stringify({ message: (e as UserError).message.key })
+		ctx.status = 412
+	}
+	await next()
+})
+
+koaRouter.post('/take/:rundownPlaylistId', async (ctx, next) => {
 	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.rundownPlaylistId)
 	check(rundownPlaylistId, String)
 	logger.info(`koa POST: take ${rundownPlaylistId}`)
@@ -347,45 +509,6 @@ koaRouter.post('/take/:rundownPlaylistId', BodyParser(), async (ctx, next) => {
 		ctx.type = 'application/json'
 		ctx.body = JSON.stringify({ message: (e as UserError).message.key })
 		ctx.status = 412
-	}
-	await next()
-})
-
-koaRouter.post('/executeAction/:rundownPlaylistId/:actionId', BodyParser(), async (ctx, next) => {
-	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.rundownPlaylistId)
-	check(rundownPlaylistId, String)
-	const actionId = ctx.params.actionId
-	check(actionId, String)
-	logger.info(`koa POST: executeAction ${rundownPlaylistId} ${actionId}`)
-
-	try {
-		ctx.body = ClientAPI.responseSuccess(
-			await MeteorCall.rest.executeAction(rundownPlaylistId, actionId, ctx.request.body)
-		)
-		ctx.status = 200
-	} catch (e) {
-		ctx.status = 500
-		logger.error('POST take failed: ' + e)
-		ctx.body = e + ''
-	}
-	await next()
-})
-koaRouter.post('/executeAdLib/:rundownPlaylistId/:adLibId', BodyParser(), async (ctx, next) => {
-	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.rundownPlaylistId)
-	check(rundownPlaylistId, String)
-	const adLibId = protectString<AdLibActionId | RundownBaselineAdLibActionId | PieceId | BucketAdLibId>(
-		ctx.params.actionId
-	)
-	check(adLibId, String)
-	logger.info(`koa POST: executeAdLib ${rundownPlaylistId} ${adLibId}`)
-
-	try {
-		ctx.body = ClientAPI.responseSuccess(await MeteorCall.rest.executeAdLib(rundownPlaylistId, adLibId))
-		ctx.status = 200
-	} catch (e) {
-		ctx.status = 500
-		logger.error('POST take failed: ' + e)
-		ctx.body = e + ''
 	}
 	await next()
 })

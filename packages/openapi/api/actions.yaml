@@ -14,5 +14,27 @@ tags:
     description: Provides the ability to control the Sofie application
 paths:
   # user actions
+  /:
+    $ref: 'definitions/userActions.yaml#/resources/index'
+  /activate/{rundownPlaylistId}:
+    $ref: 'definitions/userActions.yaml#/resources/activate'
+  /deactivate/{rundownPlaylistId}:
+    $ref: 'definitions/userActions.yaml#/resources/deactivate'
+  /executeAction/{rundownPlaylistId}/{actionId}:
+    $ref: 'definitions/userActions.yaml#/resources/executeAction'
+  /executeAdLib/{rundownPlaylistId}/{adLibId}:
+    $ref: 'definitions/userActions.yaml#/resources/executeAdLib'
+  /moveNextPart/{rundownPlaylistId}/{delta}:
+    $ref: 'definitions/userActions.yaml#/resources/moveNextPart'
+  /moveNextSegment/{rundownPlaylistId}/{delta}:
+    $ref: 'definitions/userActions.yaml#/resources/moveNextSegment'
+  /reloadPlaylist/{rundownPlaylistId}:
+    $ref: 'definitions/userActions.yaml#/resources/reloadPlaylist'
+  /resetPlaylist/{rundownPlaylistId}:
+    $ref: 'definitions/userActions.yaml#/resources/resetPlaylist'
+  /setNextPart/{rundownPlaylistId}/{partId}:
+    $ref: 'definitions/userActions.yaml#/resources/setNextPart'
+  /setNextSegment/{rundownPlaylistId}/{segmentId}:
+    $ref: 'definitions/userActions.yaml#/resources/setNextSegment'
   /take/{rundownPlaylistId}:
     $ref: 'definitions/userActions.yaml#/resources/take'
