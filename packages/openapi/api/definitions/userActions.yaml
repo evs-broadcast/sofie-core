@@ -9,6 +9,7 @@ resources:
       summary: Returns the current version of Sofie.
       responses:
         200:
+          description: Command successfully handled
           content:
             application/json:
               schema:
@@ -176,6 +177,7 @@ resources:
             type: number
       responses:
         200:
+          description: Command successfully handled
           content:
             application/json:
               schema:
@@ -186,7 +188,7 @@ resources:
                     example: 200
                   result:
                     type: string
-                    example: '9Qk3eNHtqwBRGxsGqQiVCxJsYwE_'
+                    example: '3Y9at66pZipxE8Kkn850LLV9Cz0_'
         412:
           description: Specified Playlist is not active or there is no next Part set (e.g. Playlist is empty).
           content:
@@ -217,6 +219,7 @@ resources:
             type: number
       responses:
         200:
+          description: Command successfully handled
           content:
             application/json:
               schema:
@@ -227,7 +230,7 @@ resources:
                     example: 200
                   result:
                     type: string
-                    example: '9Qk3eNHtqwBRGxsGqQiVCxJsYwE_'
+                    example: 'YjGd_1dWjta_E1ZuDaOczP1lsgk_'
         412:
           description: Specified Playlist is not active or there is no next Part set (e.g. Playlist is empty).
           content:
