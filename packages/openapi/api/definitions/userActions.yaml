@@ -9,7 +9,7 @@ resources:
       summary: Returns the current version of Sofie.
       responses:
         200:
-          description: Command successfully handled
+          description: Command successfully handled - returns a string with the version number
           content:
             application/json:
               schema:
@@ -177,7 +177,7 @@ resources:
             type: number
       responses:
         200:
-          description: Command successfully handled
+          description: Command successfully handled - returns a string with the new PartID
           content:
             application/json:
               schema:
@@ -219,7 +219,7 @@ resources:
             type: number
       responses:
         200:
-          description: Command successfully handled
+          description: Command successfully handled - returns a string with the new PartID
           content:
             application/json:
               schema:
