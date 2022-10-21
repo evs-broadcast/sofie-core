@@ -110,9 +110,6 @@ resources:
           application/json:
             schema:
               type: object
-              properties:
-                userData:
-                  type: string
       responses:
         200:
           $ref: '#/components/responses/postSuccess'

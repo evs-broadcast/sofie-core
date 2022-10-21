@@ -320,9 +320,10 @@ koaRouter.post('/activate/:rundownPlaylistId', async (ctx, next) => {
 		ctx.body = ClientAPI.responseSuccess(await MeteorCall.rest.activate(rundownPlaylistId, rehearsal))
 		ctx.status = 200
 	} catch (e) {
-		logger.error('POST activate failed - ' + (e as UserError).message.key)
+		const errMsg = UserError.isUserError(e) ? e.message.key : (e as Error).message
+		logger.error('POST activate failed - ' + errMsg)
 		ctx.type = 'application/json'
-		ctx.body = JSON.stringify({ message: (e as UserError).message.key })
+		ctx.body = JSON.stringify({ message: errMsg })
 		ctx.status = 412
 	}
 	await next()
@@ -337,9 +338,10 @@ koaRouter.post('/deactivate/:rundownPlaylistId', async (ctx, next) => {
 		ctx.body = ClientAPI.responseSuccess(await MeteorCall.rest.deactivate(rundownPlaylistId))
 		ctx.status = 200
 	} catch (e) {
-		logger.error('POST deactivate failed - ' + (e as UserError).message.key)
+		const errMsg = UserError.isUserError(e) ? e.message.key : (e as Error).message
+		logger.error('POST deactivate failed - ' + errMsg)
 		ctx.type = 'application/json'
-		ctx.body = JSON.stringify({ message: (e as UserError).message.key })
+		ctx.body = JSON.stringify({ message: errMsg })
 		ctx.status = 412
 	}
 	await next()
@@ -350,16 +352,17 @@ koaRouter.post('/executeAction/:rundownPlaylistId/:actionId', async (ctx, next) 
 	check(rundownPlaylistId, String)
 	const actionId = ctx.params.actionId
 	check(actionId, String)
-	const userData = (ctx.req.body as { userData: string }).userData
+	const userData = ctx.req.body
 	logger.info(`koa POST: executeAction ${rundownPlaylistId} ${actionId} - ${userData}`)
 
 	try {
 		ctx.body = ClientAPI.responseSuccess(await MeteorCall.rest.executeAction(rundownPlaylistId, actionId, userData))
 		ctx.status = 200
 	} catch (e) {
-		logger.error('POST executeAction failed - ' + (e as UserError).message.key)
+		const errMsg = UserError.isUserError(e) ? e.message.key : (e as Error).message
+		logger.error('POST executeAction failed - ' + errMsg)
 		ctx.type = 'application/json'
-		ctx.body = JSON.stringify({ message: (e as UserError).message.key })
+		ctx.body = JSON.stringify({ message: errMsg })
 		ctx.status = 412
 	}
 	await next()
@@ -378,9 +381,10 @@ koaRouter.post('/executeAdLib/:rundownPlaylistId/:adLibId', async (ctx, next) =>
 		ctx.body = ClientAPI.responseSuccess(await MeteorCall.rest.executeAdLib(rundownPlaylistId, adLibId))
 		ctx.status = 200
 	} catch (e) {
-		logger.error('POST executeAdLib failed - ' + (e as UserError).message.key)
+		const errMsg = UserError.isUserError(e) ? e.message.key : (e as Error).message
+		logger.error('POST executeAdLib failed - ' + errMsg)
 		ctx.type = 'application/json'
-		ctx.body = JSON.stringify({ message: (e as UserError).message.key })
+		ctx.body = JSON.stringify({ message: errMsg })
 		ctx.status = 412
 	}
 	await next()
@@ -397,9 +401,10 @@ koaRouter.post('/moveNextPart/:rundownPlaylistId/:delta', async (ctx, next) => {
 		ctx.body = ClientAPI.responseSuccess(await MeteorCall.rest.moveNextPart(rundownPlaylistId, delta))
 		ctx.status = 200
 	} catch (e) {
-		logger.error('POST moveNextPart failed - ' + (e as UserError).message.key)
+		const errMsg = UserError.isUserError(e) ? e.message.key : (e as Error).message
+		logger.error('POST moveNextPart failed - ' + errMsg)
 		ctx.type = 'application/json'
-		ctx.body = JSON.stringify({ message: (e as UserError).message.key })
+		ctx.body = JSON.stringify({ message: errMsg })
 		ctx.status = 412
 	}
 	await next()
@@ -416,9 +421,10 @@ koaRouter.post('/moveNextSegment/:rundownPlaylistId/:delta', async (ctx, next) =
 		ctx.body = ClientAPI.responseSuccess(await MeteorCall.rest.moveNextSegment(rundownPlaylistId, delta))
 		ctx.status = 200
 	} catch (e) {
-		logger.error('POST moveNextSegment failed - ' + (e as UserError).message.key)
+		const errMsg = UserError.isUserError(e) ? e.message.key : (e as Error).message
+		logger.error('POST moveNextSegment failed - ' + errMsg)
 		ctx.type = 'application/json'
-		ctx.body = JSON.stringify({ message: (e as UserError).message.key })
+		ctx.body = JSON.stringify({ message: errMsg })
 		ctx.status = 412
 	}
 	await next()
@@ -433,9 +439,10 @@ koaRouter.post('/reloadPlaylist/:rundownPlaylistId', async (ctx, next) => {
 		ctx.body = ClientAPI.responseSuccess(await MeteorCall.rest.reloadPlaylist(rundownPlaylistId))
 		ctx.status = 200
 	} catch (e) {
-		logger.error('POST reloadPlaylist failed - ' + (e as UserError).message.key)
+		const errMsg = UserError.isUserError(e) ? e.message.key : (e as Error).message
+		logger.error('POST reloadPlaylist failed - ' + errMsg)
 		ctx.type = 'application/json'
-		ctx.body = JSON.stringify({ message: (e as UserError).message.key })
+		ctx.body = JSON.stringify({ message: errMsg })
 		ctx.status = 412
 	}
 	await next()
@@ -450,9 +457,10 @@ koaRouter.post('/resetPlaylist/:rundownPlaylistId', async (ctx, next) => {
 		ctx.body = ClientAPI.responseSuccess(await MeteorCall.rest.resetPlaylist(rundownPlaylistId))
 		ctx.status = 200
 	} catch (e) {
-		logger.error('POST resetPlaylist failed - ' + (e as UserError).message.key)
+		const errMsg = UserError.isUserError(e) ? e.message.key : (e as Error).message
+		logger.error('POST resetPlaylist failed - ' + errMsg)
 		ctx.type = 'application/json'
-		ctx.body = JSON.stringify({ message: (e as UserError).message.key })
+		ctx.body = JSON.stringify({ message: errMsg })
 		ctx.status = 412
 	}
 	await next()
@@ -469,9 +477,10 @@ koaRouter.post('/setNextPart/:rundownPlaylistId/:partId', async (ctx, next) => {
 		ctx.body = ClientAPI.responseSuccess(await MeteorCall.rest.setNextPart(rundownPlaylistId, partId))
 		ctx.status = 200
 	} catch (e) {
-		logger.error('POST setNextPart failed - ' + (e as UserError).message.key)
+		const errMsg = UserError.isUserError(e) ? e.message.key : (e as Error).message
+		logger.error('POST setNextPart failed - ' + errMsg)
 		ctx.type = 'application/json'
-		ctx.body = JSON.stringify({ message: (e as UserError).message.key })
+		ctx.body = JSON.stringify({ message: errMsg })
 		ctx.status = 412
 	}
 	await next()
@@ -488,9 +497,10 @@ koaRouter.post('/setNextSegment/:rundownPlaylistId/:segmentId', async (ctx, next
 		ctx.body = ClientAPI.responseSuccess(await MeteorCall.rest.setNextSegment(rundownPlaylistId, segmentId))
 		ctx.status = 200
 	} catch (e) {
-		logger.error('POST setNextSegment failed - ' + (e as UserError).message.key)
+		const errMsg = UserError.isUserError(e) ? e.message.key : (e as Error).message
+		logger.error('POST setNextSegment failed - ' + errMsg)
 		ctx.type = 'application/json'
-		ctx.body = JSON.stringify({ message: (e as UserError).message.key })
+		ctx.body = JSON.stringify({ message: errMsg })
 		ctx.status = 412
 	}
 	await next()
@@ -505,9 +515,10 @@ koaRouter.post('/take/:rundownPlaylistId', async (ctx, next) => {
 		ctx.body = ClientAPI.responseSuccess(await MeteorCall.rest.take(rundownPlaylistId))
 		ctx.status = 200
 	} catch (e) {
-		logger.error('POST take failed - ' + (e as UserError).message.key)
+		const errMsg = UserError.isUserError(e) ? e.message.key : (e as Error).message
+		logger.error('POST take failed - ' + errMsg)
 		ctx.type = 'application/json'
-		ctx.body = JSON.stringify({ message: (e as UserError).message.key })
+		ctx.body = JSON.stringify({ message: errMsg })
 		ctx.status = 412
 	}
 	await next()

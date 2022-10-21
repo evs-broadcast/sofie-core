@@ -107,7 +107,7 @@ describe('Network client', () => {
 			const execute = await actionsApi.executeAction({
 				rundownPlaylistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_',
 				actionId: 'JustDoIt',
-				executeActionRequest: { userData: JSON.stringify({ really: 'yes' }) },
+				body: { userData: { really: 'yes' } },
 			})
 			expect(execute.success).toBe(200)
 		})
