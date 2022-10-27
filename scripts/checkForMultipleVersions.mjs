@@ -53,6 +53,7 @@ await addDepsForRoot("./packages", "corelib");
 await addDepsForRoot("./packages", "shared-lib");
 await addDepsForRoot("./packages", "job-worker");
 await addDepsForRoot("./packages", "playout-gateway");
+await addDepsForRoot("./packages", "openapi");
 
 let hasFailure = false;
 
