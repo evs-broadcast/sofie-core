@@ -96,6 +96,8 @@ class ServerRestAPI extends MethodContextAPI implements ReplaceOptionalWithNullI
 		rundownPlaylistId: RundownPlaylistId,
 		adLibId: AdLibActionId | RundownBaselineAdLibActionId | PieceId | BucketAdLibId
 	): Promise<ClientAPI.ClientResponse<object>> {
+		triggerWriteAccess()
+
 		const baselineAdLibPiece = RundownBaselineAdLibPieces.findOneAsync(adLibId as PieceId, {
 			projection: { _id: 1 },
 		})
@@ -280,6 +282,8 @@ class ServerRestAPI extends MethodContextAPI implements ReplaceOptionalWithNullI
 		)
 	}
 	async take(rundownPlaylistId: RundownPlaylistId): Promise<ClientAPI.ClientResponse<void>> {
+		triggerWriteAccess()
+
 		const rundownPlaylist = RundownPlaylists.findOne(rundownPlaylistId)
 		if (!rundownPlaylist) throw new Error(`Rundown playlist ${rundownPlaylistId} does not exist`)
 
