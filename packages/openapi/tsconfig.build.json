@@ -7,7 +7,7 @@
 		"baseUrl": "./",
 		"paths": {
 			"*": ["./node_modules/*"],
-			"openapi": ["./client/ts/index.ts"]
+			"@sofie-automation/openapi": ["./client/ts/index.ts"]
 		},
 		"lib": ["es2020", "dom"],
 		"types": ["node"],
