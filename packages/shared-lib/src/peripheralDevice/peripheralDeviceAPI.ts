@@ -74,6 +74,7 @@ export enum PeripheralDeviceCategory {
 	PLAYOUT = 'playout',
 	MEDIA_MANAGER = 'media_manager',
 	PACKAGE_MANAGER = 'package_manager',
+	API = 'api',
 }
 export enum PeripheralDeviceType {
 	// Ingest devices:
@@ -86,6 +87,8 @@ export enum PeripheralDeviceType {
 	MEDIA_MANAGER = 'media_manager',
 	// Package_manager devices:
 	PACKAGE_MANAGER = 'package_manager',
+	// API devices:
+	LIVE_STATUS = 'live_status',
 }
 // TODO: PeripheralDeviceSubType should be removed altogether at some point..
 export type PeripheralDeviceSubType = any

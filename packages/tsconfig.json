@@ -6,6 +6,7 @@
 		{ "path": "mos-gateway" },
 		{ "path": "playout-gateway" },
 		{ "path": "shared-lib" },
-		{ "path": "openapi" }
+		{ "path": "openapi" },
+		{ "path": "live-status-gateway" }
 	]
 }
