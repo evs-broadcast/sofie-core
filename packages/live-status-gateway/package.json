@@ -27,6 +27,7 @@
 		"cov": "jest; open-cli coverage/lcov-report/index.html",
 		"cov-open": "open-cli coverage/lcov-report/index.html",
 		"ci": "yarn test",
+		"gendocs": "rimraf docs && ag ./api/asyncapi.yaml @asyncapi/html-template -o docs -p singleFile=true -p outFilename=liveStatus.html",
 		"inspect": "node --experimental-fetch --inspect dist/index.js",
 		"start": "node --experimental-fetch dist/index.js",
 		"validate:dependencies": "yarn audit --groups dependencies && yarn license-validate",
@@ -60,11 +61,15 @@
 		"tslib": "^2.4.0",
 		"winston": "^3.8.1"
 	},
+	"devDependencies": {
+		"@asyncapi/generator": "1.9.13",
+		"@asyncapi/html-template": "0.26.0"
+	},
 	"lint-staged": {
 		"*.{css,json,md,scss}": [
 			"prettier"
 		],
-		"*.{ts,tsx,js,jsx}": [
+		"*.{ts,tsx,js,jsx,yaml}": [
 			"yarn lint:raw"
 		]
 	}

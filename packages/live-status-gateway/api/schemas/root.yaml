@@ -1,0 +1,34 @@
+title: Root
+description: Root schemas for websocket subscriptions
+$defs:
+  reqid:
+    type: integer
+    description: Client originated ID reflected in response message.
+  ping:
+    type: object
+    properties:
+      event:
+        type: string
+        const: ping
+      reqid:
+        $ref: '#/$defs/reqid'
+    required: [event, reqid]
+    additionalProperties: false
+  pong:
+    type: object
+    properties:
+      event:
+        type: string
+        const: pong
+      reqid:
+        $ref: '#/$defs/reqid'
+    required: [event, reqid]
+    additionalProperties: false
+  heartbeat:
+    type: object
+    properties:
+      event:
+        type: string
+        const: heartbeat
+    required: [event]
+    additionalProperties: false

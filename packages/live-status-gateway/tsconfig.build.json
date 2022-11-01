@@ -7,7 +7,7 @@
 		"baseUrl": "./",
 		"paths": {
 			"*": ["./node_modules/*"],
-			"tv-automation-playout-gateway": ["./src/index.ts"]
+			"live-status-gateway": ["./src/index.ts"]
 		},
 		"types": ["node"],
 	}
