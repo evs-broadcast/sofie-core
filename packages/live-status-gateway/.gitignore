@@ -15,3 +15,6 @@ wallaby.conf.js
 local/
 certs/
 .vscode/settings.json
+
+server
+docs

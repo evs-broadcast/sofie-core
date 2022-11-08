@@ -1,0 +1,17 @@
+title: Playlist
+description: Playlist schema for websocket subscriptions
+$defs:
+  playlist:
+    payload:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+      required: [id, name]
+      additionalProperties: false
+    examples:
+      - payload:
+          id: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_'
+          name: 'Playlist 0'

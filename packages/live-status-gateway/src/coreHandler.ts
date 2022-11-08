@@ -1,4 +1,4 @@
-import { CoreConnection, CoreOptions, DDPConnectorOptions } from '@sofie-automation/server-core-integration'
+import { CoreConnection, CoreOptions, DDPConnectorOptions, Observer } from '@sofie-automation/server-core-integration'
 
 import { DeviceConfig } from './connector'
 import { Logger } from 'winston'
@@ -111,6 +111,14 @@ export class CoreHandler {
 		this._statusInitialized = true
 		await this.updateCoreStatus()
 	}
+
+	async setSubscription(collection: string, ...params: any[]): Promise<Observer> {
+		this.logger.info(`Core: Set up subscription for '${collection}'`)
+		await this.core.autoSubscribe(collection, ...params)
+		this.logger.info(`Core: Subscription for '${collection}' set up`)
+		return this.core.observe(collection)
+	}
+
 	async setupObserversAndSubscriptions(): Promise<void> {
 		this.logger.info('Core: Setting up subscriptions..')
 		this.logger.info('DeviceId: ' + this.core.deviceId)
@@ -202,6 +210,14 @@ export class CoreHandler {
 
 	get logDebug(): boolean {
 		return !!this.deviceSettings['debugLogging']
+	}
+
+	get coreConnection(): CoreConnection {
+		return this.core
+	}
+
+	get studioId(): string | undefined {
+		return this._studioId
 	}
 
 	executeFunction(cmd: PeripheralDeviceCommand, fcnObject: CoreHandler): void {
