@@ -1,6 +1,6 @@
 {
 	"name": "@sofie-automation/corelib",
-	"version": "1.45.9",
+	"version": "1.45.10",
 	"private": true,
 	"description": "Internal library for some types shared by core and workers",
 	"main": "dist/index.js",
