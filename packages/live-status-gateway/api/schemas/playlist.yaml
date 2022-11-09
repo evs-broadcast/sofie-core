@@ -3,15 +3,52 @@ description: Playlist schema for websocket subscriptions
 $defs:
   playlist:
     payload:
-      type: object
-      properties:
-        id:
-          type: string
-        name:
-          type: string
-      required: [id, name]
-      additionalProperties: false
+      oneOf:
+        - type: object
+          properties:
+            id:
+              description: Unique id of the playlist
+              type: string
+            name:
+              description: User-presentable name for the playlist
+              type: string
+            active:
+              description: The activation status of the playlist
+              type: boolean
+              const: true
+            rundownIds:
+              description: The set of rundownIds in this playlist
+              type: array
+              items:
+                type: string
+            currentPartId:
+              description: The id of the Live Part - if empty, no part in this rundown is live
+              oneOf:
+                - type: string
+                - type: 'null'
+            nextPartId:
+              description: The id of the Next Part - if empty, no segment will follow Live Part
+              oneOf:
+                - type: string
+                - type: 'null'
+            nextSegmentId:
+              description: The id of the Next Part - if empty, no segment will follow Live Part
+              type: string
+          required: [id, name, active, rundownIds, currentPartId, nextPartId]
+          additionalProperties: false
+        - type: object
+          properties:
+            active:
+              description: The activation status of the playlist
+              type: boolean
+              const: false
+          required: [active]
+          additionalProperties: false
     examples:
       - payload:
           id: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_'
           name: 'Playlist 0'
+          active: true
+          rundownIds: ['y9HauyWkcxQS3XaAOsW40BRLLsI_']
+          currentPartId: null
+          nextPartId: 'H5CBGYjThrMSmaYvRaa5FVKJIzk__331TETzE99IGOQK9jIdF0'

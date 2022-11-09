@@ -6,12 +6,14 @@ info:
   license:
     name: MIT License
     url: http://opensource.org/licenses/MIT
+
 servers:
   development:
     url: localhost
     description: Server available without authorisation
     protocol: ws
     protocolVersion: '13'
+
 channels:
   /:
     publish:

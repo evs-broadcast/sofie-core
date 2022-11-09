@@ -8,9 +8,17 @@ import { literal } from '@sofie-automation/shared-lib/dist/lib/lib'
 import { unprotectString } from '@sofie-automation/shared-lib/dist/lib/protectedString'
 import { StudioHandler } from './studio'
 
-interface PlaylistStatus {
+interface ActiveStatus {
+	active: boolean
+}
+
+interface PlaylistStatus extends ActiveStatus {
 	id: string
 	name: string
+	rundownIds: string[]
+	currentPartId: string | null
+	nextPartId: string | null
+	nextSegmentId: string | undefined
 }
 
 export class PlaylistHandler extends WsHandlerBase implements WsHandler {
@@ -21,7 +29,7 @@ export class PlaylistHandler extends WsHandlerBase implements WsHandler {
 	_activePlaylist: DBRundownPlaylist | undefined
 
 	constructor(logger: Logger, coreHandler: CoreHandler, studioHandler: StudioHandler) {
-		super('playlists', 'rundownPlaylists', logger, coreHandler)
+		super('playlist', 'rundownPlaylists', logger, coreHandler)
 		this._core = coreHandler.coreConnection
 		this._studioHandler = studioHandler
 	}
@@ -34,6 +42,8 @@ export class PlaylistHandler extends WsHandlerBase implements WsHandler {
 			const col = this._core.getCollection(this._collection)
 			if (!col) throw new Error(`collection '${this._collection}' not found!`)
 			this._playlists = col.find(undefined) as unknown as DBRundownPlaylist[]
+			this._activePlaylist = this._playlists.find((p) => p.activationId)
+			if (this._activePlaylist) console.dir(this._activePlaylist)
 			this._studioHandler.setPlaylists(this._playlists)
 			observer.added = (id: string) => this.changed(id, 'added')
 			observer.changed = (id: string) => this.changed(id, 'changed')
@@ -54,17 +64,25 @@ export class PlaylistHandler extends WsHandlerBase implements WsHandler {
 			this._playlists = col.find(undefined) as unknown as DBRundownPlaylist[]
 			this._studioHandler.setPlaylists(this._playlists)
 		}
-		this.sendStatus()
+		this._activePlaylist = this._playlists.find((p) => p.activationId)
+		if (!(this._activePlaylist && id !== unprotectString(this._activePlaylist._id))) this.sendStatus()
 	}
 
 	sendStatus(): void {
-		this._activePlaylist = this._playlists.find((p) => p.activationId)
-		if (this._ws && this._activePlaylist)
+		if (this._ws) {
 			this.sendMessage(
-				literal<PlaylistStatus>({
-					id: unprotectString(this._activePlaylist._id),
-					name: this._activePlaylist.name,
-				})
+				this._activePlaylist
+					? literal<PlaylistStatus>({
+							id: unprotectString(this._activePlaylist._id),
+							name: this._activePlaylist.name,
+							active: true,
+							rundownIds: this._activePlaylist.rundownIdsInOrder.map((r) => unprotectString(r)),
+							currentPartId: unprotectString(this._activePlaylist.currentPartInstanceId),
+							nextPartId: unprotectString(this._activePlaylist.nextPartInstanceId),
+							nextSegmentId: unprotectString(this._activePlaylist.nextSegmentId),
+					  })
+					: literal<ActiveStatus>({ active: false })
 			)
+		}
 	}
 }
