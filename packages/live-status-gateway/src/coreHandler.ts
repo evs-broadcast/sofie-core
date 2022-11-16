@@ -112,10 +112,19 @@ export class CoreHandler {
 		await this.updateCoreStatus()
 	}
 
-	async setSubscription(collection: string, ...params: any[]): Promise<Observer> {
+	async setupSubscription(collection: string, ...params: any[]): Promise<string> {
 		this.logger.info(`Core: Set up subscription for '${collection}'`)
-		await this.core.autoSubscribe(collection, ...params)
-		this.logger.info(`Core: Subscription for '${collection}' set up`)
+		const subscriptionId = await this.core.autoSubscribe(collection, ...params)
+		this.logger.info(`Core: Subscription for '${collection}' set up with id ${subscriptionId}`)
+		return subscriptionId
+	}
+
+	unsubscribe(subscriptionId: string): void {
+		this.logger.info(`Core: Unsubscribing id '${subscriptionId}'`)
+		this.core.unsubscribe(subscriptionId)
+	}
+
+	setupObserver(collection: string): Observer {
 		return this.core.observe(collection)
 	}
 

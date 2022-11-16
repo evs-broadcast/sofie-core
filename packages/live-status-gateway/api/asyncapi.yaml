@@ -38,6 +38,18 @@ channels:
       operationId: playlistStatus
       message:
         $ref: '#/components/messages/playlist'
+  /rundown:
+    subscribe:
+      description: Messages from the server providing status updates for rundowns
+      operationId: rundownStatus
+      message:
+        $ref: '#/components/messages/rundown'
+  /part:
+    subscribe:
+      description: Messages from the server providing status updates for parts
+      operationId: partStatus
+      message:
+        $ref: '#/components/messages/part'
 
 components:
   messages:
@@ -70,3 +82,11 @@ components:
       name: playlist
       description: Playlist status
       $ref: './schemas/playlist.yaml#/$defs/playlist'
+    rundown:
+      name: rundown
+      description: Rundown status
+      $ref: './schemas/rundown.yaml#/$defs/rundown'
+    part:
+      name: part
+      description: Part status
+      $ref: './schemas/part.yaml#/$defs/part'

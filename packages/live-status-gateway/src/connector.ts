@@ -7,6 +7,9 @@ import { WsHandler } from './wsHandler'
 import { RootHandler } from './channels/root'
 import { StudioHandler } from './channels/studio'
 import { PlaylistHandler } from './channels/playlist'
+import { RundownHandler } from './channels/rundown'
+import { PartHandler } from './channels/part'
+import { PartInstancesHandler } from './channels/partInstances'
 
 export interface Config {
 	process: ProcessConfig
@@ -55,9 +58,29 @@ export class Connector {
 			await studioHandler.init()
 			handlers.set('/studio', studioHandler)
 
-			const playlistHandler = new PlaylistHandler(this._logger, this.coreHandler, studioHandler)
+			const playlistHandler = new PlaylistHandler(this._logger, this.coreHandler)
 			await playlistHandler.init()
 			handlers.set('/playlist', playlistHandler)
+
+			const rundownHandler = new RundownHandler(this._logger, this.coreHandler)
+			await rundownHandler.init()
+			handlers.set('/rundown', rundownHandler)
+
+			const partHandler = new PartHandler(this._logger, this.coreHandler)
+			await partHandler.init()
+			handlers.set('/part', partHandler)
+
+			const partInstancesHandler = new PartInstancesHandler(this._logger, this.coreHandler)
+			await partInstancesHandler.init()
+			handlers.set('/partInstances', partInstancesHandler)
+
+			playlistHandler.playlistsHandler.subscribe(studioHandler)
+			playlistHandler.subscribe(rundownHandler)
+			playlistHandler.subscribe(partHandler)
+			playlistHandler.subscribe(partInstancesHandler)
+			partInstancesHandler.subscribe(playlistHandler)
+			partInstancesHandler.subscribe(rundownHandler)
+			partInstancesHandler.subscribe(partHandler)
 
 			const wss = new WebSocketServer({ port: 8080 })
 			wss.on('connection', (ws, request) => {

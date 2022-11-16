@@ -50,3 +50,14 @@ export interface WsHandler {
 	processMessage(msg: object): void
 	sendMessage(msg: object): void
 }
+
+export interface CollectionData<T> {
+	subscribe(observer: CollectionObserver<T>): void
+	unsubscribe(observer: CollectionObserver<T>): void
+	notify(data: T | undefined): void
+}
+
+export interface CollectionObserver<T> {
+	_observerName: string
+	update(data: T | undefined): void
+}

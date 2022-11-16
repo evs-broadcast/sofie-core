@@ -1,0 +1,18 @@
+title: Rundown
+description: Rundown schema for websocket subscriptions
+$defs:
+  rundown:
+    payload:
+      type: object
+      properties:
+        id:
+          description: Unique id of the rundown
+          type: string
+        name:
+          description: User-presentable name for the rundown
+      required: [id, name]
+      additionalProperties: false
+    examples:
+      - payload:
+          id: 'y9HauyWkcxQS3XaAOsW40BRLLsI_'
+          name: 'Playlist 0'
