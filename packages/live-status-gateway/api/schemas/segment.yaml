@@ -1,0 +1,19 @@
+title: Segment
+description: Segment schema for websocket subscriptions
+$defs:
+  segment:
+    payload:
+      type: object
+      properties:
+        id:
+          description: Unique id of the segment
+          type: string
+        name:
+          description: User-presentable name (Slug) for the Title
+          type: string
+      required: [id, name]
+      additionalProperties: false
+    examples:
+      - payload:
+          id: 'z2Y76lodrjcTvfiA1kkIMRgfw7M_'
+          name: 'Intro'

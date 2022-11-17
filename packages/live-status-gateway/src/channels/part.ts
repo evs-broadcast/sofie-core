@@ -73,13 +73,13 @@ export class PartHandler extends WsHandlerBase implements WsHandler, CollectionO
 		if (!data) {
 			this._logger.info(`${this._name} received update ${data}`)
 			this._activePlaylist = undefined
-			return
+			this._partInstances = undefined
 		}
 
 		if (Array.isArray(data)) {
 			this._logger.info(`${this._name} received partInstances update with parts ${data.map((pi) => pi.part._id)}`)
 			this._partInstances = data
-		} else {
+		} else if (data) {
 			this._logger.info(`${this._name} received playlist update ${data._id}`)
 			this._activePlaylist = data
 		}
@@ -108,12 +108,10 @@ export class PartHandler extends WsHandlerBase implements WsHandler, CollectionO
 				)
 				const col = this._core.getCollection(this._collection)
 				if (!col) throw new Error(`collection '${this._collection}' not found!`)
-				const currentPartInstance = this._partInstances?.filter(
+				const currentPartInstance = this._partInstances?.find(
 					(pi) => pi._id === this._activePlaylist?.currentPartInstanceId
-				)[0]
-				if (currentPartInstance)
-					this._currentPart = col.findOne(unprotectString(currentPartInstance?.part._id)) as unknown as DBPart
-
+				)
+				this._currentPart = col.findOne(unprotectString(currentPartInstance?.part._id)) as unknown as DBPart
 				this.sendStatus()
 			}
 		})

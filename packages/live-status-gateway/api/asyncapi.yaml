@@ -34,19 +34,25 @@ channels:
         $ref: '#/components/messages/studio'
   /playlist:
     subscribe:
-      description: Messages from the server providing status updates for playlists
+      description: Messages from the server providing status updates for the active playlist
       operationId: playlistStatus
       message:
         $ref: '#/components/messages/playlist'
   /rundown:
     subscribe:
-      description: Messages from the server providing status updates for rundowns
+      description: Messages from the server providing status updates for the active rundown
       operationId: rundownStatus
       message:
         $ref: '#/components/messages/rundown'
+  /segment:
+    subscribe:
+      description: Messages from the server providing status updates for the active segment
+      operationId: segmentStatus
+      message:
+        $ref: '#/components/messages/segment'
   /part:
     subscribe:
-      description: Messages from the server providing status updates for parts
+      description: Messages from the server providing status updates for the active part
       operationId: partStatus
       message:
         $ref: '#/components/messages/part'
@@ -86,6 +92,10 @@ components:
       name: rundown
       description: Rundown status
       $ref: './schemas/rundown.yaml#/$defs/rundown'
+    segment:
+      name: segment
+      description: Segment status
+      $ref: './schemas/segment.yaml#/$defs/segment'
     part:
       name: part
       description: Part status

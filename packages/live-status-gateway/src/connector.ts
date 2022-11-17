@@ -8,6 +8,7 @@ import { RootHandler } from './channels/root'
 import { StudioHandler } from './channels/studio'
 import { PlaylistHandler } from './channels/playlist'
 import { RundownHandler } from './channels/rundown'
+import { SegmentHandler } from './channels/segment'
 import { PartHandler } from './channels/part'
 import { PartInstancesHandler } from './channels/partInstances'
 
@@ -66,6 +67,10 @@ export class Connector {
 			await rundownHandler.init()
 			handlers.set('/rundown', rundownHandler)
 
+			const segmentHandler = new SegmentHandler(this._logger, this.coreHandler)
+			await segmentHandler.init()
+			handlers.set('/segment', segmentHandler)
+
 			const partHandler = new PartHandler(this._logger, this.coreHandler)
 			await partHandler.init()
 			handlers.set('/part', partHandler)
@@ -80,6 +85,7 @@ export class Connector {
 			playlistHandler.subscribe(partInstancesHandler)
 			partInstancesHandler.subscribe(playlistHandler)
 			partInstancesHandler.subscribe(rundownHandler)
+			partInstancesHandler.subscribe(segmentHandler)
 			partInstancesHandler.subscribe(partHandler)
 
 			const wss = new WebSocketServer({ port: 8080 })
