@@ -45,9 +45,9 @@ export class StudioHandler extends WsHandlerBase implements WsHandler, Collectio
 		}
 	}
 
-	initSocket(ws: WebSocket): void {
-		super.initSocket(ws)
-		this.sendStatus()
+	addSubscriber(ws: WebSocket): void {
+		super.addSubscriber(ws)
+		this.sendStatus(new Set<WebSocket>().add(ws))
 	}
 
 	changed(id: string, changeType: string): void {
@@ -58,29 +58,29 @@ export class StudioHandler extends WsHandlerBase implements WsHandler, Collectio
 		const studio = col.findOne(id)
 		if (!studio) throw new Error(`studio '${this._studioId}' not found on changed!`)
 		this._studio = studio as unknown as DBStudio
-		this.sendStatus()
+		this.sendStatus(this._subscribers)
 	}
 
-	// setPlaylists(playlists: DBRundownPlaylist[]): void {
-	// 	this._playlists = playlists
-	// }
-
-	sendStatus(): void {
-		if (this._ws && this._studio)
-			this.sendMessage(
-				literal<StudioStatus>({
-					id: unprotectString(this._studio._id),
-					name: this._studio.name,
-					playlists: this._playlists?.map((p) => {
-						return { id: unprotectString(p._id), name: p.name }
-					}),
-				})
-			)
+	sendStatus(subscribers: Set<WebSocket>): void {
+		subscribers.forEach((ws) => {
+			if (this._studio) {
+				this.sendMessage(
+					ws,
+					literal<StudioStatus>({
+						id: unprotectString(this._studio._id),
+						name: this._studio.name,
+						playlists: this._playlists?.map((p) => {
+							return { id: unprotectString(p._id), name: p.name }
+						}),
+					})
+				)
+			}
+		})
 	}
 
 	async update(data: DBRundownPlaylist[] | undefined): Promise<void> {
 		this._logger.info(`${this._name} received playlists update`)
 		this._playlists = data
-		this.sendStatus()
+		this.sendStatus(this._subscribers)
 	}
 }

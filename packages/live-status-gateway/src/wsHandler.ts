@@ -7,7 +7,7 @@ export abstract class WsHandlerBase {
 	protected _collection: string | undefined
 	protected _logger: Logger
 	protected _coreHandler: CoreHandler
-	protected _ws: WebSocket | undefined
+	protected _subscribers: Set<WebSocket> = new Set()
 
 	constructor(name: string, collection: string | undefined, logger: Logger, coreHandler: CoreHandler) {
 		this._name = name
@@ -22,33 +22,38 @@ export abstract class WsHandlerBase {
 		this._logger.info(`${this._name} handler not subscribing to any collection`)
 	}
 
-	initSocket(ws: WebSocket): void {
-		this._ws = ws
-		this._ws.on('message', (data) => this.processMessage(data))
-		this._ws.on('close', () => this._logger.info(`Closing websocket`))
-	}
-
 	close(): void {
 		this._logger.info(`Closing ${this._name} handler`)
 	}
 
-	processMessage(msg: object): void {
+	addSubscriber(ws: WebSocket): void {
+		this._logger.info(`${this._name} adding a subscription`)
+		ws.on('message', (data) => this.processMessage(ws, data))
+		this._subscribers.add(ws)
+	}
+
+	removeSubscriber(ws: WebSocket): void {
+		if (this._subscribers.delete(ws)) this._logger.info(`${this._name} removing a subscription`)
+	}
+
+	processMessage(_ws: WebSocket, msg: object): void {
 		this._logger.error(`Process ${this._name} message not expected '${JSON.stringify(msg)}'`)
 	}
 
-	sendMessage(msg: object): void {
+	sendMessage(ws: WebSocket, msg: object): void {
 		const msgStr = JSON.stringify(msg)
 		this._logger.info(`Send ${this._name} message '${msgStr}'`)
-		this._ws?.send(msgStr)
+		ws.send(msgStr)
 	}
 }
 
 export interface WsHandler {
 	init(): Promise<void>
-	initSocket(ws: WebSocket): void
 	close(): void
-	processMessage(msg: object): void
-	sendMessage(msg: object): void
+	addSubscriber(ws: WebSocket): void
+	removeSubscriber(ws: WebSocket): void
+	processMessage(ws: WebSocket, msg: object): void
+	sendMessage(ws: WebSocket, msg: object): void
 }
 
 export interface CollectionData<T> {

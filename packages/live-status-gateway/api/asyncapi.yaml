@@ -20,43 +20,17 @@ channels:
       description: Send messages to the root API
       operationId: processRootMessage
       message:
-        oneOf: [$ref: '#/components/messages/ping']
+        oneOf:
+          - $ref: '#/components/messages/ping'
+          - $ref: '#/components/messages/subscribe'
+          - $ref: '#/components/messages/unsubscribe'
     subscribe:
       description: Messages that are received from the API
       operationId: sendRootMessage
       message:
-        oneOf: [$ref: '#/components/messages/pong', $ref: '#/components/messages/heartbeat']
-  /studio:
-    subscribe:
-      description: Messages from the server providing status updates for the studio
-      operationId: studioStatus
-      message:
-        $ref: '#/components/messages/studio'
-  /playlist:
-    subscribe:
-      description: Messages from the server providing status updates for the active playlist
-      operationId: playlistStatus
-      message:
-        $ref: '#/components/messages/playlist'
-  /rundown:
-    subscribe:
-      description: Messages from the server providing status updates for the active rundown
-      operationId: rundownStatus
-      message:
-        $ref: '#/components/messages/rundown'
-  /segment:
-    subscribe:
-      description: Messages from the server providing status updates for the active segment
-      operationId: segmentStatus
-      message:
-        $ref: '#/components/messages/segment'
-  /part:
-    subscribe:
-      description: Messages from the server providing status updates for the active part
-      operationId: partStatus
-      message:
-        $ref: '#/components/messages/part'
-
+        oneOf:
+          - $ref: '#/components/messages/pong'
+          - $ref: '#/components/messages/heartbeat'
 components:
   messages:
     ping:
@@ -65,8 +39,6 @@ components:
       description: Client can ping server to determine whether connection is alive, server responds with pong. This is an application level ping as opposed to default ping in websockets standard which is server initiated
       payload:
         $ref: './schemas/root.yaml#/$defs/ping'
-        required: [event, reqid]
-        additionalProperties: false
       x-response:
         $ref: '#/components/messages/pong'
     pong:
@@ -80,6 +52,20 @@ components:
       description: Server heartbeat sent if no subscription traffic within 1 second (approximately)
       payload:
         $ref: './schemas/root.yaml#/$defs/heartbeat'
+    subscribe:
+      name: subscribe
+      description: Subscribe to a topic
+      payload:
+        $ref: './schemas/root.yaml#/$defs/subscribe'
+      x-response:
+        $ref: './schemas/root.yaml#/$defs/subscriptionStatus'
+    unsubscribe:
+      name: unsubscribe
+      description: Unsubscribe from a topic
+      payload:
+        $ref: './schemas/root.yaml#/$defs/unsubscribe'
+      x-response:
+        $ref: './schemas/root.yaml#/$defs/subscriptionStatus'
     studio:
       name: studio
       description: Studio status

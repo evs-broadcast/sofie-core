@@ -93,9 +93,9 @@ export class PlaylistHandler
 		}
 	}
 
-	initSocket(ws: WebSocket): void {
-		super.initSocket(ws)
-		this.sendStatus()
+	addSubscriber(ws: WebSocket): void {
+		super.addSubscriber(ws)
+		this.sendStatus(new Set<WebSocket>().add(ws))
 	}
 
 	changed(id: string, changeType: string): void {
@@ -116,13 +116,14 @@ export class PlaylistHandler
 
 		// don't sendStatus if there is an active playlist and there has been a change to a different playlist
 		if (!(this._activePlaylist && id !== unprotectString(this._activePlaylist._id))) {
-			this.sendStatus()
+			this.sendStatus(this._subscribers)
 		}
 	}
 
-	sendStatus(): void {
-		if (this._ws) {
+	sendStatus(subscribers: Set<WebSocket>): void {
+		subscribers.forEach((ws) => {
 			this.sendMessage(
+				ws,
 				this._activePlaylist
 					? literal<PlaylistStatus>({
 							id: unprotectString(this._activePlaylist._id),
@@ -135,7 +136,7 @@ export class PlaylistHandler
 					  })
 					: literal<ActiveStatus>({ active: false })
 			)
-		}
+		})
 	}
 
 	get playlistsHandler(): PlaylistsHandler {
@@ -163,7 +164,7 @@ export class PlaylistHandler
 			const nextPartInstance = data?.filter((pi) => pi._id === this._activePlaylist?.nextPartInstanceId)[0]
 			this._currentPartId = currentPartInstance ? unprotectString(currentPartInstance.part._id) : null
 			this._nextPartId = nextPartInstance ? unprotectString(nextPartInstance.part._id) : null
-			this.sendStatus()
+			this.sendStatus(this._subscribers)
 		}
 	}
 }

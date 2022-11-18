@@ -36,9 +36,9 @@ export class PartHandler extends WsHandlerBase implements WsHandler, CollectionO
 		this._studioId = this._coreHandler.studioId
 	}
 
-	initSocket(ws: WebSocket): void {
-		super.initSocket(ws)
-		this.sendStatus()
+	addSubscriber(ws: WebSocket): void {
+		super.addSubscriber(ws)
+		this.sendStatus(new Set<WebSocket>().add(ws))
 	}
 
 	changed(id: string, changeType: string): void {
@@ -51,20 +51,23 @@ export class PartHandler extends WsHandlerBase implements WsHandler, CollectionO
 		const col = this._core.getCollection(this._collection)
 		if (!col) throw new Error(`collection '${this._collection}' not found!`)
 		if (this._currentPart) this._currentPart = col.findOne(this._currentPart._id) as unknown as DBPart
-		this.sendStatus()
+		this.sendStatus(this._subscribers)
 	}
 
-	sendStatus(): void {
-		if (this._ws && this._currentPart) {
-			this.sendMessage(
-				literal<PartStatus>({
-					id: unprotectString(this._currentPart._id),
-					name: this._currentPart.title,
-					tags: this._currentPart.tags,
-					autoNext: this._currentPart.autoNext,
-				})
-			)
-		}
+	sendStatus(subscribers: Set<WebSocket>): void {
+		subscribers.forEach((ws) => {
+			if (this._currentPart) {
+				this.sendMessage(
+					ws,
+					literal<PartStatus>({
+						id: unprotectString(this._currentPart._id),
+						name: this._currentPart.title,
+						tags: this._currentPart.tags,
+						autoNext: this._currentPart.autoNext,
+					})
+				)
+			}
+		})
 	}
 
 	update(data: DBRundownPlaylist | DBPartInstance[] | undefined): void {
@@ -112,7 +115,7 @@ export class PartHandler extends WsHandlerBase implements WsHandler, CollectionO
 					(pi) => pi._id === this._activePlaylist?.currentPartInstanceId
 				)
 				this._currentPart = col.findOne(unprotectString(currentPartInstance?.part._id)) as unknown as DBPart
-				this.sendStatus()
+				this.sendStatus(this._subscribers)
 			}
 		})
 	}

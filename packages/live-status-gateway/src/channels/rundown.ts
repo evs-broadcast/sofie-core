@@ -36,9 +36,9 @@ export class RundownHandler
 		this._studioId = this._coreHandler.studioId
 	}
 
-	initSocket(ws: WebSocket): void {
-		super.initSocket(ws)
-		this.sendStatus()
+	addSubscriber(ws: WebSocket): void {
+		super.addSubscriber(ws)
+		this.sendStatus(new Set<WebSocket>().add(ws))
 	}
 
 	changed(id: string, changeType: string): void {
@@ -49,15 +49,18 @@ export class RundownHandler
 		const col = this._core.getCollection(this._collection)
 		if (!col) throw new Error(`collection '${this._collection}' not found!`)
 		if (this._rundown) this._rundown = col.findOne(this._rundown._id) as unknown as DBRundown
-		this.sendStatus()
+		this.sendStatus(this._subscribers)
 	}
 
-	sendStatus(): void {
-		if (this._ws && this._rundown) {
-			this.sendMessage(
-				literal<RundownStatus>({ id: unprotectString(this._rundown._id), name: this._rundown.name })
-			)
-		}
+	sendStatus(subscribers: Set<WebSocket>): void {
+		subscribers.forEach((ws) => {
+			if (this._rundown) {
+				this.sendMessage(
+					ws,
+					literal<RundownStatus>({ id: unprotectString(this._rundown._id), name: this._rundown.name })
+				)
+			}
+		})
 	}
 
 	update(data: DBRundownPlaylist | DBPartInstance[] | undefined): void {
@@ -102,7 +105,7 @@ export class RundownHandler
 					if (!rundown) throw new Error(`rundown '${this._curRundownId}' not found!`)
 					this._rundown = rundown as unknown as DBRundown
 				} else this._rundown = undefined
-				this.sendStatus()
+				this.sendStatus(this._subscribers)
 			}
 		})
 	}

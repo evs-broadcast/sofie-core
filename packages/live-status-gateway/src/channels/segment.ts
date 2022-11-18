@@ -32,9 +32,9 @@ export class SegmentHandler extends WsHandlerBase implements WsHandler, Collecti
 		this._studioId = this._coreHandler.studioId
 	}
 
-	initSocket(ws: WebSocket): void {
-		super.initSocket(ws)
-		this.sendStatus()
+	addSubscriber(ws: WebSocket): void {
+		super.addSubscriber(ws)
+		this.sendStatus(new Set<WebSocket>().add(ws))
 	}
 
 	changed(id: string, changeType: string): void {
@@ -49,18 +49,21 @@ export class SegmentHandler extends WsHandlerBase implements WsHandler, Collecti
 		const col = this._core.getCollection(this._collection)
 		if (!col) throw new Error(`collection '${this._collection}' not found!`)
 		this._currentSegment = col.findOne(this._curSegmentId) as unknown as DBSegment
-		this.sendStatus()
+		this.sendStatus(this._subscribers)
 	}
 
-	sendStatus(): void {
-		if (this._ws && this._currentSegment) {
-			this.sendMessage(
-				literal<SegmentStatus>({
-					id: unprotectString(this._currentSegment._id),
-					name: this._currentSegment.name,
-				})
-			)
-		}
+	sendStatus(subscribers: Set<WebSocket>): void {
+		subscribers.forEach((ws) => {
+			if (this._currentSegment) {
+				this.sendMessage(
+					ws,
+					literal<SegmentStatus>({
+						id: unprotectString(this._currentSegment._id),
+						name: this._currentSegment.name,
+					})
+				)
+			}
+		})
 	}
 
 	update(data: DBPartInstance[] | undefined): void {
@@ -89,7 +92,7 @@ export class SegmentHandler extends WsHandlerBase implements WsHandler, Collecti
 				const col = this._core.getCollection(this._collection)
 				if (!col) throw new Error(`collection '${this._collection}' not found!`)
 				this._currentSegment = col.findOne(this._curSegmentId) as unknown as DBSegment
-				this.sendStatus()
+				this.sendStatus(this._subscribers)
 			}
 		})
 	}
