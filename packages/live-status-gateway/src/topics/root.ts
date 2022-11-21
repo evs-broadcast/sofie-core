@@ -1,8 +1,7 @@
-import { literal } from '@sofie-automation/shared-lib/dist/lib/lib'
 import { Logger } from 'winston'
-import { CoreHandler } from '../coreHandler'
 import { WebSocket } from 'ws'
-import { WsHandlerBase, WsHandler } from '../wsHandler'
+import { literal } from '@sofie-automation/shared-lib/dist/lib/lib'
+import { WsTopicBase, WsTopic } from '../wsHandler'
 
 enum PublishMsg {
 	ping = 'ping',
@@ -23,10 +22,7 @@ interface SubscriptionStatus {
 
 export enum StatusChannels {
 	studio = 'studio',
-	playlist = 'playlist',
-	rundown = 'rundown',
-	segment = 'segment',
-	part = 'part',
+	activePlaylist = 'activePlaylist',
 }
 
 interface Msg {
@@ -37,16 +33,12 @@ interface Msg {
 	}
 }
 
-export class RootHandler extends WsHandlerBase implements WsHandler {
-	_handlers: Map<string, WsHandler> = new Map()
+export class RootChannel extends WsTopicBase implements WsTopic {
+	_topics: Map<string, WsTopic> = new Map()
 	_heartbeat: NodeJS.Timeout | undefined
 
-	constructor(logger: Logger, coreHandler: CoreHandler) {
-		super('root', undefined, logger, coreHandler)
-	}
-
-	async init(): Promise<void> {
-		this._logger.info(`${this._name} handler initialising heatbeat`)
+	constructor(logger: Logger) {
+		super('Root', logger)
 		this._heartbeat = setInterval(
 			() => this._subscribers.forEach((ws) => this.sendMessage(ws, { event: 'heartbeat' })),
 			2000
@@ -55,13 +47,11 @@ export class RootHandler extends WsHandlerBase implements WsHandler {
 
 	close(): void {
 		clearInterval(this._heartbeat)
-		super.close()
-		this._handlers.forEach((h) => h.close())
 	}
 
 	removeSubscriber(ws: WebSocket): void {
 		super.removeSubscriber(ws)
-		this._handlers.forEach((h) => h.removeSubscriber(ws))
+		this._topics.forEach((h) => h.removeSubscriber(ws))
 	}
 
 	processMessage(ws: WebSocket, msg: object): void {
@@ -81,6 +71,8 @@ export class RootHandler extends WsHandlerBase implements WsHandler {
 						this._logger.info(`Unsubscribe request to '${msgObj.subscription.name}' channel`)
 						this.unsubscribe(ws, msgObj.subscription.name, msgObj.reqid)
 						return
+					default:
+						this._logger.info(`Process root message received unexpected event`)
 				}
 			} else this._logger.error(`Process root message received malformed payload`)
 		} catch (e) {
@@ -88,14 +80,13 @@ export class RootHandler extends WsHandlerBase implements WsHandler {
 		}
 	}
 
-	async addHandler(channel: string, handler: WsHandler): Promise<void> {
-		await handler.init()
-		if (channel in StatusChannels) this._handlers.set(channel, handler)
+	addTopic(channel: string, topic: WsTopic): void {
+		if (channel in StatusChannels) this._topics.set(channel, topic)
 	}
 
 	subscribe(ws: WebSocket, name: string, reqid: number): void {
-		const handler = this._handlers.get(name)
-		if (handler && name in StatusChannels) {
+		const topic = this._topics.get(name)
+		if (topic && name in StatusChannels) {
 			this.sendMessage(
 				ws,
 				literal<SubscriptionStatus>({
@@ -103,7 +94,7 @@ export class RootHandler extends WsHandlerBase implements WsHandler {
 					reqid: reqid,
 				})
 			)
-			handler.addSubscriber(ws)
+			topic.addSubscriber(ws)
 		} else {
 			this.sendMessage(
 				ws,
@@ -117,9 +108,9 @@ export class RootHandler extends WsHandlerBase implements WsHandler {
 	}
 
 	unsubscribe(ws: WebSocket, name: string, reqid: number): void {
-		const handler = this._handlers.get(name)
-		if (handler && name in StatusChannels) {
-			handler.removeSubscriber(ws)
+		const topic = this._topics.get(name)
+		if (topic && name in StatusChannels) {
+			topic.removeSubscriber(ws)
 			this.sendMessage(
 				ws,
 				literal<SubscriptionStatus>({

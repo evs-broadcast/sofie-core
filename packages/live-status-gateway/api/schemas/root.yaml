@@ -32,15 +32,6 @@ $defs:
         const: heartbeat
     required: [event]
     additionalProperties: false
-  name:
-    type: string
-    description: The name of the channel you wish to subscribe to.
-    enum:
-      - studio
-      - playlist
-      - rundown
-      - segment
-      - part
   subscribe:
     type: object
     properties:
@@ -108,3 +99,9 @@ $defs:
         additionalProperties: false
     required: [event, reqid, subscription]
     additionalProperties: false
+  name:
+    type: string
+    description: The name of the channel you wish to subscribe to.
+    enum:
+      - studio
+      - activePlaylist

@@ -1,21 +1,15 @@
 import { Logger } from 'winston'
 import { CoreHandler } from './coreHandler'
 import { WebSocket, WebSocketServer } from 'ws'
-import { RootHandler } from './channels/root'
-import { StudioHandler } from './channels/studio'
-import { PlaylistHandler } from './channels/playlist'
-import { RundownHandler } from './channels/rundown'
-import { SegmentHandler } from './channels/segment'
-import { PartHandler } from './channels/part'
-import { PartInstancesHandler } from './channels/partInstances'
-
-export enum StatusChannels {
-	studio = 'studio',
-	playlist = 'playlist',
-	rundown = 'rundown',
-	segment = 'segment',
-	part = 'part',
-}
+import { StudioHandler } from './collections/studio'
+import { PlaylistHandler } from './collections/playlist'
+import { RundownHandler } from './collections/rundown'
+import { SegmentHandler } from './collections/segment'
+import { PartHandler } from './collections/part'
+import { PartInstancesHandler } from './collections/partInstances'
+import { RootChannel } from './topics/root'
+import { StudioTopic } from './topics/studio'
+import { ActivePlaylistTopic } from './topics/activePlaylist'
 
 export class LiveStatusServer {
 	_logger: Logger
@@ -30,30 +24,40 @@ export class LiveStatusServer {
 	async init(): Promise<void> {
 		this._logger.info('Initializing WebSocket server...')
 
-		const rootHandler = new RootHandler(this._logger, this._coreHandler)
+		const rootChannel = new RootChannel(this._logger)
+
+		const studioTopic = new StudioTopic(this._logger)
+		const activePlaylistTopic = new ActivePlaylistTopic(this._logger)
+
+		rootChannel.addTopic('studio', studioTopic)
+		rootChannel.addTopic('activePlaylist', activePlaylistTopic)
+
 		const studioHandler = new StudioHandler(this._logger, this._coreHandler)
+		await studioHandler.init()
 		const playlistHandler = new PlaylistHandler(this._logger, this._coreHandler)
+		await playlistHandler.init()
 		const rundownHandler = new RundownHandler(this._logger, this._coreHandler)
+		await rundownHandler.init()
 		const segmentHandler = new SegmentHandler(this._logger, this._coreHandler)
+		await segmentHandler.init()
 		const partHandler = new PartHandler(this._logger, this._coreHandler)
+		await partHandler.init()
 		const partInstancesHandler = new PartInstancesHandler(this._logger, this._coreHandler)
+		await partInstancesHandler.init()
 
-		await rootHandler.init()
-		await rootHandler.addHandler('studio', studioHandler)
-		await rootHandler.addHandler('playlist', playlistHandler)
-		await rootHandler.addHandler('rundown', rundownHandler)
-		await rootHandler.addHandler('segment', segmentHandler)
-		await rootHandler.addHandler('part', partHandler)
-		await rootHandler.addHandler('partInstances', partInstancesHandler)
-
-		playlistHandler.playlistsHandler.subscribe(studioHandler)
+		// add observers for collection subscription updates
 		playlistHandler.subscribe(rundownHandler)
 		playlistHandler.subscribe(partHandler)
 		playlistHandler.subscribe(partInstancesHandler)
-		partInstancesHandler.subscribe(playlistHandler)
 		partInstancesHandler.subscribe(rundownHandler)
 		partInstancesHandler.subscribe(segmentHandler)
 		partInstancesHandler.subscribe(partHandler)
+
+		// add observers for websocket topic updates
+		studioHandler.subscribe(studioTopic)
+		playlistHandler.playlistsHandler.subscribe(studioTopic)
+		playlistHandler.subscribe(activePlaylistTopic)
+		partInstancesHandler.subscribe(activePlaylistTopic)
 
 		const wss = new WebSocketServer({ port: 8080 })
 		wss.on('connection', (ws, request) => {
@@ -61,20 +65,20 @@ export class LiveStatusServer {
 
 			ws.on('close', () => {
 				this._logger.info(`Closing websocket`)
-				rootHandler.removeSubscriber(ws)
+				rootChannel.removeSubscriber(ws)
 				this._clients.delete(ws)
 			})
 			this._clients.add(ws)
 
 			if (typeof request.url === 'string' && request.url === '/') {
-				rootHandler.addSubscriber(ws)
+				rootChannel.addSubscriber(ws)
 			} else {
 				this._logger.error(`WebSocket connection request for unsupported path '${request.url}'`)
 			}
 		})
 		wss.on('close', () => {
 			this._logger.info(`WebSocket connection closed`)
-			rootHandler.close()
+			rootChannel.close()
 		})
 		wss.on('error', (err) => this._logger.error(err.message))
 

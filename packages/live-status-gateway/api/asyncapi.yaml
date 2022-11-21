@@ -70,6 +70,10 @@ components:
       name: studio
       description: Studio status
       $ref: './schemas/studio.yaml#/$defs/studio'
+    activePlaylist:
+      name: activePlaylist
+      description: Active Playlist status
+      $ref: './schemas/playlist.yaml#/$defs/activePlaylist'
     playlist:
       name: playlist
       description: Playlist status
