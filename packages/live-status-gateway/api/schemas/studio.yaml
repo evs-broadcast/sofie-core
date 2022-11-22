@@ -5,6 +5,9 @@ $defs:
     payload:
       type: object
       properties:
+        event:
+          type: string
+          const: studio
         id:
           description: Unique id of the studio
           type: string
@@ -15,18 +18,32 @@ $defs:
           description: The playlists that are currently loaded in the studio
           type: array
           items:
-            type: object
-            properties:
-              id:
-                description: Unique id of the playlist
-              name:
-                description: The user defined playlist name
-      required: [id, name, playlists]
+            $ref: '#/$defs/playlist/payload'
+      required: [event, id, name, playlists]
       additionalProperties: false
     examples:
       - payload:
+          event: studio
           id: 'B0avqzSM41UJDpbyf3U28'
           name: 'Studio 0'
           playlists:
-            - id: OKAgZmZ0Buc99lE_2uPPSKVbMrQ_
-              name: Playlist 0
+            $ref: '#/$defs/playlist'
+  playlist:
+    payload:
+      type: object
+      properties:
+        id:
+          description: Unique id of the playlist
+          type: string
+        name:
+          description: The user defined playlist name
+          type: string
+        active:
+          description: Whether this playlist is currently active
+          type: boolean
+      required: [id, name, active]
+      additionalProperties: false
+    examples:
+      id: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_'
+      name: 'Playlist 0'
+      active: true

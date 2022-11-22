@@ -42,7 +42,9 @@ export class PartHandler
 		const prevPlaylist = this._activePlaylist
 		const prevPartInstances = this._partInstances
 		if (Array.isArray(data)) {
-			this._logger.info(`${this._name} received partInstances update with parts ${data.map((pi) => pi.part._id)}`)
+			this._logger.info(
+				`${this._name} received partInstances update with parts [${data.map((pi) => pi.part._id)}]`
+			)
 			this._partInstances = data
 		} else {
 			this._logger.info(`${this._name} received playlist update ${data?._id}`)

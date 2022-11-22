@@ -13,6 +13,7 @@ interface PartStatus {
 }
 
 interface ActivePlaylistStatus {
+	event: string
 	id: string | null
 	name: string
 	rundownIds: string[]
@@ -46,6 +47,7 @@ export class ActivePlaylistTopic
 				ws,
 				this._activePlaylist
 					? literal<ActivePlaylistStatus>({
+							event: 'activePlaylist',
 							id: unprotectString(this._activePlaylist._id),
 							name: this._activePlaylist.name,
 							rundownIds: this._activePlaylist.rundownIdsInOrder.map((r) => unprotectString(r)),
@@ -65,6 +67,7 @@ export class ActivePlaylistTopic
 								: null,
 					  })
 					: literal<ActivePlaylistStatus>({
+							event: 'activePlaylist',
 							id: null,
 							name: 'No Active Playlist',
 							rundownIds: [],
@@ -77,7 +80,9 @@ export class ActivePlaylistTopic
 
 	update(data: DBRundownPlaylist | DBPartInstance[] | undefined): void {
 		if (Array.isArray(data)) {
-			this._logger.info(`${this._name} received partInstances update with parts ${data.map((pi) => pi.part._id)}`)
+			this._logger.info(
+				`${this._name} received partInstances update with parts [${data.map((pi) => pi.part._id)}]`
+			)
 			this._currentPartInstance = data?.filter((pi) => pi._id === this._activePlaylist?.currentPartInstanceId)[0]
 			this._nextPartInstance = data?.filter((pi) => pi._id === this._activePlaylist?.nextPartInstanceId)[0]
 		} else {

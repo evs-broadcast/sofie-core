@@ -13,6 +13,7 @@ interface PlaylistStatus {
 }
 
 interface StudioStatus {
+	event: string
 	id: string | null
 	name: string
 	playlists: PlaylistStatus[]
@@ -41,6 +42,7 @@ export class StudioTopic
 				this.sendMessage(
 					ws,
 					literal<StudioStatus>({
+						event: 'studio',
 						id: unprotectString(this._studio._id),
 						name: this._studio.name,
 						playlists: this._playlists
@@ -58,6 +60,7 @@ export class StudioTopic
 				this.sendMessage(
 					ws,
 					literal<StudioStatus>({
+						event: 'studio',
 						id: null,
 						name: 'No Studio',
 						playlists: [],

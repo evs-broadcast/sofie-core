@@ -37,7 +37,7 @@ export class SegmentHandler
 	}
 
 	update(data: DBPartInstance[] | undefined): void {
-		this._logger.info(`${this._name} received partInstances update with parts ${data?.map((pi) => pi.part._id)}`)
+		this._logger.info(`${this._name} received partInstances update with parts [${data?.map((pi) => pi.part._id)}]`)
 		const prevRundownId = this._curRundownId
 		const prevSegmentId = this._curSegmentId
 		this._curRundownId = data ? unprotectString(data[0].rundownId) : undefined

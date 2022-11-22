@@ -1,0 +1,60 @@
+title: Active Playlist
+description: Active Playlist schema for websocket subscriptions
+$defs:
+  activePlaylist:
+    payload:
+      type: object
+      properties:
+        event:
+          type: string
+          const: activePlaylist
+        id:
+          description: Unique id of the active playlist
+          type: string
+        name:
+          description: User-presentable name for the active playlist
+          type: string
+        rundownIds:
+          description: The set of rundownIds in the active playlist
+          type: array
+          items:
+            type: string
+        currentPart:
+          description: The current Part - if empty, no part in the active playlist is live
+          $ref: '#/$defs/part'
+        nextPart:
+          description: The next Part - if empty, no part will follow live part
+          $ref: '#/$defs/part'
+      required: [event, id, name, rundownIds, currentPart, nextPart]
+      additionalProperties: false
+    examples:
+      - payload:
+          event: activePlaylist
+          id: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_'
+          name: 'Playlist 0'
+          rundownIds: ['y9HauyWkcxQS3XaAOsW40BRLLsI_']
+          currentPart:
+            $ref: '#/$defs/part'
+          nextPart:
+            $ref: '#/$defs/part'
+  part:
+    oneOf:
+      - type: object
+        properties:
+          id:
+            description: Unique id of the part
+            type: string
+          name:
+            description: User name of the part
+            type: string
+          autoNext:
+            description: Should this part progress to the next automatically
+            type: boolean
+            default: false
+        required: [id, name]
+        additionalProperties: false
+      - type: 'null'
+    examples:
+      - id: 'H5CBGYjThrMSmaYvRaa5FVKJIzk_'
+        name: 'Intro'
+        autoNext: false
