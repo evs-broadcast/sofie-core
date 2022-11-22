@@ -35,18 +35,15 @@ export class RundownHandler
 	update(data: DBRundownPlaylist | DBPartInstance[] | undefined): void {
 		const prevPlaylistId = this._curPlaylistId
 		const prevRundownId = this._curRundownId
-		if (!data) {
-			this._logger.info(`${this._name} received update ${data}`)
-			this._curPlaylistId = undefined
-			return
-		}
 
 		if (Array.isArray(data)) {
-			this._logger.info(`${this._name} received partInstances update with parts ${data.map((pi) => pi.part._id)}`)
+			this._logger.info(
+				`${this._name} received partInstances update with parts [${data.map((pi) => pi.part._id)}]`
+			)
 			this._curRundownId = unprotectString(data[0].rundownId)
 		} else {
-			this._logger.info(`${this._name} received playlist update ${data._id}`)
-			this._curPlaylistId = unprotectString(data._id)
+			this._logger.info(`${this._name} received playlist update ${data?._id}`)
+			this._curPlaylistId = unprotectString(data?._id)
 		}
 
 		process.nextTick(async () => {

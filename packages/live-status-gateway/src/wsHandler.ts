@@ -76,7 +76,7 @@ export abstract class CollectionBase<T> {
 
 	subscribe(observer: CollectionObserver<T>): void {
 		this._logger.info(`${observer._observerName}' added observer for '${this._name}'`)
-		observer.update(this._collectionData)
+		if (this._collectionData) observer.update(this._collectionData)
 		this._observers.add(observer)
 	}
 

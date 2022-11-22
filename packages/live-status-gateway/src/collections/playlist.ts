@@ -32,7 +32,6 @@ export class PlaylistHandler extends CollectionBase<DBRundownPlaylist> implement
 	_observerName: string
 	_core: CoreConnection
 	_playlistsHandler: PlaylistsHandler
-	_playlists: DBRundownPlaylist[] = []
 
 	constructor(logger: Logger, coreHandler: CoreHandler) {
 		super('PlaylistHandler', 'rundownPlaylists', logger, coreHandler)
@@ -49,9 +48,9 @@ export class PlaylistHandler extends CollectionBase<DBRundownPlaylist> implement
 		if (this._collection) {
 			const col = this._core.getCollection(this._collection)
 			if (!col) throw new Error(`collection '${this._collection}' not found!`)
-			this._playlists = col.find(undefined) as unknown as DBRundownPlaylist[]
-			this._collectionData = this._playlists.find((p) => p.activationId)
-			this._playlistsHandler.setPlaylists(this._playlists)
+			const playlists = col.find(undefined) as unknown as DBRundownPlaylist[]
+			this._collectionData = playlists.find((p) => p.activationId)
+			this._playlistsHandler.setPlaylists(playlists)
 			this._dbObserver.added = (id: string) => this.changed(id, 'added')
 			this._dbObserver.changed = (id: string) => this.changed(id, 'changed')
 		}
@@ -62,11 +61,9 @@ export class PlaylistHandler extends CollectionBase<DBRundownPlaylist> implement
 		if (!this._collection) return
 		const col = this._core.getCollection(this._collection)
 		if (!col) throw new Error(`collection '${this._collection}' not found!`)
-		if ('added' === changeType) {
-			this._playlists = col.find(undefined) as unknown as DBRundownPlaylist[]
-			this._playlistsHandler.setPlaylists(this._playlists)
-		}
-		this._collectionData = this._playlists.find((p) => p.activationId)
+		const playlists = col.find(undefined) as unknown as DBRundownPlaylist[]
+		this._playlistsHandler.setPlaylists(playlists)
+		this._collectionData = playlists.find((p) => p.activationId)
 		this.notify(this._collectionData)
 	}
 

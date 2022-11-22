@@ -12,7 +12,6 @@ export class PartInstancesHandler
 {
 	_observerName: string
 	_core: CoreConnection
-	_activePlaylist: DBRundownPlaylist | undefined
 
 	constructor(logger: Logger, coreHandler: CoreHandler) {
 		super('PartInstancesHandler', 'partInstances', logger, coreHandler)
@@ -21,13 +20,15 @@ export class PartInstancesHandler
 	}
 
 	update(data: DBRundownPlaylist | undefined): void {
-		this._logger.info(`${this._name} received playlist update ${data}`)
-		this._activePlaylist = data
+		this._logger.info(
+			`${this._name} received playlist update ${data?._id}, active ${data?.activationId ? true : false}`
+		)
+		const activePlaylist = data
 
 		process.nextTick(async () => {
-			if (!(this._collection && this._activePlaylist)) return
-			const rundownIds = this._activePlaylist?.rundownIdsInOrder.map((r) => unprotectString(r))
-			const activationId = unprotectString(this._activePlaylist?.activationId)
+			if (!(this._collection && activePlaylist)) return
+			const rundownIds = activePlaylist?.rundownIdsInOrder.map((r) => unprotectString(r))
+			const activationId = unprotectString(activePlaylist?.activationId)
 			if (!activationId) return
 			if (this._subscriptionId) this._coreHandler.unsubscribe(this._subscriptionId)
 			this._subscriptionId = await this._coreHandler.setupSubscription(this._collection, rundownIds, activationId)
@@ -41,6 +42,7 @@ export class PartInstancesHandler
 
 	// override notify to implement empty array handling
 	notify(data: DBPartInstance[] | undefined): void {
+		this._logger.info(`${this._name} notifying playlist update with ${data?.length} partInstances`)
 		this._observers.forEach((o) => (data ? o.update(data) : []))
 	}
 }

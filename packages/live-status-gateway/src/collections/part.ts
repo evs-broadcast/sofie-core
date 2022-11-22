@@ -41,17 +41,11 @@ export class PartHandler
 	update(data: DBRundownPlaylist | DBPartInstance[] | undefined): void {
 		const prevPlaylist = this._activePlaylist
 		const prevPartInstances = this._partInstances
-		if (!data) {
-			this._logger.info(`${this._name} received update ${data}`)
-			this._activePlaylist = undefined
-			this._partInstances = undefined
-		}
-
 		if (Array.isArray(data)) {
 			this._logger.info(`${this._name} received partInstances update with parts ${data.map((pi) => pi.part._id)}`)
 			this._partInstances = data
-		} else if (data) {
-			this._logger.info(`${this._name} received playlist update ${data._id}`)
+		} else {
+			this._logger.info(`${this._name} received playlist update ${data?._id}`)
 			this._activePlaylist = data
 		}
 
@@ -75,7 +69,7 @@ export class PartHandler
 
 			if (prevPartInstances !== this._partInstances) {
 				this._logger.info(
-					`${this._name} found updated partInstances ${this._activePlaylist?.currentPartInstanceId}`
+					`${this._name} found updated partInstances with current part ${this._activePlaylist?.currentPartInstanceId}`
 				)
 				const col = this._core.getCollection(this._collection)
 				if (!col) throw new Error(`collection '${this._collection}' not found!`)
