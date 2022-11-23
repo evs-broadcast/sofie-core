@@ -374,6 +374,47 @@ resources:
                 properties:
                   message:
                     type: string
+  switchRouteSet:
+    post:
+      operationId: switchRouteSet
+      tags:
+        - userActions
+      summary: Sets the state of a route set.
+      parameters:
+        - name: studioId
+          in: path
+          description: Target studio.
+          required: true
+          schema:
+            type: string
+        - name: routeSetId
+          in: path
+          description: Target route set.
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: Whether route set should be active.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                active:
+                  type: boolean
+      responses:
+        200:
+          $ref: '#/components/responses/postSuccess'
+        412:
+          description: Studio does not exist, or route set does not exist, or route set exists but cannot be deactivated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
 components:
   responses:
     postSuccess:

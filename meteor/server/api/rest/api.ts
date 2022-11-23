@@ -21,6 +21,7 @@ import {
 	PieceId,
 	RundownBaselineAdLibActionId,
 	SegmentId,
+	StudioId,
 } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import { AdLibPieces } from '../../../lib/collections/AdLibPieces'
 import { AdLibActions } from '../../../lib/collections/AdLibActions'
@@ -28,6 +29,8 @@ import { RundownBaselineAdLibPieces } from '../../../lib/collections/RundownBase
 import { RundownBaselineAdLibActions } from '../../../lib/collections/RundownBaselineAdLibActions'
 import { BucketAdLibs } from '../../../lib/collections/BucketAdlibs'
 import { UserError, UserErrorMessage } from '@sofie-automation/corelib/dist/error'
+import { StudioContentWriteAccess } from '../../security/studio'
+import { ServerPlayoutAPI } from '../playout/playout'
 
 const REST_API_USER_EVENT = 'rest_api'
 
@@ -302,6 +305,23 @@ class ServerRestAPI extends MethodContextAPI implements ReplaceOptionalWithNullI
 			}
 		)
 	}
+	async switchRouteSet(studioId: StudioId, routeSetId: string, state: boolean) {
+		return ServerClientAPI.runUserActionInLog(
+			this,
+			REST_API_USER_EVENT,
+			getCurrentTime(),
+			'switchRouteSet',
+			[studioId, routeSetId, state],
+			async () => {
+				check(studioId, String)
+				check(routeSetId, String)
+				check(state, Boolean)
+
+				const access = await StudioContentWriteAccess.routeSet(this, studioId)
+				return ServerPlayoutAPI.switchRouteSet(access, routeSetId, state)
+			}
+		)
+	}
 }
 registerClassToMeteorMethods(RestAPIMethods, ServerRestAPI, false)
 
@@ -521,6 +541,28 @@ koaRouter.post('/take/:rundownPlaylistId', async (ctx, next) => {
 	} catch (e) {
 		const errMsg = UserError.isUserError(e) ? e.message.key : (e as Error).message
 		logger.error('POST take failed - ' + errMsg)
+		ctx.type = 'application/json'
+		ctx.body = JSON.stringify({ message: errMsg })
+		ctx.status = 412
+	}
+	await next()
+})
+
+koaRouter.post('/switchRouteSet/:studioId/:routeSetId', async (ctx, next) => {
+	const studioId = protectString<StudioId>(ctx.params.studioId)
+	const routeSetId = ctx.params.routeSetId
+	const active = (ctx.req.body as { active: boolean }).active
+	check(studioId, String)
+	check(routeSetId, String)
+	check(active, Boolean)
+	logger.info(`koa POST: switchRouteSet ${studioId} ${routeSetId} ${active}`)
+
+	try {
+		ctx.body = ClientAPI.responseSuccess(await MeteorCall.rest.switchRouteSet(studioId, routeSetId, active))
+		ctx.status = 200
+	} catch (e) {
+		const errMsg = UserError.isUserError(e) ? e.message.key : (e as Error).message
+		logger.error('POST switchRouteSet failed - ' + errMsg)
 		ctx.type = 'application/json'
 		ctx.body = JSON.stringify({ message: errMsg })
 		ctx.status = 412
