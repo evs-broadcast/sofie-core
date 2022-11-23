@@ -69,8 +69,10 @@ components:
     studio:
       name: studio
       description: Studio status
-      $ref: './schemas/studio.yaml#/$defs/studio'
+      payload:
+        $ref: './schemas/studio.yaml#/$defs/studio'
     activePlaylist:
       name: activePlaylist
       description: Active Playlist status
-      $ref: './schemas/activePlaylist.yaml#/$defs/activePlaylist'
+      payload:
+        $ref: './schemas/activePlaylist.yaml#/$defs/activePlaylist'

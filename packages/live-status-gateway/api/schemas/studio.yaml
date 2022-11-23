@@ -2,48 +2,46 @@ title: Studio
 description: Studio schema for websocket subscriptions
 $defs:
   studio:
-    payload:
-      type: object
-      properties:
-        event:
-          type: string
-          const: studio
-        id:
-          description: Unique id of the studio
-          type: string
-        name:
-          description: User-presentable name for the studio installation
-          type: string
-        playlists:
-          description: The playlists that are currently loaded in the studio
-          type: array
-          items:
-            $ref: '#/$defs/playlist/payload'
-      required: [event, id, name, playlists]
-      additionalProperties: false
+    type: object
+    properties:
+      event:
+        type: string
+        const: studio
+      id:
+        description: Unique id of the studio
+        type: string
+      name:
+        description: User-presentable name for the studio installation
+        type: string
+      playlists:
+        description: The playlists that are currently loaded in the studio
+        type: array
+        items:
+          $ref: '#/$defs/playlist'
+    required: [event, id, name, playlists]
+    additionalProperties: false
     examples:
       - payload:
           event: studio
           id: 'B0avqzSM41UJDpbyf3U28'
           name: 'Studio 0'
           playlists:
-            $ref: '#/$defs/playlist'
+            $ref: '#/$defs/playlist/examples'
   playlist:
-    payload:
-      type: object
-      properties:
-        id:
-          description: Unique id of the playlist
-          type: string
-        name:
-          description: The user defined playlist name
-          type: string
-        active:
-          description: Whether this playlist is currently active
-          type: boolean
-      required: [id, name, active]
-      additionalProperties: false
+    type: object
+    properties:
+      id:
+        description: Unique id of the playlist
+        type: string
+      name:
+        description: The user defined playlist name
+        type: string
+      active:
+        description: Whether this playlist is currently active
+        type: boolean
+    required: [id, name, active]
+    additionalProperties: false
     examples:
-      id: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_'
-      name: 'Playlist 0'
-      active: true
+      - id: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_'
+        name: 'Playlist 0'
+        active: true
