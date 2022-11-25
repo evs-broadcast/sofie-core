@@ -6,7 +6,7 @@ import { RundownBaselineAdLibActionId } from '../collections/RundownBaselineAdLi
 import { PartId } from '../collections/Parts'
 import { SegmentId } from '../collections/Segments'
 import { PieceId } from '../collections/Pieces'
-import { BucketAdLibId } from '@sofie-automation/corelib/dist/dataModel/Ids'
+import { BucketAdLibId, StudioId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 
 export interface RestAPI extends MethodContext {
 	/**
@@ -122,6 +122,17 @@ export interface RestAPI extends MethodContext {
 	 * @param rundownPlaylistId Target Playlist.
 	 */
 	take(rundownPlaylistId: RundownPlaylistId): Promise<ClientAPI.ClientResponse<void>>
+	/**
+	 * Sets a route set to the described state
+	 *
+	 * Throws if specified studioId does not exist
+	 * Throws if specified route set does not exist
+	 * Throws if `state` is `false` and the specified route set cannot be deactivated.
+	 * @param studioId Studio to target
+	 * @param routeSetId Route set within studio
+	 * @param state Whether state should be set to active (true) or inactive (false)
+	 */
+	switchRouteSet(studioId: StudioId, routeSetId: string, state: boolean): Promise<ClientAPI.ClientResponse<void>>
 }
 
 export enum RestAPIMethods {
@@ -137,4 +148,5 @@ export enum RestAPIMethods {
 	'setNextPart' = 'restAPI.setNextPart',
 	'setNextSegment' = 'restAPI.setNextSegment',
 	'take' = 'restAPI.take',
+	'switchRouteSet' = 'restAPI.switchRouteSet',
 }
