@@ -6,11 +6,12 @@ import { DBRundownPlaylist } from '@sofie-automation/corelib/dist/dataModel/Rund
 import { literal } from '@sofie-automation/shared-lib/dist/lib/lib'
 import { WsTopicBase, WsTopic, CollectionObserver } from '../wsHandler'
 
+type PlaylistActivationStatus = 'deactivated' | 'rehearsal' | 'activated'
+
 interface PlaylistStatus {
 	id: string
 	name: string
-	active: boolean
-	rehearsal: boolean
+	activationStatus: PlaylistActivationStatus
 }
 
 interface StudioStatus {
@@ -47,14 +48,16 @@ export class StudioTopic
 						id: unprotectString(this._studio._id),
 						name: this._studio.name,
 						playlists: this._playlists
-							? this._playlists.map((p) =>
-									literal<PlaylistStatus>({
+							? this._playlists.map((p) => {
+									let activationStatus: PlaylistActivationStatus =
+										p.activationId === undefined ? 'deactivated' : 'activated'
+									if (p.activationId && p.rehearsal) activationStatus = 'rehearsal'
+									return literal<PlaylistStatus>({
 										id: unprotectString(p._id),
 										name: p.name,
-										active: p.activationId ? true : false,
-										rehearsal: p.activationId && p.rehearsal !== undefined ? p.rehearsal : false,
+										activationStatus: activationStatus,
 									})
-							  )
+							  })
 							: [],
 					})
 				)

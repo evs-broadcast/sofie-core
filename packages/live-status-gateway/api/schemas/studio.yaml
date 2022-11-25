@@ -35,16 +35,16 @@ $defs:
       name:
         description: The user defined playlist name
         type: string
-      active:
-        description: Whether this playlist is currently active
-        type: boolean
-      rehearsal:
-        description: Whether this playlist is active in rehearsal mode
-        type: boolean
-    required: [id, name, active, rehearsal]
+      activationStatus:
+        description: Whether this playlist is currently active or in rehearsal
+        type: string
+        enum:
+          - deactivated
+          - rehearsal
+          - activated
+    required: [id, name, activationStatus]
     additionalProperties: false
     examples:
       - id: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_'
         name: 'Playlist 0'
-        active: true
-        rehearsal: false
+        activationStatus: rehearsal
