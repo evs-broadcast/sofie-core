@@ -30,6 +30,7 @@ export class RundownHandler
 		const col = this._core.getCollection(this._collection)
 		if (!col) throw new Error(`collection '${this._collection}' not found!`)
 		if (this._collectionData) this._collectionData = col.findOne(this._collectionData._id) as unknown as DBRundown
+		this.notify(this._collectionData)
 	}
 
 	update(data: DBRundownPlaylist | DBPartInstance[] | undefined): void {
@@ -71,6 +72,7 @@ export class RundownHandler
 					if (!rundown) throw new Error(`rundown '${this._curRundownId}' not found!`)
 					this._collectionData = rundown as unknown as DBRundown
 				} else this._collectionData = undefined
+				this.notify(this._collectionData)
 			}
 		})
 	}

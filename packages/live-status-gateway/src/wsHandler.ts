@@ -16,13 +16,12 @@ export abstract class WsTopicBase {
 	}
 
 	addSubscriber(ws: WebSocket): void {
-		this._logger.info(`${this._name} adding a subscription`)
-		ws.on('message', (data) => this.processMessage(ws, data))
+		this._logger.info(`${this._name} adding a websocket subscriber`)
 		this._subscribers.add(ws)
 	}
 
 	removeSubscriber(ws: WebSocket): void {
-		if (this._subscribers.delete(ws)) this._logger.info(`${this._name} removing a subscription`)
+		if (this._subscribers.delete(ws)) this._logger.info(`${this._name} removing a websocket subscriber`)
 	}
 
 	processMessage(_ws: WebSocket, msg: object): void {

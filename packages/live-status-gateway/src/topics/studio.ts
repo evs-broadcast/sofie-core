@@ -10,6 +10,7 @@ interface PlaylistStatus {
 	id: string
 	name: string
 	active: boolean
+	rehearsal: boolean
 }
 
 interface StudioStatus {
@@ -51,6 +52,7 @@ export class StudioTopic
 										id: unprotectString(p._id),
 										name: p.name,
 										active: p.activationId ? true : false,
+										rehearsal: p.activationId && p.rehearsal !== undefined ? p.rehearsal : false,
 									})
 							  )
 							: [],

@@ -2,7 +2,11 @@ import { Logger } from 'winston'
 import { WebSocket } from 'ws'
 import { unprotectString } from '@sofie-automation/shared-lib/dist/lib/protectedString'
 import { DBRundownPlaylist } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
+import { DBShowStyleBase } from '@sofie-automation/corelib/dist/dataModel/ShowStyleBase'
 import { DBPartInstance } from '@sofie-automation/corelib/dist/dataModel/PartInstance'
+import { AdLibAction } from '@sofie-automation/corelib/dist/dataModel/AdlibAction'
+import { RundownBaselineAdLibAction } from '@sofie-automation/corelib/dist/dataModel/RundownBaselineAdLibAction'
+import { IBlueprintActionManifestDisplayContent } from '@sofie-automation/blueprints-integration'
 import { literal } from '@sofie-automation/shared-lib/dist/lib/lib'
 import { WsTopicBase, WsTopic, CollectionObserver } from '../wsHandler'
 
@@ -12,6 +16,12 @@ interface PartStatus {
 	autoNext?: boolean
 }
 
+interface AdLibActionStatus {
+	id: string
+	name: string
+	sourceLayer: string
+}
+
 interface ActivePlaylistStatus {
 	event: string
 	id: string | null
@@ -19,16 +29,26 @@ interface ActivePlaylistStatus {
 	rundownIds: string[]
 	currentPart: PartStatus | null
 	nextPart: PartStatus | null
+	adlibActions: AdLibActionStatus[]
+	globalAdlibActions: AdLibActionStatus[]
 }
 
 export class ActivePlaylistTopic
 	extends WsTopicBase
-	implements WsTopic, CollectionObserver<DBRundownPlaylist>, CollectionObserver<DBPartInstance[]>
+	implements
+		WsTopic,
+		CollectionObserver<DBRundownPlaylist>,
+		CollectionObserver<DBPartInstance[]>,
+		CollectionObserver<AdLibAction[]>,
+		CollectionObserver<RundownBaselineAdLibAction[]>
 {
 	_observerName = 'ActivePlaylistTopic'
+	_sourceLayersMap: Map<string, string> = new Map()
 	_activePlaylist: DBRundownPlaylist | undefined
 	_currentPartInstance: DBPartInstance | undefined
 	_nextPartInstance: DBPartInstance | undefined
+	_adLibActions: AdLibAction[] | undefined
+	_globalAdLibActions: RundownBaselineAdLibAction[] | undefined
 
 	constructor(logger: Logger) {
 		super('ActivePlaylistTopic', logger)
@@ -65,6 +85,30 @@ export class ActivePlaylistTopic
 										autoNext: nextPart.autoNext,
 								  })
 								: null,
+							adlibActions: this._adLibActions
+								? this._adLibActions.map((action) => {
+										const sourceLayerName = this._sourceLayersMap.get(
+											(action.display as IBlueprintActionManifestDisplayContent).sourceLayerId
+										)
+										return literal<AdLibActionStatus>({
+											id: unprotectString(action._id),
+											name: action.display.label.key,
+											sourceLayer: sourceLayerName ? sourceLayerName : 'invalid',
+										})
+								  })
+								: [],
+							globalAdlibActions: this._globalAdLibActions
+								? this._globalAdLibActions.map((action) => {
+										const sourceLayerName = this._sourceLayersMap.get(
+											(action.display as IBlueprintActionManifestDisplayContent).sourceLayerId
+										)
+										return literal<AdLibActionStatus>({
+											id: unprotectString(action._id),
+											name: action.display.label.key,
+											sourceLayer: sourceLayerName ? sourceLayerName : 'invalid',
+										})
+								  })
+								: [],
 					  })
 					: literal<ActivePlaylistStatus>({
 							event: 'activePlaylist',
@@ -73,22 +117,59 @@ export class ActivePlaylistTopic
 							rundownIds: [],
 							currentPart: null,
 							nextPart: null,
+							adlibActions: [],
+							globalAdlibActions: [],
 					  })
 			)
 		})
 	}
 
-	update(data: DBRundownPlaylist | DBPartInstance[] | undefined): void {
+	update(
+		data:
+			| DBRundownPlaylist
+			| DBShowStyleBase
+			| DBPartInstance[]
+			| AdLibAction[]
+			| RundownBaselineAdLibAction[]
+			| undefined
+	): void {
 		if (Array.isArray(data)) {
+			if (data.length && (data as DBPartInstance[])[0].part !== undefined) {
+				const partInstances = data as DBPartInstance[]
+				this._logger.info(
+					`${this._name} received partInstances update with parts [${partInstances.map((pi) => pi.part._id)}]`
+				)
+				this._currentPartInstance = partInstances.find(
+					(pi) => pi._id === this._activePlaylist?.currentPartInstanceId
+				)
+				this._nextPartInstance = partInstances.find((pi) => pi._id === this._activePlaylist?.nextPartInstanceId)
+			} else if (data.length && (data as AdLibAction[])[0].partId !== undefined) {
+				this._adLibActions = data as AdLibAction[]
+				this._logger.info(`${this._name} received adLibActions update`)
+			} else if (data.length) {
+				this._globalAdLibActions = data as RundownBaselineAdLibAction[]
+				this._logger.info(`${this._name} received adLibActions update`)
+			} else {
+				this._logger.error(`${this._name} received unrecognised array update - resetting`)
+				this._currentPartInstance = undefined
+				this._nextPartInstance = undefined
+				this._adLibActions = undefined
+				this._globalAdLibActions = undefined
+			}
+		} else if (data && (data as DBShowStyleBase).sourceLayers !== undefined) {
+			const sourceLayers = (data as DBShowStyleBase).sourceLayers
 			this._logger.info(
-				`${this._name} received partInstances update with parts [${data.map((pi) => pi.part._id)}]`
+				`${this._name} received showStyleBase update with sourceLayers [${sourceLayers.map((s) => s.name)}]`
 			)
-			this._currentPartInstance = data?.filter((pi) => pi._id === this._activePlaylist?.currentPartInstanceId)[0]
-			this._nextPartInstance = data?.filter((pi) => pi._id === this._activePlaylist?.nextPartInstanceId)[0]
+			this._sourceLayersMap.clear()
+			sourceLayers.forEach((s) => this._sourceLayersMap.set(s._id, s.name))
 		} else {
-			this._logger.info(`${this._name} received playlist update ${data?._id}, activationId ${data?.activationId}`)
-			const activationId = unprotectString(data?.activationId)
-			this._activePlaylist = activationId ? data : undefined
+			const rundownPlaylist = data ? (data as DBRundownPlaylist) : undefined
+			this._logger.info(
+				`${this._name} received playlist update ${rundownPlaylist?._id}, activationId ${rundownPlaylist?.activationId}`
+			)
+			const activationId = unprotectString(rundownPlaylist?.activationId)
+			this._activePlaylist = activationId ? rundownPlaylist : undefined
 		}
 		process.nextTick(() => this.sendStatus(this._subscribers))
 	}

@@ -21,12 +21,11 @@ $defs:
     required: [event, id, name, playlists]
     additionalProperties: false
     examples:
-      - payload:
-          event: studio
-          id: 'B0avqzSM41UJDpbyf3U28'
-          name: 'Studio 0'
-          playlists:
-            $ref: '#/$defs/playlist/examples'
+      - event: studio
+        id: 'B0avqzSM41UJDpbyf3U28'
+        name: 'Studio 0'
+        playlists:
+          $ref: '#/$defs/playlist/examples'
   playlist:
     type: object
     properties:
@@ -39,9 +38,13 @@ $defs:
       active:
         description: Whether this playlist is currently active
         type: boolean
-    required: [id, name, active]
+      rehearsal:
+        description: Whether this playlist is active in rehearsal mode
+        type: boolean
+    required: [id, name, active, rehearsal]
     additionalProperties: false
     examples:
       - id: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_'
         name: 'Playlist 0'
         active: true
+        rehearsal: false

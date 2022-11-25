@@ -35,14 +35,17 @@ export class PartInstancesHandler
 			this._dbObserver = this._coreHandler.setupObserver(this._collection)
 			const col = this._core.getCollection(this._collection)
 			if (!col) throw new Error(`collection '${this._collection}' not found!`)
-			this._collectionData = col.find(undefined) as unknown as DBPartInstance[]
+			const partInstances = col.find(undefined) as unknown as DBPartInstance[]
+			this._collectionData = partInstances.filter(
+				(p) => p._id === activePlaylist.currentPartInstanceId || p._id === activePlaylist.nextPartInstanceId
+			)
 			this.notify(this._collectionData)
 		})
 	}
 
 	// override notify to implement empty array handling
 	notify(data: DBPartInstance[] | undefined): void {
-		this._logger.info(`${this._name} notifying playlist update with ${data?.length} partInstances`)
+		this._logger.info(`${this._name} notifying update with ${data?.length} partInstances`)
 		this._observers.forEach((o) => (data ? o.update(data) : []))
 	}
 }
