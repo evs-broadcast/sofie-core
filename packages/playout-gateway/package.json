@@ -1,6 +1,6 @@
 {
 	"name": "playout-gateway",
-	"version": "1.45.11",
+	"version": "1.45.12",
 	"private": true,
 	"description": "Connect to Core, play stuff",
 	"license": "MIT",
@@ -62,7 +62,7 @@
 		"debug": "^4.3.2",
 		"fast-clone": "^1.5.13",
 		"influx": "^5.9.2",
-		"timeline-state-resolver": "npm:@evs/timeline-state-resolver@7.4.10-CER-2127-keyers.168",
+		"timeline-state-resolver": "npm:@evs/timeline-state-resolver@7.4.11",
 		"tslib": "^2.4.0",
 		"underscore": "^1.13.4",
 		"winston": "^3.8.1"
