@@ -16,10 +16,16 @@ interface PartStatus {
 	autoNext?: boolean
 }
 
+interface AdLibActionType {
+	name: string
+	label: string
+}
+
 interface AdLibActionStatus {
 	id: string
 	name: string
 	sourceLayer: string
+	actionType: AdLibActionType[]
 }
 
 interface ActivePlaylistStatus {
@@ -90,10 +96,19 @@ export class ActivePlaylistTopic
 										const sourceLayerName = this._sourceLayersMap.get(
 											(action.display as IBlueprintActionManifestDisplayContent).sourceLayerId
 										)
+										const triggerModes = action.triggerModes
+											? action.triggerModes.map((t) =>
+													literal<AdLibActionType>({
+														name: t.data,
+														label: t.display.label.key,
+													})
+											  )
+											: []
 										return literal<AdLibActionStatus>({
 											id: unprotectString(action._id),
 											name: action.display.label.key,
 											sourceLayer: sourceLayerName ? sourceLayerName : 'invalid',
+											actionType: triggerModes,
 										})
 								  })
 								: [],
@@ -102,10 +117,19 @@ export class ActivePlaylistTopic
 										const sourceLayerName = this._sourceLayersMap.get(
 											(action.display as IBlueprintActionManifestDisplayContent).sourceLayerId
 										)
+										const triggerModes = action.triggerModes
+											? action.triggerModes.map((t) =>
+													literal<AdLibActionType>({
+														name: t.data,
+														label: t.display.label.key,
+													})
+											  )
+											: []
 										return literal<AdLibActionStatus>({
 											id: unprotectString(action._id),
 											name: action.display.label.key,
 											sourceLayer: sourceLayerName ? sourceLayerName : 'invalid',
+											actionType: triggerModes,
 										})
 								  })
 								: [],

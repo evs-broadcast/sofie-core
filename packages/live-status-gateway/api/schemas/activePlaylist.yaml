@@ -82,9 +82,26 @@ $defs:
       sourceLayer:
         description: The source layer name for this AdLibAction
         type: string
-    required: [id, name, sourceLayer]
+      actionType:
+        description: The available action type names that can be used to modify the execution of the AdLibAction
+        type: array
+        items:
+          type: object
+          properties:
+            name:
+              description: The string to be passed to the ExecuteAdlib function
+              type: string
+            label:
+              description: The label for the AdLibAction type
+              type: string
+          required: [name, label]
+          additionalProperties: false
+    required: [id, name, sourceLayer, actionType]
     additionalProperties: false
     examples:
       - id: 'C6K_yIMuGFUk8X_L9A9_jRT6aq4_'
         name: Music video clip
         sourceLayer: Video Clip
+        actionType:
+          - name: pvw
+            label: Preview
