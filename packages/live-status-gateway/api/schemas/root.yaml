@@ -1,0 +1,107 @@
+title: Root
+description: Root schemas for websocket subscriptions
+$defs:
+  reqid:
+    type: integer
+    description: Client originated ID reflected in response message.
+  ping:
+    type: object
+    properties:
+      event:
+        type: string
+        const: ping
+      reqid:
+        $ref: '#/$defs/reqid'
+    required: [event, reqid]
+    additionalProperties: false
+  pong:
+    type: object
+    properties:
+      event:
+        type: string
+        const: pong
+      reqid:
+        $ref: '#/$defs/reqid'
+    required: [event, reqid]
+    additionalProperties: false
+  heartbeat:
+    type: object
+    properties:
+      event:
+        type: string
+        const: heartbeat
+    required: [event]
+    additionalProperties: false
+  subscribe:
+    type: object
+    properties:
+      event:
+        type: string
+        const: subscribe
+      reqid:
+        $ref: '#/$defs/reqid'
+      subscription:
+        type: object
+        properties:
+          name:
+            $ref: '#/$defs/name'
+        required: [name]
+        additionalProperties: false
+    required: [event, reqid, subscription]
+    additionalProperties: false
+  unsubscribe:
+    type: object
+    properties:
+      event:
+        type: string
+        const: unsubscribe
+      reqid:
+        $ref: '#/$defs/reqid'
+      subscription:
+        type: object
+        properties:
+          name:
+            $ref: '#/$defs/name'
+        required: [name]
+        additionalProperties: false
+    required: [event, reqid, subscription]
+    additionalProperties: false
+  subscriptionStatus:
+    type: object
+    oneOf:
+      - $ref: '#/$defs/subscriptionStatusError'
+      - $ref: '#/$defs/subscriptionStatusSuccess'
+    additionalProperties: false
+  subscriptionStatusError:
+    allOf:
+      - properties:
+          errorMessage:
+            type: string
+        required: [errorMessage]
+        additionalProperties: false
+      - $ref: '#/$defs/subscriptionStatusCommon'
+  subscriptionStatusSuccess:
+    $ref: '#/$defs/subscriptionStatusCommon'
+  subscriptionStatusCommon:
+    type: object
+    properties:
+      event:
+        type: string
+        const: subscriptionStatus
+      reqid:
+        $ref: '#/$defs/reqid'
+      subscription:
+        type: object
+        properties:
+          name:
+            $ref: '#/$defs/name'
+        required: [name]
+        additionalProperties: false
+    required: [event, reqid, subscription]
+    additionalProperties: false
+  name:
+    type: string
+    description: The name of the channel you wish to subscribe to.
+    enum:
+      - studio
+      - activePlaylist

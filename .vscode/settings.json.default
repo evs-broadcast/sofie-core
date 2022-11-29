@@ -8,7 +8,8 @@
         "packages/corelib",
         "packages/shared-lib",
         "packages/job-worker",
-        "packages/openapi"
+        "packages/openapi",
+        "packages/live-status-gateway"
     ],
     "prettier.enable": true,
     "sonarlint.connectedMode.project": { "projectKey": "nrkno_sofie-core" },

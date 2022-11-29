@@ -174,7 +174,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gateway-name: [playout-gateway, mos-gateway]
+        gateway-name: [playout-gateway, mos-gateway, 'live-status-gateway']
 
     steps:
       - uses: actions/checkout@v2
@@ -262,6 +262,7 @@ jobs:
           - corelib
           - shared-lib
           - job-worker
+          - live-status-gateway
 
     steps:
       - uses: actions/checkout@v2
