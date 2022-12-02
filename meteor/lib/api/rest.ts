@@ -52,10 +52,12 @@ export interface RestAPI extends MethodContext {
 	 * Returns a `ClientResponseError` if an adLib for the provided `adLibId` cannot be found.
 	 * @param rundownPlaylistId Playlist to execute adLib in.
 	 * @param adLibId AdLib to execute.
+	 * @param triggerMode A string to specify a particular variation for the AdLibAction, valid actionType strings are to be read from the status API.
 	 */
 	executeAdLib(
 		rundownPlaylistId: RundownPlaylistId,
-		adLibId: AdLibActionId | RundownBaselineAdLibActionId | PieceId | BucketAdLibId
+		adLibId: AdLibActionId | RundownBaselineAdLibActionId | PieceId | BucketAdLibId,
+		triggerMode?: string
 	): Promise<ClientAPI.ClientResponse<object>>
 	/**
 	 * Moves the next point by `delta` places. Negative values are allowed to move "backwards" in the script.

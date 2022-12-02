@@ -16,25 +16,25 @@ paths:
   # user actions
   /:
     $ref: 'definitions/userActions.yaml#/resources/index'
-  /activate/{rundownPlaylistId}:
+  /activate/{playlistId}:
     $ref: 'definitions/userActions.yaml#/resources/activate'
-  /deactivate/{rundownPlaylistId}:
+  /deactivate/{playlistId}:
     $ref: 'definitions/userActions.yaml#/resources/deactivate'
-  /executeAction/{rundownPlaylistId}/{actionId}:
+  /executeAction/{playlistId}/{actionId}:
     $ref: 'definitions/userActions.yaml#/resources/executeAction'
-  /executeAdLib/{rundownPlaylistId}/{adLibId}:
+  /executeAdLib/{playlistId}/{adLibId}:
     $ref: 'definitions/userActions.yaml#/resources/executeAdLib'
-  /moveNextPart/{rundownPlaylistId}/{delta}:
+  /moveNextPart/{playlistId}/{delta}:
     $ref: 'definitions/userActions.yaml#/resources/moveNextPart'
-  /moveNextSegment/{rundownPlaylistId}/{delta}:
+  /moveNextSegment/{playlistId}/{delta}:
     $ref: 'definitions/userActions.yaml#/resources/moveNextSegment'
-  /reloadPlaylist/{rundownPlaylistId}:
+  /reloadPlaylist/{playlistId}:
     $ref: 'definitions/userActions.yaml#/resources/reloadPlaylist'
-  /resetPlaylist/{rundownPlaylistId}:
+  /resetPlaylist/{playlistId}:
     $ref: 'definitions/userActions.yaml#/resources/resetPlaylist'
-  /setNextPart/{rundownPlaylistId}/{partId}:
+  /setNextPart/{playlistId}/{partId}:
     $ref: 'definitions/userActions.yaml#/resources/setNextPart'
-  /setNextSegment/{rundownPlaylistId}/{segmentId}:
+  /setNextSegment/{playlistId}/{segmentId}:
     $ref: 'definitions/userActions.yaml#/resources/setNextSegment'
-  /take/{rundownPlaylistId}:
+  /take/{playlistId}:
     $ref: 'definitions/userActions.yaml#/resources/take'

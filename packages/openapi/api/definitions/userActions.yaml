@@ -31,7 +31,7 @@ resources:
         - userActions
       summary: Activates a Playlist.
       parameters:
-        - name: rundownPlaylistId
+        - name: playlistId
           in: path
           description: Playlist to activate.
           required: true
@@ -66,7 +66,7 @@ resources:
         - userActions
       summary: Deactivates a Playlist.
       parameters:
-        - name: rundownPlaylistId
+        - name: playlistId
           in: path
           description: Playlist to deactivate.
           required: true
@@ -91,7 +91,7 @@ resources:
         - userActions
       summary: Executes the requested action by passing `actionId` directly to the blueprints `executeAction` function.
       parameters:
-        - name: rundownPlaylistId
+        - name: playlistId
           in: path
           description: Playlist to execute action in.
           required: true
@@ -129,7 +129,7 @@ resources:
         - userActions
       summary: Executes the requested AdLib/AdLib Action. This is a "planned" AdLib (Action) that has been produced by the blueprints during the ingest process.
       parameters:
-        - name: rundownPlaylistId
+        - name: playlistId
           in: path
           description: Playlist to execute adLib in.
           required: true
@@ -141,6 +141,18 @@ resources:
           required: true
           schema:
             type: string
+      requestBody:
+        description: An object containing an actionType string to specify a particular variation for the AdLibAction, valid strings are to be read from the status API
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                actionType:
+                  type: string
+              example:
+                actionType: pvw
       responses:
         200:
           $ref: '#/components/responses/postSuccess'
@@ -160,7 +172,7 @@ resources:
         - userActions
       summary: Moves the next point by `delta` places. Negative values are allowed to move "backwards" in the script.
       parameters:
-        - name: rundownPlaylistId
+        - name: playlistId
           in: path
           description: Playlist to target.
           required: true
@@ -202,7 +214,7 @@ resources:
         - userActions
       summary: Moves the next Segment point by `delta` places. Negative values are allowed to move "backwards" in the script.
       parameters:
-        - name: rundownPlaylistId
+        - name: playlistId
           in: path
           description: Playlist to target.
           required: true
@@ -244,7 +256,7 @@ resources:
         - userActions
       summary: Reloads a Playlist from its ingest source (e.g. MOS/Spreadsheet etc.)
       parameters:
-        - name: rundownPlaylistId
+        - name: playlistId
           in: path
           description: Playlist to reload.
           required: true
@@ -269,7 +281,7 @@ resources:
         - userActions
       summary: Resets a Playlist back to its pre-played state.
       parameters:
-        - name: rundownPlaylistId
+        - name: playlistId
           in: path
           description: Playlist to reset.
           required: true
@@ -294,9 +306,9 @@ resources:
         - userActions
       summary: Sets the next Part to a given PartId.
       parameters:
-        - name: rundownPlaylistId
+        - name: playlistId
           in: path
-          description: Target rundown playlist.
+          description: Target playlist.
           required: true
           schema:
             type: string
@@ -325,9 +337,9 @@ resources:
         - userActions
       summary: Sets the next Segment to a given SegmentId.
       parameters:
-        - name: rundownPlaylistId
+        - name: playlistId
           in: path
-          description: Target rundown playlist.
+          description: Target playlist.
           required: true
           schema:
             type: string
@@ -356,7 +368,7 @@ resources:
         - userActions
       summary: Performs a take in the given Playlist.
       parameters:
-        - name: rundownPlaylistId
+        - name: playlistId
           in: path
           description: Target playlist.
           required: true
