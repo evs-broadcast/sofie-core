@@ -716,6 +716,14 @@ const MAPPING_MANIFEST: ImplementedMappingsManifest = {
 			hint: 'Address on the Device Service',
 		},
 		{
+			id: 'defaultSource',
+			type: ConfigManifestEntryType.STRING,
+			name: 'Default Source',
+			includeInSummary: false,
+			optional: true,
+			hint: 'Default Source (only affects Switchers)',
+		},
+		{
 			id: 'enabled',
 			type: ConfigManifestEntryType.BOOLEAN,
 			name: 'Enabled',
