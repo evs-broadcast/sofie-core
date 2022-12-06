@@ -20,6 +20,10 @@ export abstract class WsTopicBase {
 		this._subscribers.add(ws)
 	}
 
+	hasSubscriber(ws: WebSocket): boolean {
+		return this._subscribers.has(ws)
+	}
+
 	removeSubscriber(ws: WebSocket): void {
 		if (this._subscribers.delete(ws)) this._logger.info(`${this._name} removing a websocket subscriber`)
 	}
@@ -37,6 +41,7 @@ export abstract class WsTopicBase {
 
 export interface WsTopic {
 	addSubscriber(ws: WebSocket): void
+	hasSubscriber(ws: WebSocket): boolean
 	removeSubscriber(ws: WebSocket): void
 	processMessage(ws: WebSocket, msg: object): void
 	sendMessage(ws: WebSocket, msg: object): void

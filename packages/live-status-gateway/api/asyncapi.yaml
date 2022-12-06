@@ -31,6 +31,9 @@ channels:
         oneOf:
           - $ref: '#/components/messages/pong'
           - $ref: '#/components/messages/heartbeat'
+          - $ref: '#/components/messages/subscriptionStatus'
+          - $ref: '#/components/messages/studio'
+          - $ref: '#/components/messages/activePlaylist'
 components:
   messages:
     ping:
@@ -65,6 +68,10 @@ components:
       payload:
         $ref: './schemas/root.yaml#/$defs/unsubscribe'
       x-response:
+        $ref: './schemas/root.yaml#/$defs/subscriptionStatus'
+    subscriptionStatus:
+      description: Subscription status response to subscribe or unsubscribe
+      payload:
         $ref: './schemas/root.yaml#/$defs/subscriptionStatus'
     studio:
       name: studio
