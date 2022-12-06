@@ -12,6 +12,7 @@ import { registerClassToMeteorMethods, ReplaceOptionalWithNullInMethodArguments 
 import { RundownPlaylists, RundownPlaylistId } from '../../../lib/collections/RundownPlaylists'
 import { MeteorCall, MethodContextAPI } from '../../../lib/api/methods'
 import { ServerClientAPI } from '../client'
+import { ServerRundownAPI } from '../rundown'
 import { triggerWriteAccess } from '../../security/lib/securityVerify'
 import { ExecuteActionResult, StudioJobs } from '@sofie-automation/corelib/dist/worker/studio'
 import { CURRENT_SYSTEM_VERSION } from '../../migration/currentSystemVersion'
@@ -32,6 +33,8 @@ import { BucketAdLibs } from '../../../lib/collections/BucketAdlibs'
 import { UserError, UserErrorMessage } from '@sofie-automation/corelib/dist/error'
 import { StudioContentWriteAccess } from '../../security/studio'
 import { ServerPlayoutAPI } from '../playout/playout'
+import { checkAccessToPlaylist } from '../lib'
+import { TriggerReloadDataResponse } from '../../../lib/api/userActions'
 
 const REST_API_USER_EVENT = 'rest_api'
 
@@ -220,18 +223,28 @@ class ServerRestAPI extends MethodContextAPI implements ReplaceOptionalWithNullI
 			}
 		)
 	}
-	async reloadPlaylist(rundownPlaylistId: RundownPlaylistId): Promise<ClientAPI.ClientResponse<void>> {
-		return ServerClientAPI.runUserActionInLogForPlaylistOnWorker(
+	async reloadPlaylist(rundownPlaylistId: RundownPlaylistId) {
+		return ServerClientAPI.runUserActionInLog(
 			this,
 			REST_API_USER_EVENT,
 			getCurrentTime(),
-			rundownPlaylistId,
-			() => {
+			'reloadPlaylist',
+			[rundownPlaylistId],
+			async () => {
 				check(rundownPlaylistId, String)
-			},
-			StudioJobs.RegeneratePlaylist,
-			{
-				playlistId: rundownPlaylistId,
+				const access = await checkAccessToPlaylist(this, rundownPlaylistId)
+				const reloadResponse = await ServerRundownAPI.resyncRundownPlaylist(access)
+				const success = !reloadResponse.rundownsResponses.reduce((missing, rundownsResponse) => {
+					return missing || rundownsResponse.response === TriggerReloadDataResponse.MISSING
+				}, false)
+				return success
+					? ClientAPI.responseSuccess({})
+					: ClientAPI.responseError(
+							UserError.from(
+								new Error(`Failed to reload playlist ${rundownPlaylistId}`),
+								UserErrorMessage.InternalError
+							)
+					  )
 			}
 		)
 	}
