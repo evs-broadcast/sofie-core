@@ -5,10 +5,11 @@ import { CoreConnection } from '@sofie-automation/server-core-integration'
 import { DBSegment } from '@sofie-automation/corelib/dist/dataModel/Segment'
 import { DBPartInstance } from '@sofie-automation/corelib/dist/dataModel/PartInstance'
 import { unprotectString } from '@sofie-automation/shared-lib/dist/lib/protectedString'
+import { PartInstanceName } from './partInstances'
 
 export class SegmentHandler
 	extends CollectionBase<DBSegment>
-	implements Collection<DBSegment>, CollectionObserver<DBPartInstance[]>
+	implements Collection<DBSegment>, CollectionObserver<Map<PartInstanceName, DBPartInstance | undefined>>
 {
 	_observerName: string
 	_core: CoreConnection
@@ -23,12 +24,6 @@ export class SegmentHandler
 
 	changed(id: string, changeType: string): void {
 		this._logger.info(`${this._name} ${changeType} ${id}`)
-		if (id !== unprotectString(this._collectionData?._id))
-			throw new Error(
-				`${this._name} received change with unexpected id ${id} !== ${unprotectString(
-					this._collectionData?._id
-				)}`
-			)
 		if (!this._collection) return
 		const col = this._core.getCollection(this._collection)
 		if (!col) throw new Error(`collection '${this._collection}' not found!`)
@@ -36,12 +31,12 @@ export class SegmentHandler
 		this.notify(this._collectionData)
 	}
 
-	update(data: DBPartInstance[] | undefined): void {
-		this._logger.info(`${this._name} received partInstances update with parts [${data?.map((pi) => pi.part._id)}]`)
+	update(source: string, data: Map<PartInstanceName, DBPartInstance | undefined> | undefined): void {
+		this._logger.info(`${this._name} received partInstances update from ${source}`)
 		const prevRundownId = this._curRundownId
 		const prevSegmentId = this._curSegmentId
-		this._curRundownId = data ? unprotectString(data[0].rundownId) : undefined
-		this._curSegmentId = data ? unprotectString(data[0].segmentId) : undefined
+		this._curRundownId = data ? unprotectString(data.get(PartInstanceName.cur)?.rundownId) : undefined
+		this._curSegmentId = data ? unprotectString(data.get(PartInstanceName.cur)?.segmentId) : undefined
 
 		process.nextTick(async () => {
 			if (!this._collection) return

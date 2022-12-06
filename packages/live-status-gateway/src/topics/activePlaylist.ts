@@ -9,6 +9,7 @@ import { RundownBaselineAdLibAction } from '@sofie-automation/corelib/dist/dataM
 import { IBlueprintActionManifestDisplayContent } from '@sofie-automation/blueprints-integration'
 import { literal } from '@sofie-automation/shared-lib/dist/lib/lib'
 import { WsTopicBase, WsTopic, CollectionObserver } from '../wsHandler'
+import { PartInstanceName } from '../collections/partInstances'
 
 interface PartStatus {
 	id: string
@@ -44,7 +45,7 @@ export class ActivePlaylistTopic
 	implements
 		WsTopic,
 		CollectionObserver<DBRundownPlaylist>,
-		CollectionObserver<DBPartInstance[]>,
+		CollectionObserver<Map<PartInstanceName, DBPartInstance | undefined>>,
 		CollectionObserver<AdLibAction[]>,
 		CollectionObserver<RundownBaselineAdLibAction[]>
 {
@@ -137,7 +138,7 @@ export class ActivePlaylistTopic
 					: literal<ActivePlaylistStatus>({
 							event: 'activePlaylist',
 							id: null,
-							name: 'No Active Playlist',
+							name: '',
 							rundownIds: [],
 							currentPart: null,
 							nextPart: null,
@@ -149,52 +150,51 @@ export class ActivePlaylistTopic
 	}
 
 	update(
+		source: string,
 		data:
 			| DBRundownPlaylist
 			| DBShowStyleBase
-			| DBPartInstance[]
+			| Map<PartInstanceName, DBPartInstance | undefined>
 			| AdLibAction[]
 			| RundownBaselineAdLibAction[]
 			| undefined
 	): void {
-		if (Array.isArray(data)) {
-			if (data.length && (data as DBPartInstance[])[0].part !== undefined) {
-				const partInstances = data as DBPartInstance[]
+		const rundownPlaylist = data ? (data as DBRundownPlaylist) : undefined
+		const sourceLayers = data ? (data as DBShowStyleBase).sourceLayers : []
+		const partInstances = data as Map<PartInstanceName, DBPartInstance | undefined>
+		const adLibActions = data ? (data as AdLibAction[]) : []
+		const globalAdLibActions = data ? (data as RundownBaselineAdLibAction[]) : []
+		switch (source) {
+			case 'PlaylistHandler':
 				this._logger.info(
-					`${this._name} received partInstances update with parts [${partInstances.map((pi) => pi.part._id)}]`
+					`${this._name} received playlist update ${rundownPlaylist?._id}, activationId ${rundownPlaylist?.activationId}`
 				)
-				this._currentPartInstance = partInstances.find(
-					(pi) => pi._id === this._activePlaylist?.currentPartInstanceId
+				this._activePlaylist = unprotectString(rundownPlaylist?.activationId) ? rundownPlaylist : undefined
+				break
+			case 'ShowStyleBaseHandler':
+				this._logger.info(
+					`${this._name} received showStyleBase update with sourceLayers [${sourceLayers.map((s) => s.name)}]`
 				)
-				this._nextPartInstance = partInstances.find((pi) => pi._id === this._activePlaylist?.nextPartInstanceId)
-			} else if (data.length && (data as AdLibAction[])[0].partId !== undefined) {
-				this._adLibActions = data as AdLibAction[]
-				this._logger.info(`${this._name} received adLibActions update`)
-			} else if (data.length) {
-				this._globalAdLibActions = data as RundownBaselineAdLibAction[]
-				this._logger.info(`${this._name} received adLibActions update`)
-			} else {
-				this._logger.error(`${this._name} received unrecognised array update - resetting`)
-				this._currentPartInstance = undefined
-				this._nextPartInstance = undefined
-				this._adLibActions = undefined
-				this._globalAdLibActions = undefined
-			}
-		} else if (data && (data as DBShowStyleBase).sourceLayers !== undefined) {
-			const sourceLayers = (data as DBShowStyleBase).sourceLayers
-			this._logger.info(
-				`${this._name} received showStyleBase update with sourceLayers [${sourceLayers.map((s) => s.name)}]`
-			)
-			this._sourceLayersMap.clear()
-			sourceLayers.forEach((s) => this._sourceLayersMap.set(s._id, s.name))
-		} else {
-			const rundownPlaylist = data ? (data as DBRundownPlaylist) : undefined
-			this._logger.info(
-				`${this._name} received playlist update ${rundownPlaylist?._id}, activationId ${rundownPlaylist?.activationId}`
-			)
-			const activationId = unprotectString(rundownPlaylist?.activationId)
-			this._activePlaylist = activationId ? rundownPlaylist : undefined
+				this._sourceLayersMap.clear()
+				sourceLayers.forEach((s) => this._sourceLayersMap.set(s._id, s.name))
+				break
+			case 'PartInstancesHandler':
+				this._logger.info(`${this._name} received partInstances update from ${source}`)
+				this._currentPartInstance = partInstances.get(PartInstanceName.cur)
+				this._nextPartInstance = partInstances.get(PartInstanceName.next)
+				break
+			case 'AdLibActionHandler':
+				this._logger.info(`${this._name} received adLibActions update from ${source}`)
+				this._adLibActions = adLibActions
+				break
+			case 'GlobalAdLibActionHandler':
+				this._logger.info(`${this._name} received globalAdLibActions update from ${source}`)
+				this._globalAdLibActions = globalAdLibActions
+				break
+			default:
+				throw new Error(`${this._name} received unsupported update from ${source}}`)
 		}
+
 		process.nextTick(() => this.sendStatus(this._subscribers))
 	}
 }

@@ -75,7 +75,7 @@ export abstract class CollectionBase<T> {
 
 	subscribe(observer: CollectionObserver<T>): void {
 		this._logger.info(`${observer._observerName}' added observer for '${this._name}'`)
-		if (this._collectionData) observer.update(this._collectionData)
+		if (this._collectionData) observer.update(this._name, this._collectionData)
 		this._observers.add(observer)
 	}
 
@@ -85,7 +85,7 @@ export abstract class CollectionBase<T> {
 	}
 
 	notify(data: T | undefined): void {
-		this._observers.forEach((o) => o.update(data))
+		this._observers.forEach((o) => o.update(this._name, data))
 	}
 }
 
@@ -99,5 +99,5 @@ export interface Collection<T> {
 
 export interface CollectionObserver<T> {
 	_observerName: string
-	update(data: T | undefined): void
+	update(source: string, data: T | undefined): void
 }

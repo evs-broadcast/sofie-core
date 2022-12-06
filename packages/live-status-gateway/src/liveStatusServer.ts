@@ -5,8 +5,8 @@ import { StudioHandler } from './collections/studio'
 import { ShowStyleBaseHandler } from './collections/showStyleBase'
 import { PlaylistHandler } from './collections/playlist'
 import { RundownHandler } from './collections/rundown'
-import { SegmentHandler } from './collections/segment'
-import { PartHandler } from './collections/part'
+// import { SegmentHandler } from './collections/segment'
+// import { PartHandler } from './collections/part'
 import { PartInstancesHandler } from './collections/partInstances'
 import { AdLibActionsHandler } from './collections/adLibActions'
 import { GlobalAdLibActionsHandler } from './collections/globalAdLibActions'
@@ -43,10 +43,10 @@ export class LiveStatusServer {
 		await playlistHandler.init()
 		const rundownHandler = new RundownHandler(this._logger, this._coreHandler)
 		await rundownHandler.init()
-		const segmentHandler = new SegmentHandler(this._logger, this._coreHandler)
-		await segmentHandler.init()
-		const partHandler = new PartHandler(this._logger, this._coreHandler)
-		await partHandler.init()
+		// const segmentHandler = new SegmentHandler(this._logger, this._coreHandler)
+		// await segmentHandler.init()
+		// const partHandler = new PartHandler(this._logger, this._coreHandler)
+		// await partHandler.init()
 		const partInstancesHandler = new PartInstancesHandler(this._logger, this._coreHandler)
 		await partInstancesHandler.init()
 		const adLibActionsHandler = new AdLibActionsHandler(this._logger, this._coreHandler)
@@ -56,12 +56,12 @@ export class LiveStatusServer {
 
 		// add observers for collection subscription updates
 		playlistHandler.subscribe(rundownHandler)
-		playlistHandler.subscribe(partHandler)
+		// playlistHandler.subscribe(partHandler)
 		playlistHandler.subscribe(partInstancesHandler)
 		rundownHandler.subscribe(showStyleBaseHandler)
 		partInstancesHandler.subscribe(rundownHandler)
-		partInstancesHandler.subscribe(segmentHandler)
-		partInstancesHandler.subscribe(partHandler)
+		// partInstancesHandler.subscribe(segmentHandler)
+		// partInstancesHandler.subscribe(partHandler)
 		partInstancesHandler.subscribe(adLibActionsHandler)
 		partInstancesHandler.subscribe(globalAdLibActionsHandler)
 

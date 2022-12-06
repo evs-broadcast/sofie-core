@@ -29,9 +29,9 @@ export class ShowStyleBaseHandler
 		this.notify(this._collectionData)
 	}
 
-	update(data: DBRundown | undefined): void {
+	update(source: string, data: DBRundown | undefined): void {
 		this._logger.info(
-			`${this._name} received rundown update ${data?._id}, showStyleBaseId ${data?.showStyleBaseId}`
+			`${this._name} received rundown update ${data?._id}, showStyleBaseId ${data?.showStyleBaseId} from ${source}`
 		)
 		const prevShowStyleBaseId = this._showStyleBaseId
 		this._showStyleBaseId = unprotectString(data?.showStyleBaseId)

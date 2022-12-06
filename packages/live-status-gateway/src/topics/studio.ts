@@ -27,7 +27,7 @@ export class StudioTopic
 {
 	_observerName = 'StudioTopic'
 	_studio: DBStudio | undefined
-	_playlists: DBRundownPlaylist[] | undefined
+	_playlists: PlaylistStatus[] = []
 
 	constructor(logger: Logger) {
 		super('StudioTopic', logger)
@@ -47,18 +47,7 @@ export class StudioTopic
 						event: 'studio',
 						id: unprotectString(this._studio._id),
 						name: this._studio.name,
-						playlists: this._playlists
-							? this._playlists.map((p) => {
-									let activationStatus: PlaylistActivationStatus =
-										p.activationId === undefined ? 'deactivated' : 'activated'
-									if (p.activationId && p.rehearsal) activationStatus = 'rehearsal'
-									return literal<PlaylistStatus>({
-										id: unprotectString(p._id),
-										name: p.name,
-										activationStatus: activationStatus,
-									})
-							  })
-							: [],
+						playlists: this._playlists,
 					})
 				)
 			} else {
@@ -75,14 +64,42 @@ export class StudioTopic
 		})
 	}
 
-	update(data: DBStudio | DBRundownPlaylist[] | undefined): void {
-		if (Array.isArray(data)) {
-			this._logger.info(`${this._name} received playlists update`)
-			this._playlists = data
-		} else {
-			this._logger.info(`${this._name} received studio update ${data?._id}`)
-			this._studio = data
+	update(source: string, data: DBStudio | DBRundownPlaylist[] | undefined): void {
+		const prevPlaylistsStatus = this._playlists
+		const rundownPlaylists = data ? (data as DBRundownPlaylist[]) : []
+		const studio = data ? (data as DBStudio) : undefined
+		switch (source) {
+			case 'StudioHandler':
+				this._logger.info(`${this._name} received studio update ${studio?._id}`)
+				this._studio = studio
+				break
+			case 'PlaylistsHandler':
+				this._logger.info(`${this._name} received playlists update from ${source}`)
+				this._playlists = rundownPlaylists.map((p) => {
+					let activationStatus: PlaylistActivationStatus =
+						p.activationId === undefined ? 'deactivated' : 'activated'
+					if (p.activationId && p.rehearsal) activationStatus = 'rehearsal'
+					return literal<PlaylistStatus>({
+						id: unprotectString(p._id),
+						name: p.name,
+						activationStatus: activationStatus,
+					})
+				})
+				break
+			default:
+				throw new Error(`${this._name} received unsupported update from ${source}}`)
 		}
-		this.sendStatus(this._subscribers)
+
+		const sameStatus =
+			this._playlists.length === prevPlaylistsStatus.length &&
+			this._playlists.reduce(
+				(same, status, i) =>
+					same &&
+					!!prevPlaylistsStatus[i] &&
+					status.id === prevPlaylistsStatus[i].id &&
+					status.activationStatus === prevPlaylistsStatus[i].activationStatus,
+				true
+			)
+		if (!sameStatus) this.sendStatus(this._subscribers)
 	}
 }
