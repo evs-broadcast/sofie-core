@@ -56,7 +56,7 @@ export class StudioTopic
 					literal<StudioStatus>({
 						event: 'studio',
 						id: null,
-						name: 'No Studio',
+						name: '',
 						playlists: [],
 					})
 				)
