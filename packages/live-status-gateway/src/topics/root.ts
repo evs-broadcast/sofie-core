@@ -14,9 +14,20 @@ interface PongMsg {
 	reqid: number
 }
 
-interface SubscriptionStatus {
+enum SubscriptionStatus {
+	subscribed = 'subscribed',
+	unsubscribed = 'unsubscribed',
+}
+
+interface SubscriptionDetails {
+	name: string
+	status: SubscriptionStatus
+}
+
+interface SubscriptionResponse {
 	event: string
 	reqid: number
+	subscription: SubscriptionDetails
 	errorMessage?: string
 }
 
@@ -25,7 +36,7 @@ export enum StatusChannels {
 	activePlaylist = 'activePlaylist',
 }
 
-interface Msg {
+interface RootMsg {
 	event: PublishMsg
 	reqid: number
 	subscription: {
@@ -57,7 +68,7 @@ export class RootChannel extends WsTopicBase implements WsTopic {
 	processMessage(ws: WebSocket, msg: object): void {
 		this._logger.info(`Process root message '${msg}'`)
 		try {
-			const msgObj = JSON.parse(msg as unknown as string) as Msg
+			const msgObj = JSON.parse(msg as unknown as string) as RootMsg
 			if (typeof msgObj.event === 'string' && typeof msgObj.reqid === 'number') {
 				switch (msgObj.event) {
 					case PublishMsg.ping:
@@ -86,22 +97,31 @@ export class RootChannel extends WsTopicBase implements WsTopic {
 
 	subscribe(ws: WebSocket, name: string, reqid: number): void {
 		const topic = this._topics.get(name)
-		if (topic && name in StatusChannels) {
+		const curUnsubscribed = topic && !topic.hasSubscriber(ws) && name in StatusChannels
+		if (curUnsubscribed) {
 			this.sendMessage(
 				ws,
-				literal<SubscriptionStatus>({
+				literal<SubscriptionResponse>({
 					event: 'subscriptionStatus',
 					reqid: reqid,
+					subscription: literal<SubscriptionDetails>({
+						name: name,
+						status: SubscriptionStatus.subscribed,
+					}),
 				})
 			)
 			topic.addSubscriber(ws)
 		} else {
 			this.sendMessage(
 				ws,
-				literal<SubscriptionStatus>({
-					errorMessage: `Subscription to channel '${name}' failed`,
+				literal<SubscriptionResponse>({
+					errorMessage: `Subscribe to '${name}' topic failed`,
 					event: 'subscriptionStatus',
 					reqid: reqid,
+					subscription: literal<SubscriptionDetails>({
+						name: name,
+						status: curUnsubscribed ? SubscriptionStatus.unsubscribed : SubscriptionStatus.subscribed,
+					}),
 				})
 			)
 		}
@@ -109,22 +129,31 @@ export class RootChannel extends WsTopicBase implements WsTopic {
 
 	unsubscribe(ws: WebSocket, name: string, reqid: number): void {
 		const topic = this._topics.get(name)
-		if (topic && name in StatusChannels) {
+		const curSubscribed = topic && topic.hasSubscriber(ws) && name in StatusChannels
+		if (curSubscribed) {
 			topic.removeSubscriber(ws)
 			this.sendMessage(
 				ws,
-				literal<SubscriptionStatus>({
+				literal<SubscriptionResponse>({
 					event: 'subscriptionStatus',
 					reqid: reqid,
+					subscription: literal<SubscriptionDetails>({
+						name: name,
+						status: SubscriptionStatus.unsubscribed,
+					}),
 				})
 			)
 		} else {
 			this.sendMessage(
 				ws,
-				literal<SubscriptionStatus>({
-					errorMessage: `Subscription to channel '${name}' failed`,
+				literal<SubscriptionResponse>({
+					errorMessage: `Unsubscribe from '${name}' topic failed`,
 					event: 'subscriptionStatus',
 					reqid: reqid,
+					subscription: literal<SubscriptionDetails>({
+						name: name,
+						status: curSubscribed ? SubscriptionStatus.subscribed : SubscriptionStatus.unsubscribed,
+					}),
 				})
 			)
 		}

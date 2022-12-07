@@ -6,10 +6,14 @@ import { DBRundownPlaylist } from '@sofie-automation/corelib/dist/dataModel/Rund
 import { DBPartInstance } from '@sofie-automation/corelib/dist/dataModel/PartInstance'
 import { DBRundown } from '@sofie-automation/corelib/dist/dataModel/Rundown'
 import { unprotectString } from '@sofie-automation/shared-lib/dist/lib/protectedString'
+import { PartInstanceName } from './partInstances'
 
 export class RundownHandler
 	extends CollectionBase<DBRundown>
-	implements Collection<DBRundown>, CollectionObserver<DBRundownPlaylist | DBPartInstance[]>
+	implements
+		Collection<DBRundown>,
+		CollectionObserver<DBRundownPlaylist>,
+		CollectionObserver<Map<PartInstanceName, DBPartInstance | undefined>>
 {
 	_observerName: string
 	_core: CoreConnection
@@ -33,18 +37,25 @@ export class RundownHandler
 		this.notify(this._collectionData)
 	}
 
-	update(data: DBRundownPlaylist | DBPartInstance[] | undefined): void {
+	update(
+		source: string,
+		data: DBRundownPlaylist | Map<PartInstanceName, DBPartInstance | undefined> | undefined
+	): void {
 		const prevPlaylistId = this._curPlaylistId
-		const prevRundownId = this._curRundownId
-
-		if (Array.isArray(data)) {
-			this._logger.info(
-				`${this._name} received partInstances update with parts [${data.map((pi) => pi.part._id)}]`
-			)
-			this._curRundownId = unprotectString(data[0].rundownId)
-		} else {
-			this._logger.info(`${this._name} received playlist update ${data?._id}`)
-			this._curPlaylistId = unprotectString(data?._id)
+		const prevCurRundownId = this._curRundownId
+		const rundownPlaylist = data ? (data as DBRundownPlaylist) : undefined
+		const partInstances = data as Map<PartInstanceName, DBPartInstance | undefined>
+		switch (source) {
+			case 'PlaylistHandler':
+				this._logger.info(`${this._name} received playlist update ${rundownPlaylist?._id}`)
+				this._curPlaylistId = unprotectString(rundownPlaylist?._id)
+				break
+			case 'PartInstancesHandler':
+				this._logger.info(`${this._name} received partInstances update from ${source}`)
+				this._curRundownId = unprotectString(partInstances.get(PartInstanceName.cur)?.rundownId)
+				break
+			default:
+				throw new Error(`${this._name} received unsupported update from ${source}}`)
 		}
 
 		process.nextTick(async () => {
@@ -64,7 +75,7 @@ export class RundownHandler
 				}
 			}
 
-			if (prevRundownId !== this._curRundownId) {
+			if (prevCurRundownId !== this._curRundownId) {
 				if (this._curRundownId) {
 					const col = this._core.getCollection(this._collection)
 					if (!col) throw new Error(`collection '${this._collection}' not found!`)

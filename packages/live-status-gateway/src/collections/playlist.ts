@@ -8,7 +8,7 @@ export class PlaylistsHandler extends CollectionBase<DBRundownPlaylist[]> implem
 	_observerName: string
 
 	constructor(logger: Logger, coreHandler: CoreHandler) {
-		super('playlists', undefined, logger, coreHandler)
+		super('PlaylistsHandler', undefined, logger, coreHandler)
 		this._collection = this._name
 		this._observerName = this._name
 	}
@@ -22,9 +22,9 @@ export class PlaylistsHandler extends CollectionBase<DBRundownPlaylist[]> implem
 	// override notify to implement empty array handling
 	notify(data: DBRundownPlaylist[] | undefined): void {
 		this._logger.info(
-			`${this._collection} handler notifying all observers of an update with ${this._collectionData?.length} playlists`
+			`${this._collection} notifying all observers of an update with ${this._collectionData?.length} playlists`
 		)
-		this._observers.forEach((o) => (data ? o.update(data) : []))
+		this._observers.forEach((o) => (data ? o.update(this._name, data) : []))
 	}
 }
 

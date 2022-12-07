@@ -5,10 +5,13 @@ import { CoreConnection } from '@sofie-automation/server-core-integration'
 import { RundownBaselineAdLibAction } from '@sofie-automation/corelib/dist/dataModel/RundownBaselineAdLibAction'
 import { DBPartInstance } from '@sofie-automation/corelib/dist/dataModel/PartInstance'
 import { unprotectString } from '@sofie-automation/shared-lib/dist/lib/protectedString'
+import { PartInstanceName } from './partInstances'
 
 export class GlobalAdLibActionsHandler
 	extends CollectionBase<RundownBaselineAdLibAction[]>
-	implements Collection<RundownBaselineAdLibAction[]>, CollectionObserver<DBPartInstance[]>
+	implements
+		Collection<RundownBaselineAdLibAction[]>,
+		CollectionObserver<Map<PartInstanceName, DBPartInstance | undefined>>
 {
 	_observerName: string
 	_core: CoreConnection
@@ -29,10 +32,10 @@ export class GlobalAdLibActionsHandler
 		this.notify(this._collectionData)
 	}
 
-	update(data: DBPartInstance[] | undefined): void {
-		this._logger.info(`${this._name} received partInstances update with parts [${data?.map((pi) => pi.part._id)}]`)
+	update(source: string, data: Map<PartInstanceName, DBPartInstance | undefined> | undefined): void {
+		this._logger.info(`${this._name} received partInstances update from ${source}`)
 		const prevRundownId = this._curRundownId
-		this._curRundownId = data ? unprotectString(data[0].rundownId) : undefined
+		this._curRundownId = data ? unprotectString(data.get(PartInstanceName.cur)?.rundownId) : undefined
 
 		process.nextTick(async () => {
 			if (!this._collection) return
@@ -59,6 +62,6 @@ export class GlobalAdLibActionsHandler
 	// override notify to implement empty array handling
 	notify(data: RundownBaselineAdLibAction[] | undefined): void {
 		this._logger.info(`${this._name} notifying update with ${data?.length} globalAdLibActions`)
-		this._observers.forEach((o) => (data ? o.update(data) : []))
+		this._observers.forEach((o) => (data ? o.update(this._name, data) : []))
 	}
 }

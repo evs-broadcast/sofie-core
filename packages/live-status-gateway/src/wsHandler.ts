@@ -20,6 +20,10 @@ export abstract class WsTopicBase {
 		this._subscribers.add(ws)
 	}
 
+	hasSubscriber(ws: WebSocket): boolean {
+		return this._subscribers.has(ws)
+	}
+
 	removeSubscriber(ws: WebSocket): void {
 		if (this._subscribers.delete(ws)) this._logger.info(`${this._name} removing a websocket subscriber`)
 	}
@@ -37,6 +41,7 @@ export abstract class WsTopicBase {
 
 export interface WsTopic {
 	addSubscriber(ws: WebSocket): void
+	hasSubscriber(ws: WebSocket): boolean
 	removeSubscriber(ws: WebSocket): void
 	processMessage(ws: WebSocket, msg: object): void
 	sendMessage(ws: WebSocket, msg: object): void
@@ -75,7 +80,7 @@ export abstract class CollectionBase<T> {
 
 	subscribe(observer: CollectionObserver<T>): void {
 		this._logger.info(`${observer._observerName}' added observer for '${this._name}'`)
-		if (this._collectionData) observer.update(this._collectionData)
+		if (this._collectionData) observer.update(this._name, this._collectionData)
 		this._observers.add(observer)
 	}
 
@@ -85,7 +90,7 @@ export abstract class CollectionBase<T> {
 	}
 
 	notify(data: T | undefined): void {
-		this._observers.forEach((o) => o.update(data))
+		this._observers.forEach((o) => o.update(this._name, data))
 	}
 }
 
@@ -99,5 +104,5 @@ export interface Collection<T> {
 
 export interface CollectionObserver<T> {
 	_observerName: string
-	update(data: T | undefined): void
+	update(source: string, data: T | undefined): void
 }
