@@ -58,7 +58,7 @@ describe('Network client', () => {
 
 		test('can activate a playlist', async () => {
 			const active = await actionsApi.activate({
-				rundownPlaylistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_',
+				playlistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_',
 				activateRequest: { rehearsal: true },
 			})
 			expect(active.success).toBe(200)
@@ -66,7 +66,7 @@ describe('Network client', () => {
 
 		test('can set next part in a playlist', async () => {
 			const setNext = await actionsApi.setNextPart({
-				rundownPlaylistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_',
+				playlistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_',
 				partId: '9Qk3eNHtqwBRGxsGqQiVCxJsYwE_',
 			})
 			expect(setNext.success).toBe(200)
@@ -74,7 +74,7 @@ describe('Network client', () => {
 
 		test('can set next segment in a playlist', async () => {
 			const setNext = await actionsApi.setNextSegment({
-				rundownPlaylistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_',
+				playlistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_',
 				segmentId: 'cIt0kEWuHOvQVMDEKzCrBpgGWSs_',
 			})
 			expect(setNext.success).toBe(200)
@@ -82,7 +82,7 @@ describe('Network client', () => {
 
 		test('can move next part in a playlist', async () => {
 			const move = await actionsApi.moveNextPart({
-				rundownPlaylistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_',
+				playlistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_',
 				delta: 2,
 			})
 			expect(move.success).toBe(200)
@@ -91,7 +91,7 @@ describe('Network client', () => {
 
 		test('can move next segment in a playlist', async () => {
 			const move = await actionsApi.moveNextSegment({
-				rundownPlaylistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_',
+				playlistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_',
 				delta: 2,
 			})
 			expect(move.success).toBe(200)
@@ -99,13 +99,13 @@ describe('Network client', () => {
 		})
 
 		test('can send take action to the Sofie application', async () => {
-			const take = await actionsApi.take({ rundownPlaylistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_' })
+			const take = await actionsApi.take({ playlistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_' })
 			expect(take.success).toBe(200)
 		})
 
 		test('can execute an action', async () => {
 			const execute = await actionsApi.executeAction({
-				rundownPlaylistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_',
+				playlistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_',
 				actionId: 'JustDoIt',
 				body: { userData: { really: 'yes' } },
 			})
@@ -114,24 +114,24 @@ describe('Network client', () => {
 
 		test('can execute an adLib', async () => {
 			const execute = await actionsApi.executeAdLib({
-				rundownPlaylistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_',
+				playlistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_',
 				adLibId: 'JustDoIt',
 			})
 			expect(execute.success).toBe(200)
 		})
 
 		test('can deactivate a playlist', async () => {
-			const deactive = await actionsApi.deactivate({ rundownPlaylistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_' })
+			const deactive = await actionsApi.deactivate({ playlistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_' })
 			expect(deactive.success).toBe(200)
 		})
 
 		test('can reset a playlist', async () => {
-			const reset = await actionsApi.resetPlaylist({ rundownPlaylistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_' })
+			const reset = await actionsApi.resetPlaylist({ playlistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_' })
 			expect(reset.success).toBe(200)
 		})
 
 		test('can reload a playlist', async () => {
-			const reload = await actionsApi.reloadPlaylist({ rundownPlaylistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_' })
+			const reload = await actionsApi.reloadPlaylist({ playlistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_' })
 			expect(reload.success).toBe(200)
 		})
 	} else {

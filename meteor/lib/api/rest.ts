@@ -49,13 +49,15 @@ export interface RestAPI extends MethodContext {
 	 *
 	 * Throws if the target Playlist is not active.
 	 * Throws if there is not an on-at part instance.
-	 * Returns a `ClientResponseError` if an adLib for the provided `adLibId` cannot be found.
+	 * @returns a `ClientResponseError` if an adLib for the provided `adLibId` cannot be found.
 	 * @param rundownPlaylistId Playlist to execute adLib in.
 	 * @param adLibId AdLib to execute.
+	 * @param triggerMode A string to specify a particular variation for the AdLibAction, valid actionType strings are to be read from the status API.
 	 */
 	executeAdLib(
 		rundownPlaylistId: RundownPlaylistId,
-		adLibId: AdLibActionId | RundownBaselineAdLibActionId | PieceId | BucketAdLibId
+		adLibId: AdLibActionId | RundownBaselineAdLibActionId | PieceId | BucketAdLibId,
+		triggerMode?: string
 	): Promise<ClientAPI.ClientResponse<object>>
 	/**
 	 * Moves the next point by `delta` places. Negative values are allowed to move "backwards" in the script.
@@ -84,9 +86,10 @@ export interface RestAPI extends MethodContext {
 	 * Reloads a Playlist from its ingest source (e.g. MOS/Spreadsheet etc.)
 	 *
 	 * Throws if the target Playlist is currently active.
+	 * @returns a `ClientResponseError` if the playlist fails to reload
 	 * @param rundownPlaylistId Playlist to reload.
 	 */
-	reloadPlaylist(rundownPlaylistId: RundownPlaylistId): Promise<ClientAPI.ClientResponse<void>>
+	reloadPlaylist(rundownPlaylistId: RundownPlaylistId): Promise<ClientAPI.ClientResponse<object>>
 	/**
 	 * Resets a Playlist back to its pre-played state.
 	 *

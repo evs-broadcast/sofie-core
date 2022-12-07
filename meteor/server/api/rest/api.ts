@@ -1,5 +1,6 @@
 import Koa from 'koa'
-import KoaRouter from 'koa-router'
+import cors from '@koa/cors'
+import KoaRouter from '@koa/router'
 import { logger } from '../../logging'
 import { WebApp } from 'meteor/webapp'
 import { check, Match } from '../../../lib/check'
@@ -11,6 +12,7 @@ import { registerClassToMeteorMethods, ReplaceOptionalWithNullInMethodArguments 
 import { RundownPlaylists, RundownPlaylistId } from '../../../lib/collections/RundownPlaylists'
 import { MeteorCall, MethodContextAPI } from '../../../lib/api/methods'
 import { ServerClientAPI } from '../client'
+import { ServerRundownAPI } from '../rundown'
 import { triggerWriteAccess } from '../../security/lib/securityVerify'
 import { ExecuteActionResult, StudioJobs } from '@sofie-automation/corelib/dist/worker/studio'
 import { CURRENT_SYSTEM_VERSION } from '../../migration/currentSystemVersion'
@@ -31,6 +33,8 @@ import { BucketAdLibs } from '../../../lib/collections/BucketAdlibs'
 import { UserError, UserErrorMessage } from '@sofie-automation/corelib/dist/error'
 import { StudioContentWriteAccess } from '../../security/studio'
 import { ServerPlayoutAPI } from '../playout/playout'
+import { checkAccessToPlaylist } from '../lib'
+import { TriggerReloadDataResponse } from '../../../lib/api/userActions'
 
 const REST_API_USER_EVENT = 'rest_api'
 
@@ -97,7 +101,8 @@ class ServerRestAPI extends MethodContextAPI implements ReplaceOptionalWithNullI
 	}
 	async executeAdLib(
 		rundownPlaylistId: RundownPlaylistId,
-		adLibId: AdLibActionId | RundownBaselineAdLibActionId | PieceId | BucketAdLibId
+		adLibId: AdLibActionId | RundownBaselineAdLibActionId | PieceId | BucketAdLibId,
+		triggerMode?: string | null
 	): Promise<ClientAPI.ClientResponse<object>> {
 		triggerWriteAccess()
 
@@ -167,6 +172,7 @@ class ServerRestAPI extends MethodContextAPI implements ReplaceOptionalWithNullI
 					actionDocId: adLibActionDoc._id,
 					actionId: adLibActionDoc.actionId,
 					userData: adLibActionDoc.userData,
+					triggerMode: triggerMode ? triggerMode : undefined,
 				}
 			)
 		} else {
@@ -217,18 +223,28 @@ class ServerRestAPI extends MethodContextAPI implements ReplaceOptionalWithNullI
 			}
 		)
 	}
-	async reloadPlaylist(rundownPlaylistId: RundownPlaylistId): Promise<ClientAPI.ClientResponse<void>> {
-		return ServerClientAPI.runUserActionInLogForPlaylistOnWorker(
+	async reloadPlaylist(rundownPlaylistId: RundownPlaylistId) {
+		return ServerClientAPI.runUserActionInLog(
 			this,
 			REST_API_USER_EVENT,
 			getCurrentTime(),
-			rundownPlaylistId,
-			() => {
+			'reloadPlaylist',
+			[rundownPlaylistId],
+			async () => {
 				check(rundownPlaylistId, String)
-			},
-			StudioJobs.RegeneratePlaylist,
-			{
-				playlistId: rundownPlaylistId,
+				const access = await checkAccessToPlaylist(this, rundownPlaylistId)
+				const reloadResponse = await ServerRundownAPI.resyncRundownPlaylist(access)
+				const success = !reloadResponse.rundownsResponses.reduce((missing, rundownsResponse) => {
+					return missing || rundownsResponse.response === TriggerReloadDataResponse.MISSING
+				}, false)
+				return success
+					? ClientAPI.responseSuccess({})
+					: ClientAPI.responseError(
+							UserError.from(
+								new Error(`Failed to reload playlist ${rundownPlaylistId}`),
+								UserErrorMessage.InternalError
+							)
+					  )
 			}
 		)
 	}
@@ -334,8 +350,8 @@ koaRouter.get('/', async (ctx, next) => {
 	await next()
 })
 
-koaRouter.post('/activate/:rundownPlaylistId', async (ctx, next) => {
-	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.rundownPlaylistId)
+koaRouter.post('/activate/:playlistId', async (ctx, next) => {
+	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.playlistId)
 	check(rundownPlaylistId, String)
 	const rehearsal = (ctx.req.body as { rehearsal: boolean }).rehearsal
 	logger.info(`koa POST: activate ${rundownPlaylistId} - ${rehearsal ? 'rehearsal' : 'live'}`)
@@ -353,8 +369,8 @@ koaRouter.post('/activate/:rundownPlaylistId', async (ctx, next) => {
 	await next()
 })
 
-koaRouter.post('/deactivate/:rundownPlaylistId', async (ctx, next) => {
-	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.rundownPlaylistId)
+koaRouter.post('/deactivate/:playlistId', async (ctx, next) => {
+	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.playlistId)
 	check(rundownPlaylistId, String)
 	logger.info(`koa POST: deactivate ${rundownPlaylistId}`)
 
@@ -371,8 +387,8 @@ koaRouter.post('/deactivate/:rundownPlaylistId', async (ctx, next) => {
 	await next()
 })
 
-koaRouter.post('/executeAction/:rundownPlaylistId/:actionId', async (ctx, next) => {
-	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.rundownPlaylistId)
+koaRouter.post('/executeAction/:playlistId/:actionId', async (ctx, next) => {
+	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.playlistId)
 	check(rundownPlaylistId, String)
 	const actionId = ctx.params.actionId
 	check(actionId, String)
@@ -392,17 +408,21 @@ koaRouter.post('/executeAction/:rundownPlaylistId/:actionId', async (ctx, next) 
 	await next()
 })
 
-koaRouter.post('/executeAdLib/:rundownPlaylistId/:adLibId', async (ctx, next) => {
-	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.rundownPlaylistId)
+koaRouter.post('/executeAdLib/:playlistId/:adLibId', async (ctx, next) => {
+	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.playlistId)
 	check(rundownPlaylistId, String)
 	const adLibId = protectString<AdLibActionId | RundownBaselineAdLibActionId | PieceId | BucketAdLibId>(
 		ctx.params.adLibId
 	)
 	check(adLibId, String)
-	logger.info(`koa POST: executeAdLib ${rundownPlaylistId} ${adLibId}`)
+	const actionTypeObj = ctx.req.body
+	const triggerMode = actionTypeObj ? (actionTypeObj as { actionType: string }).actionType : undefined
+	logger.info(`koa POST: executeAdLib ${rundownPlaylistId} ${adLibId} - triggerMode: ${triggerMode}`)
 
 	try {
-		ctx.body = ClientAPI.responseSuccess(await MeteorCall.rest.executeAdLib(rundownPlaylistId, adLibId))
+		ctx.body = ClientAPI.responseSuccess(
+			await MeteorCall.rest.executeAdLib(rundownPlaylistId, adLibId, triggerMode)
+		)
 		ctx.status = 200
 	} catch (e) {
 		const errMsg = UserError.isUserError(e) ? e.message.key : (e as Error).message
@@ -414,8 +434,8 @@ koaRouter.post('/executeAdLib/:rundownPlaylistId/:adLibId', async (ctx, next) =>
 	await next()
 })
 
-koaRouter.post('/moveNextPart/:rundownPlaylistId/:delta', async (ctx, next) => {
-	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.rundownPlaylistId)
+koaRouter.post('/moveNextPart/:playlistId/:delta', async (ctx, next) => {
+	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.playlistId)
 	check(rundownPlaylistId, String)
 	const delta = parseInt(ctx.params.delta)
 	check(delta, Number)
@@ -434,8 +454,8 @@ koaRouter.post('/moveNextPart/:rundownPlaylistId/:delta', async (ctx, next) => {
 	await next()
 })
 
-koaRouter.post('/moveNextSegment/:rundownPlaylistId/:delta', async (ctx, next) => {
-	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.rundownPlaylistId)
+koaRouter.post('/moveNextSegment/:playlistId/:delta', async (ctx, next) => {
+	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.playlistId)
 	check(rundownPlaylistId, String)
 	const delta = parseInt(ctx.params.delta)
 	check(delta, Number)
@@ -454,8 +474,8 @@ koaRouter.post('/moveNextSegment/:rundownPlaylistId/:delta', async (ctx, next) =
 	await next()
 })
 
-koaRouter.post('/reloadPlaylist/:rundownPlaylistId', async (ctx, next) => {
-	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.rundownPlaylistId)
+koaRouter.post('/reloadPlaylist/:playlistId', async (ctx, next) => {
+	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.playlistId)
 	check(rundownPlaylistId, String)
 	logger.info(`koa POST: reloadPlaylist ${rundownPlaylistId}`)
 
@@ -472,8 +492,8 @@ koaRouter.post('/reloadPlaylist/:rundownPlaylistId', async (ctx, next) => {
 	await next()
 })
 
-koaRouter.post('/resetPlaylist/:rundownPlaylistId', async (ctx, next) => {
-	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.rundownPlaylistId)
+koaRouter.post('/resetPlaylist/:playlistId', async (ctx, next) => {
+	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.playlistId)
 	check(rundownPlaylistId, String)
 	logger.info(`koa POST: resetPlaylist ${rundownPlaylistId}`)
 
@@ -490,8 +510,8 @@ koaRouter.post('/resetPlaylist/:rundownPlaylistId', async (ctx, next) => {
 	await next()
 })
 
-koaRouter.post('/setNextPart/:rundownPlaylistId/:partId', async (ctx, next) => {
-	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.rundownPlaylistId)
+koaRouter.post('/setNextPart/:playlistId/:partId', async (ctx, next) => {
+	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.playlistId)
 	check(rundownPlaylistId, String)
 	const partId = protectString<PartId>(ctx.params.partId)
 	check(partId, String)
@@ -510,8 +530,8 @@ koaRouter.post('/setNextPart/:rundownPlaylistId/:partId', async (ctx, next) => {
 	await next()
 })
 
-koaRouter.post('/setNextSegment/:rundownPlaylistId/:segmentId', async (ctx, next) => {
-	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.rundownPlaylistId)
+koaRouter.post('/setNextSegment/:playlistId/:segmentId', async (ctx, next) => {
+	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.playlistId)
 	check(rundownPlaylistId, String)
 	const segmentId = protectString<SegmentId>(ctx.params.segmentId)
 	check(segmentId, String)
@@ -530,8 +550,8 @@ koaRouter.post('/setNextSegment/:rundownPlaylistId/:segmentId', async (ctx, next
 	await next()
 })
 
-koaRouter.post('/take/:rundownPlaylistId', async (ctx, next) => {
-	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.rundownPlaylistId)
+koaRouter.post('/take/:playlistId', async (ctx, next) => {
+	const rundownPlaylistId = protectString<RundownPlaylistId>(ctx.params.playlistId)
 	check(rundownPlaylistId, String)
 	logger.info(`koa POST: take ${rundownPlaylistId}`)
 
@@ -575,5 +595,6 @@ Meteor.startup(() => {
 	if (!Meteor.isAppTest) {
 		WebApp.connectHandlers.use('/api2', Meteor.bindEnvironment(app.callback()))
 	}
+	app.use(cors())
 	app.use(koaRouter.routes()).use(koaRouter.allowedMethods())
 })
