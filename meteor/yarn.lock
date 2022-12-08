@@ -10143,10 +10143,10 @@ timecode@0.0.4:
   resolved "https://registry.yarnpkg.com/timecode/-/timecode-0.0.4.tgz#cdea9d2352009700e50da657cb7fb7c1720f5704"
   integrity sha512-xFVZlWnqls5eVphtUJo0UuXeJa0grBmxESSn5QPQB7CMsaVgTnLdP9PTZqb4KyFmLdrE+PUu3eEt42zHsMxCtw==
 
-"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@7.4.11":
-  version "7.4.11"
-  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver-types/-/@evs/timeline-state-resolver-types-7.4.11.tgz#9d9de2487c9524dcb408edc83f24e8264f3a0848"
-  integrity sha512-CAjUUX1U1JVcOas2A99N1yoWSqNIdKFNTziizVnvusH4W6UVYkc89cjn47JlDxH3dJwJPEP4VkPWlCUxTiKzVA==
+"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@7.4.14":
+  version "7.4.14"
+  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver-types/-/@evs/timeline-state-resolver-types-7.4.14.tgz#e7f4adcd5e816786d8dee1b175c291ff38d08dea"
+  integrity sha512-KFMIsEVC0Ci0Xzt27KDetAJuYHromkm/3/nR/JZofPwRV6BWOSAkp9aSEzZ5aogW4DYPJMlamduOx8Fz4Pta7g==
   dependencies:
     tslib "^2.3.1"
 
