@@ -266,7 +266,7 @@ resources:
         200:
           $ref: '#/components/responses/postSuccess'
         412:
-          description: The target Playlist is currently active.
+          description: The target Playlist does not exist.
           content:
             application/json:
               schema:
