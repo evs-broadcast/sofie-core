@@ -6,7 +6,7 @@ import { WebApp } from 'meteor/webapp'
 import { check, Match } from '../../../lib/check'
 import { Meteor } from 'meteor/meteor'
 import { ClientAPI } from '../../../lib/api/client'
-import { getCurrentTime, protectString } from '../../../lib/lib'
+import { getCurrentTime, getRandomString, protectString } from '../../../lib/lib'
 import { RestAPI, RestAPIMethods } from '../../../lib/api/rest'
 import { registerClassToMeteorMethods, ReplaceOptionalWithNullInMethodArguments } from '../../methods'
 import { RundownPlaylists, RundownPlaylistId } from '../../../lib/collections/RundownPlaylists'
@@ -642,7 +642,7 @@ const makeConnection = (
 	>
 ): Meteor.Connection => {
 	return {
-		id: '',
+		id: getRandomString(),
 		close: () => {},
 		onClose: () => {},
 		clientAddress: ctx.req.headers.host || 'unknown',
