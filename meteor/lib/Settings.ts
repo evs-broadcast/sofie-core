@@ -49,7 +49,7 @@ export interface ISettings {
 const DEFAULT_SETTINGS = Object.freeze<ISettings>({
 	// frameRate: 25,
 	autoRewindLeavingSegment: true,
-	disableBlurBorder: false,
+	disableBlurBorder: true,
 	disableBlurBorderInShelf: true,
 	defaultTimeScale: 1,
 	allowGrabbingTimeline: true,
