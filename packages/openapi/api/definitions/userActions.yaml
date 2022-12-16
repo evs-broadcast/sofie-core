@@ -112,7 +112,7 @@ resources:
               type: object
       responses:
         200:
-          $ref: '#/components/responses/postSuccess'
+          $ref: '#/components/responses/executeActionSuccess'
         412:
           description: Specified Playlist is not active or there is not an on-air Part instance.
           content:
@@ -155,7 +155,7 @@ resources:
                 actionType: pvw
       responses:
         200:
-          $ref: '#/components/responses/postSuccess'
+          $ref: '#/components/responses/executeActionSuccess'
         412:
           description: Specified Playlist is not active, there is not an on-air Part instance or an adLib for the provided `adLibId` cannot be found.
           content:
@@ -439,3 +439,22 @@ components:
               success:
                 type: number
                 example: 200
+    executeActionSuccess:
+      description: Command successfully handled - returns an object that informs whether a part was queued by the action and/or if the next part was automatically taken
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: number
+                example: 200
+              result:
+                type: object
+                properties:
+                  queuedPartInstanceId:
+                    type: string
+                    example: 'YjGd_1dWjta_E1ZuDaOczP1lsgk_'
+                  taken:
+                    type: boolean
+                    example: false
