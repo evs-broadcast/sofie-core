@@ -1177,25 +1177,5 @@ class ServerUserActionAPI
 			}
 		)
 	}
-
-	async getDebugStates(
-		userEvent: string,
-		eventTIme: Time,
-		peripheralDeviceId: PeripheralDeviceId
-	): Promise<ClientAPI.ClientResponse<object>> {
-		return ServerClientAPI.runUserActionInLog(
-			this,
-			userEvent,
-			eventTIme,
-			'getDebugStates',
-			[peripheralDeviceId],
-			async () => {
-				check(peripheralDeviceId, String)
-
-				const access = await PeripheralDeviceContentWriteAccess.peripheralDevice(this, peripheralDeviceId)
-				return ServerPeripheralDeviceAPI.getDebugStates(access)
-			}
-		)
-	}
 }
 registerClassToMeteorMethods(UserActionAPIMethods, ServerUserActionAPI, false)

@@ -27,6 +27,10 @@ import { SystemReadAccess } from '../security/system'
 import { StatusCode } from '@sofie-automation/blueprints-integration'
 import { Workers } from '../../lib/collections/Workers'
 import { WorkerThreadStatuses } from '../../lib/collections/WorkerThreads'
+import { PeripheralDeviceId } from '@sofie-automation/corelib/dist/dataModel/Ids'
+import { ServerPeripheralDeviceAPI } from '../api/peripheralDevice'
+import { PeripheralDeviceContentWriteAccess } from '../security/peripheralDevice'
+import { MethodContext } from '../../lib/api/methods'
 
 const PackageInfo = require('../../package.json')
 const integrationVersionRange = parseCoreIntegrationCompatabilityRange(PackageInfo.version)
@@ -393,4 +397,11 @@ export function status2ExternalStatus(statusCode: StatusCode): ExternalStatus {
 		return 'FAIL'
 	}
 	return 'UNDEFINED'
+}
+export async function getDebugStates(
+	methodContext: MethodContext,
+	peripheralDeviceId: PeripheralDeviceId
+): Promise<object> {
+	const access = await PeripheralDeviceContentWriteAccess.peripheralDevice(methodContext, peripheralDeviceId)
+	return ServerPeripheralDeviceAPI.getDebugStates(access)
 }
