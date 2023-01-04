@@ -616,15 +616,14 @@ PickerPOST.route('/devices/:deviceId/resetAuth', async (params, _req: IncomingMe
 
 		PeripheralDevices.update(peripheralDevice._id, {
 			$unset: {
-				'secretSettings.credentials': true,
+				// User credentials
 				'secretSettings.accessToken': true,
-				'settings.secretCredentials': true,
 				'settings.secretAccessToken': true,
 				accessTokenUrl: true,
 			},
 		})
 
-		PeripheralDeviceAPI.executeFunction(deviceId, 'killProcess', 1).catch(logger.error)
+		// PeripheralDeviceAPI.executeFunction(deviceId, 'killProcess', 1).catch(logger.error)
 
 		res.statusCode = 200
 	} catch (e) {
@@ -653,9 +652,11 @@ PickerPOST.route(
 
 			PeripheralDevices.update(peripheralDevice._id, {
 				$unset: {
+					// App credentials
 					'secretSettings.credentials': true,
-					'secretSettings.accessToken': true,
 					'settings.secretCredentials': true,
+					// User credentials
+					'secretSettings.accessToken': true,
 					'settings.secretAccessToken': true,
 					accessTokenUrl: true,
 				},
