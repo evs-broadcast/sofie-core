@@ -137,6 +137,9 @@ export const RundownTimingProvider = withTracker<
 
 				if (insertBefore !== null) {
 					parts.splice(insertBefore, 0, partInstance.part)
+				} else if (foundSegment) {
+					// Part is right at the end of the rundown
+					parts.push(partInstance.part)
 				}
 			}
 		})
