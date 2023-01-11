@@ -6,7 +6,11 @@ import { DBShowStyleBase } from '@sofie-automation/corelib/dist/dataModel/ShowSt
 import { DBPartInstance } from '@sofie-automation/corelib/dist/dataModel/PartInstance'
 import { AdLibAction } from '@sofie-automation/corelib/dist/dataModel/AdlibAction'
 import { RundownBaselineAdLibAction } from '@sofie-automation/corelib/dist/dataModel/RundownBaselineAdLibAction'
-import { IBlueprintActionManifestDisplayContent } from '@sofie-automation/blueprints-integration'
+import {
+	IBlueprintActionManifestDisplayContent,
+	VTContent,
+	CameraContent,
+} from '@sofie-automation/blueprints-integration'
 import { literal } from '@sofie-automation/shared-lib/dist/lib/lib'
 import { WsTopicBase, WsTopic, CollectionObserver } from '../wsHandler'
 import { PartInstanceName } from '../collections/partInstances'
@@ -25,6 +29,7 @@ interface AdLibActionType {
 interface AdLibActionStatus {
 	id: string
 	name: string
+	resourceId: string
 	sourceLayer: string
 	actionType: AdLibActionType[]
 }
@@ -94,9 +99,9 @@ export class ActivePlaylistTopic
 								: null,
 							adlibActions: this._adLibActions
 								? this._adLibActions.map((action) => {
-										const sourceLayerName = this._sourceLayersMap.get(
-											(action.display as IBlueprintActionManifestDisplayContent).sourceLayerId
-										)
+										const displayContent = action.display as IBlueprintActionManifestDisplayContent
+										const vtContent = displayContent.content as VTContent
+										const sourceLayerName = this._sourceLayersMap.get(displayContent.sourceLayerId)
 										const triggerModes = action.triggerModes
 											? action.triggerModes.map((t) =>
 													literal<AdLibActionType>({
@@ -108,6 +113,7 @@ export class ActivePlaylistTopic
 										return literal<AdLibActionStatus>({
 											id: unprotectString(action._id),
 											name: action.display.label.key,
+											resourceId: vtContent.path ? vtContent.path : 'invalid',
 											sourceLayer: sourceLayerName ? sourceLayerName : 'invalid',
 											actionType: triggerModes,
 										})
@@ -115,9 +121,9 @@ export class ActivePlaylistTopic
 								: [],
 							globalAdlibActions: this._globalAdLibActions
 								? this._globalAdLibActions.map((action) => {
-										const sourceLayerName = this._sourceLayersMap.get(
-											(action.display as IBlueprintActionManifestDisplayContent).sourceLayerId
-										)
+										const displayContent = action.display as IBlueprintActionManifestDisplayContent
+										const cameraContent = displayContent.content as CameraContent
+										const sourceLayerName = this._sourceLayersMap.get(displayContent.sourceLayerId)
 										const triggerModes = action.triggerModes
 											? action.triggerModes.map((t) =>
 													literal<AdLibActionType>({
@@ -129,6 +135,9 @@ export class ActivePlaylistTopic
 										return literal<AdLibActionStatus>({
 											id: unprotectString(action._id),
 											name: action.display.label.key,
+											resourceId: cameraContent.switcherInput
+												? String(cameraContent.switcherInput)
+												: 'invalid',
 											sourceLayer: sourceLayerName ? sourceLayerName : 'invalid',
 											actionType: triggerModes,
 										})

@@ -79,6 +79,9 @@ $defs:
       name:
         description: The user defined AdLibAction name
         type: string
+      resourceId:
+        description: The resource identifier for this AdLibAction
+        type: string
       sourceLayer:
         description: The source layer name for this AdLibAction
         type: string
@@ -96,11 +99,12 @@ $defs:
               type: string
           required: [name, label]
           additionalProperties: false
-    required: [id, name, sourceLayer, actionType]
+    required: [id, name, resourceId, sourceLayer, actionType]
     additionalProperties: false
     examples:
       - id: 'C6K_yIMuGFUk8X_L9A9_jRT6aq4_'
         name: Music video clip
+        resourceId: 914A
         sourceLayer: Video Clip
         actionType:
           - name: pvw
