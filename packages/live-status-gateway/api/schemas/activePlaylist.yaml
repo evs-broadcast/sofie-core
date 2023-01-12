@@ -99,7 +99,7 @@ $defs:
               type: string
           required: [name, label]
           additionalProperties: false
-    required: [id, name, resourceId, sourceLayer, actionType]
+    required: [id, name, sourceLayer, actionType]
     additionalProperties: false
     examples:
       - id: 'C6K_yIMuGFUk8X_L9A9_jRT6aq4_'

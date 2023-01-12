@@ -29,7 +29,7 @@ interface AdLibActionType {
 interface AdLibActionStatus {
 	id: string
 	name: string
-	resourceId: string
+	resourceId: string | undefined
 	sourceLayer: string
 	actionType: AdLibActionType[]
 }
@@ -100,7 +100,7 @@ export class ActivePlaylistTopic
 							adlibActions: this._adLibActions
 								? this._adLibActions.map((action) => {
 										const displayContent = action.display as IBlueprintActionManifestDisplayContent
-										const vtContent = displayContent.content as VTContent
+										const vtContent = displayContent.content as Partial<VTContent>
 										const sourceLayerName = this._sourceLayersMap.get(displayContent.sourceLayerId)
 										const triggerModes = action.triggerModes
 											? action.triggerModes.map((t) =>
@@ -113,7 +113,7 @@ export class ActivePlaylistTopic
 										return literal<AdLibActionStatus>({
 											id: unprotectString(action._id),
 											name: action.display.label.key,
-											resourceId: vtContent.path ? vtContent.path : 'invalid',
+											resourceId: vtContent && vtContent.path ? vtContent.path : undefined,
 											sourceLayer: sourceLayerName ? sourceLayerName : 'invalid',
 											actionType: triggerModes,
 										})
@@ -122,7 +122,7 @@ export class ActivePlaylistTopic
 							globalAdlibActions: this._globalAdLibActions
 								? this._globalAdLibActions.map((action) => {
 										const displayContent = action.display as IBlueprintActionManifestDisplayContent
-										const cameraContent = displayContent.content as CameraContent
+										const cameraContent = displayContent.content as Partial<CameraContent>
 										const sourceLayerName = this._sourceLayersMap.get(displayContent.sourceLayerId)
 										const triggerModes = action.triggerModes
 											? action.triggerModes.map((t) =>
@@ -135,9 +135,10 @@ export class ActivePlaylistTopic
 										return literal<AdLibActionStatus>({
 											id: unprotectString(action._id),
 											name: action.display.label.key,
-											resourceId: cameraContent.switcherInput
-												? String(cameraContent.switcherInput)
-												: 'invalid',
+											resourceId:
+												cameraContent && cameraContent.switcherInput
+													? String(cameraContent.switcherInput)
+													: undefined,
 											sourceLayer: sourceLayerName ? sourceLayerName : 'invalid',
 											actionType: triggerModes,
 										})
