@@ -28,12 +28,16 @@ export class RundownHandler
 
 	changed(id: string, changeType: string): void {
 		this._logger.info(`${this._name} ${changeType} ${id}`)
-		if (id !== this._curRundownId)
-			throw new Error(`${this._name} received change with unexpected id ${id} !== ${this._curRundownId}`)
 		if (!this._collection) return
 		const col = this._core.getCollection(this._collection)
 		if (!col) throw new Error(`collection '${this._collection}' not found!`)
-		if (this._collectionData) this._collectionData = col.findOne(this._collectionData._id) as unknown as DBRundown
+		if (id !== this._curRundownId) {
+			this._logger.info(`${this._name} updating curRundownId to ${id} from ${this._curRundownId}`)
+			this._curRundownId = id
+		}
+		const rundown = col.findOne(this._curRundownId)
+		if (!rundown) this._logger.error(`${this._name} update with rundown '${this._curRundownId}' not found!`)
+		this._collectionData = rundown as unknown as DBRundown
 		this.notify(this._collectionData)
 	}
 
