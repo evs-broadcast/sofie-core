@@ -240,6 +240,8 @@ export const App = translateWithTracker(() => {
 
 			setInterval(this.cronJob, CRON_INTERVAL)
 
+			document.body.classList.add('evs')
+
 			const uiZoom = getUIZoom()
 			if (uiZoom !== 1) {
 				document.documentElement.style.fontSize = uiZoom * 16 + 'px'
