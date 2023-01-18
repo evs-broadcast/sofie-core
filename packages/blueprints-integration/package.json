@@ -1,6 +1,6 @@
 {
 	"name": "@sofie-automation/blueprints-integration",
-	"version": "1.45.19",
+	"version": "1.45.20",
 	"description": "Library to define the interaction between core and the blueprints.",
 	"main": "dist/index.js",
 	"typings": "dist/index.d.ts",
@@ -41,7 +41,7 @@
 	],
 	"dependencies": {
 		"@sofie-automation/shared-lib": "link:../shared-lib",
-		"timeline-state-resolver-types": "npm:@evs/timeline-state-resolver-types@7.4.17",
+		"timeline-state-resolver-types": "npm:@evs/timeline-state-resolver-types@7.4.18",
 		"tslib": "^2.4.0",
 		"type-fest": "^2.16.0"
 	},
