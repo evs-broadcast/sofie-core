@@ -696,16 +696,18 @@ export const SourceLayerItem = withTranslation()(
 
 				return (
 					<div
-						className={pieceUiClassNames(
-							piece,
-							'segment-timeline__piece',
-							this.props.layer.type,
-							this.props.part.partId,
-							this.state.highlight,
-							this.props.relative,
-							elementWidth,
-							this.state
-						)}
+						className={
+							pieceUiClassNames(
+								piece,
+								'segment-timeline__piece',
+								this.props.layer.type,
+								this.props.part.partId,
+								this.state.highlight,
+								this.props.relative,
+								elementWidth,
+								this.state
+							) + ` ${this.props.layer._id}`
+						}
 						data-obj-id={piece.instance._id}
 						ref={this.setRef}
 						onClick={this.itemClick}

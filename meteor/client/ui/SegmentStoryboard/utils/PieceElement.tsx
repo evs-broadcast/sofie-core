@@ -42,17 +42,19 @@ export const PieceElement = React.forwardRef<HTMLDivElement, React.PropsWithChil
 ) {
 	return (
 		<div
-			className={pieceUiClassNames(
-				piece,
-				className,
-				layer?.type,
-				partId,
-				highlight,
-				true,
-				undefined,
-				undefined,
-				!HACK_disableSourceStatus
-			)}
+			className={
+				pieceUiClassNames(
+					piece,
+					className,
+					layer?.type,
+					partId,
+					highlight,
+					true,
+					undefined,
+					undefined,
+					!HACK_disableSourceStatus
+				) + ` ${layer?._id || ''}`
+			}
 			data-obj-id={piece.instance._id}
 			onPointerEnter={onPointerEnter}
 			onPointerLeave={onPointerLeave}

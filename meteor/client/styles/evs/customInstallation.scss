@@ -27,6 +27,7 @@ $evs-color-purple-600: #8e24aa;
 $evs-color-teal-600: #00897b;
 $evs-color-yellow-600: #fdd835;
 $evs-color-cyan-600: #00acc1;
+$evs-color-lightgreen-600: #7cb342;
 
 // Custom
 $fcr-widget-bg: #36393e;
@@ -38,24 +39,27 @@ $fcr-widget-highlight: #3c3e43;
 
 body.evs {
     --general-live-color: #{$evs-color-red-600};
-    --general-next-color: #{$evs-color-green-600};
+    --general-next-color: #{lighten($evs-color-lightgreen-600, 3%)};
     --general-live-remote-color: #{$evs-pink};
     --general-live-guest-color: #{$evs-color-teal-600};
 
-    --segment-layer-background-camera: #{$evs-color-green-600};
-    --segment-layer-background-camera--second: #{darken($evs-color-green-600, 20%)};
-    --segment-layer-background-lower-third: #{$evs-color-orange-600};
+    --segment-layer-background-camera: #{darken($evs-color-green-600, 17%)};
+    --segment-layer-background-camera--second: #{darken($evs-color-green-600, 25%)};
+    --segment-layer-background-lower-third: #{darken($evs-color-orange-600, 5%)};
     --segment-layer-background-lower-third--second: #{darken($evs-color-orange-600, 20%)};
-    --segment-layer-background-graphics: #{$evs-color-orange-600};;
+    --segment-layer-background-graphics: #{darken($evs-color-orange-600, 5%)};;
     --segment-layer-background-graphics--second: #{darken($evs-color-orange-600, 20%)};
     --segment-layer-background-remote: #{$evs-color-pink-600};
     --segment-layer-background-remote--second: #{darken($evs-color-pink-600, 20%)};
-    --segment-layer-background-vt: #{$evs-color-blue-600};
-    --segment-layer-background-vt--second: #{darken($evs-color-blue-600, 20%)};
-    --segment-layer-background-script: #{darken($evs-color-teal-600, 15%)};
+    --segment-layer-background-vt: #{$evs-color-purple-600};
+    --segment-layer-background-vt--second: #{darken($evs-color-purple-600, 20%)};
+    --segment-layer-background-script: #{darken($evs-color-yellow-600, 45%)};
     
-    --dve-upper: #{$evs-color-teal-600};
-    --dve-lower: #{darken($evs-color-teal-600, 10%)};
+    $audio-color: $evs-color-blue-600;
+    $audio-group-color: $evs-color-teal-600;
+    $audio-clip-color: $evs-color-blue-600, 20%;
+    $audio-bed-color: darken($evs-color-blue-600, 20%);
+
     --color-status-warning: #{$evs-warning};
     --color-status-fatal: #{$evs-danger};
 
@@ -99,9 +103,10 @@ body.evs {
 
     // Top rundown header - active and rehearsal
     .header.rundown.active.rehearsal .first-row {
-        background: darken($evs-color-yellow-600, 35%);
+        background: darken($evs-color-blue-600, 40%);
     }
 
+    
     // Segment box
     .segment-timeline {
         box-shadow: none;
@@ -109,8 +114,14 @@ body.evs {
         border-radius: 8px;
         background: $segment-color;
         border: 0;
-
+        
         grid-template-columns: [segment-name] 11.5rem [segment-group-controls] 130px [timeline] auto [end];
+        
+        // This fixes next flag arrow gap
+        .segment-timeline__timeline .segment-timeline__part.next .segment-timeline__part__nextline:not(.segment-timeline__part__nextline--endline):not(.offset):not(.invalid) .segment-timeline__part__nextline__label::after, .segment-timeline__next-preview .segment-timeline__part.next .segment-timeline__part__nextline:not(.segment-timeline__part__nextline--endline):not(.offset):not(.invalid) .segment-timeline__part__nextline__label::after {
+            border-width: 10px 0 9px 10px;
+            right: -10px;
+        }
 
         // View mode switcher
         .segment-timeline__switch-view-mode-button {
@@ -161,14 +172,45 @@ body.evs {
             box-shadow: 0 0 18px 1px $segment-color;
         }
 
-        // Audio clip piece
-        .segment-timeline__timeline .segment-timeline__part .segment-timeline__output-group .segment-timeline__layer .segment-timeline__piece.audio, .segment-timeline__next-preview .segment-timeline__part .segment-timeline__output-group .segment-timeline__layer .segment-timeline__piece.audio {
-            background: $evs-color-purple-600;
+        // Audio
+        .segment-timeline__timeline .segment-timeline__part .segment-timeline__output-group .segment-timeline__layer .segment-timeline__piece.audio,
+        .segment-timeline__next-preview .segment-timeline__part .segment-timeline__output-group .segment-timeline__layer .segment-timeline__piece.audio {
+            background: $audio-color;
+        }
+
+        // Audio guest group
+        .segment-timeline__timeline .segment-timeline__part .segment-timeline__output-group .segment-timeline__layer .segment-timeline__piece.audio.audio_group_guest,
+        .segment-timeline__next-preview .segment-timeline__part .segment-timeline__output-group .segment-timeline__layer .segment-timeline__piece.audio.audio_group_guest {
+            background: $audio-group-color;
+        }
+
+        // Audio clips
+        .segment-timeline__timeline .segment-timeline__part .segment-timeline__output-group .segment-timeline__layer .segment-timeline__piece.audio.audio_clip,
+        .segment-timeline__next-preview .segment-timeline__part .segment-timeline__output-group .segment-timeline__layer .segment-timeline__piece.audio.audio_clip {
+            background: $audio-clip-color;
+        }
+
+        // Audio beds
+        .segment-timeline__timeline .segment-timeline__part .segment-timeline__output-group .segment-timeline__layer .segment-timeline__piece.audio.audio_bed,
+        .segment-timeline__next-preview .segment-timeline__part .segment-timeline__output-group .segment-timeline__layer .segment-timeline__piece.audio.audio_bed {
+            background: $audio-bed-color;
         }
     }
 
     .segment-storyboard__part__piece.audio {
-        background: $evs-color-purple-600;
+        background: $audio-color;
+    }
+
+    .segment-storyboard__part__piece.audio.audio_group_guest {
+        background: $audio-group-color;
+    }
+
+    .segment-storyboard__part__piece.audio.audio_clip {
+        background: $audio-clip-color;
+    }
+
+    .segment-storyboard__part__piece.audio.audio_bed {
+        background: $audio-bed-color;
     }
 
 
