@@ -1,6 +1,6 @@
 {
 	"name": "live-status-gateway",
-	"version": "1.45.20",
+	"version": "1.45.21",
 	"private": true,
 	"description": "Provides state from Sofie over sockets",
 	"license": "MIT",
