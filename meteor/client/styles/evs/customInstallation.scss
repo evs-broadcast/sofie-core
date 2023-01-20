@@ -1,0 +1,261 @@
+// Base Colors
+$evs-gray-darker: #1e2124;
+$evs-gray-dark: #2f3136;
+$evs-gray: #36393e;
+$evs-gray-light: #42464d;
+$evs-gray-lighter: #697078;
+$evs-contrast: #ffffff;
+$evs-base: #161719;
+$evs-primary: #1e88e5;
+$evs-success: #8bc34a;
+$evs-warning: #fb8c00;
+$evs-danger: #f44336;
+$evs-info: #00acc1;
+
+// Secondary Colors
+$evs-pink: #e91e63;
+$evs-purple: #9c27b0;
+$evs-deep-purple: #673ab7;
+
+// Material Colors
+$evs-color-blue-600: #1e88e5;
+$evs-color-green-600: #43a047;
+$evs-color-red-600: #e53935;
+$evs-color-orange-600: #fb8c00;
+$evs-color-pink-600: #d81b60;
+$evs-color-purple-600: #8e24aa;
+$evs-color-teal-600: #00897b;
+$evs-color-yellow-600: #fdd835;
+$evs-color-cyan-600: #00acc1;
+
+// Custom
+$fcr-widget-bg: #36393e;
+$fcr-widget-header: #1e2124;
+$fcr-button: #0c4473;
+$fcr-button-hover: #1889e6;
+$fcr-stroke: #1889e6;
+$fcr-widget-highlight: #3c3e43;
+
+body.evs {
+    --general-live-color: #{$evs-color-red-600};
+    --general-next-color: #{$evs-color-green-600};
+    --general-live-remote-color: #{$evs-pink};
+    --general-live-guest-color: #{$evs-color-teal-600};
+
+    --segment-layer-background-camera: #{$evs-color-green-600};
+    --segment-layer-background-camera--second: #{darken($evs-color-green-600, 20%)};
+    --segment-layer-background-lower-third: #{$evs-color-orange-600};
+    --segment-layer-background-lower-third--second: #{darken($evs-color-orange-600, 20%)};
+    --segment-layer-background-graphics: #{$evs-color-orange-600};;
+    --segment-layer-background-graphics--second: #{darken($evs-color-orange-600, 20%)};
+    --segment-layer-background-remote: #{$evs-color-pink-600};
+    --segment-layer-background-remote--second: #{darken($evs-color-pink-600, 20%)};
+    --segment-layer-background-vt: #{$evs-color-blue-600};
+    --segment-layer-background-vt--second: #{darken($evs-color-blue-600, 20%)};
+    --segment-layer-background-script: #{darken($evs-color-teal-600, 15%)};
+    
+    --dve-upper: #{$evs-color-teal-600};
+    --dve-lower: #{darken($evs-color-teal-600, 10%)};
+    --color-status-warning: #{$evs-warning};
+    --color-status-fatal: #{$evs-danger};
+
+    --general-late-color: #{$evs-color-red-600};
+    --general-fast-color: #{$evs-color-red-600};
+    --general-countdown-to-next-color: #{$evs-color-yellow-600};
+
+    --general-clock: #{$evs-primary};
+
+    $segment-color: $fcr-widget-header;
+    --timeline-grid-finished-background-color: #{$segment-color};
+
+    // Sidebar
+    --ui-dark-color: #{$fcr-widget-header};
+    
+    &.dark, .dark {
+        background: $fcr-widget-bg;
+    }
+
+    .info {
+        background: $evs-primary;
+    }
+
+    .warn {
+        background: $evs-danger;
+    }
+
+    .super-dark {
+        background: $fcr-widget-header
+    }
+
+    // Remove shaddow effects
+    .header.rundown .timing .timing-clock.heavy-light.light {
+        text-shadow: none;
+    }
+
+    // Top rundown header
+    .header.rundown.not-active .first-row {
+        background-color: $evs-color-blue-600;
+    }
+
+    // Top rundown header - active and rehearsal
+    .header.rundown.active.rehearsal .first-row {
+        background: darken($evs-color-yellow-600, 35%);
+    }
+
+    // Segment box
+    .segment-timeline {
+        box-shadow: none;
+        margin: 0.8em 0.75em 0.8em 0;
+        border-radius: 8px;
+        background: $segment-color;
+        border: 0;
+
+        grid-template-columns: [segment-name] 11.5rem [segment-group-controls] 130px [timeline] auto [end];
+
+        // View mode switcher
+        .segment-timeline__switch-view-mode-button {
+            background: $segment-color;
+        }
+
+        // Zoom buttons
+        .segment-timeline__timeline-zoom-buttons > .segment-timeline__timeline-zoom-buttons__button {
+            svg .btn-bkg {
+                fill: $fcr-button;
+                stroke: $fcr-stroke;
+            }
+
+            // Make it smaler for 1px because of stroke
+            &.segment-timeline__timeline-zoom-buttons__button--in svg .btn-bkg {
+                r: 10;
+            }
+        }
+
+        // Zoom buttons hover
+        .segment-timeline__timeline-zoom-buttons > .segment-timeline__timeline-zoom-buttons__button:not(:disabled):hover > svg .btn-bkg {
+            fill: $fcr-button-hover
+        }
+
+        // Past shade
+        .segment-timeline__liveline-shade {
+            background: linear-gradient(to left, rgba(0, 0, 0, 0.3) 0, rgba($segment-color, 0.9) 75px);
+        }
+
+        // Future shade
+        .segment-timeline__timeline .segment-timeline__part .segment-timeline__part__future-shade,
+        .segment-timeline__next-preview .segment-timeline__part .segment-timeline__part__future-shade {
+            background: linear-gradient(to left, rgba($segment-color, 0.95) 0%, rgba(0, 0, 0, 0) 50%);
+        }
+
+        // Segment flags
+        .segment-timeline__timeline .segment-timeline__small-parts-flag, .segment-timeline .segment-timeline__next-preview .segment-timeline__small-parts-flag {
+            background: $segment-color;
+        }
+
+        // Labels
+        .segment-timeline__timeline .segment-timeline__part .segment-timeline__part__nextline .segment-timeline__part__nextline__label, .segment-timeline .segment-timeline__next-preview .segment-timeline__part .segment-timeline__part__nextline .segment-timeline__part__nextline__label {
+            background: $segment-color;
+        }
+
+        // Piece hover shaddow
+        .segment-timeline__timeline .segment-timeline__part .segment-timeline__output-group .segment-timeline__layer .segment-timeline__piece:hover, .segment-timeline .segment-timeline__next-preview .segment-timeline__part .segment-timeline__output-group .segment-timeline__layer .segment-timeline__piece:hover {
+            box-shadow: 0 0 18px 1px $segment-color;
+        }
+
+        // Audio clip piece
+        .segment-timeline__timeline .segment-timeline__part .segment-timeline__output-group .segment-timeline__layer .segment-timeline__piece.audio, .segment-timeline__next-preview .segment-timeline__part .segment-timeline__output-group .segment-timeline__layer .segment-timeline__piece.audio {
+            background: $evs-color-purple-600;
+        }
+    }
+
+    .segment-storyboard__part__piece.audio {
+        background: $evs-color-purple-600;
+    }
+
+
+    // Segment storyboard shade
+    .segment-storyboard > .segment-storyboard__part-list__container > .segment-storyboard__history-shade {
+        background: linear-gradient(to right, $segment-color 0%, rgba($segment-color, 0) 100%);
+    }
+
+    // Segment storyboard part
+    .segment-storyboard__part > .segment-storyboard__part__background {
+        background: linear-gradient(to bottom, var(--general-live-color) 20px, $segment-color 8rem);
+    }
+
+    // Timer background
+    .segment-timeline .segment-timeline__liveline .segment-timeline__liveline__timecode,
+    .segment-storyboard__part > .segment-storyboard__part-timer {
+        background: $segment-color;
+    }
+
+    // Segment title glow effect
+    .segment-timeline .segment-timeline__title {
+        text-shadow: none;
+    }
+
+    // Segment title background
+    .segment-timeline:not(.next):not(.live) .segment-timeline__title {
+        background: $fcr-widget-highlight;
+    }
+
+    // Border between pieces
+    .segment-timeline .segment-timeline__timeline .segment-timeline__part .segment-timeline__output-group .segment-timeline__layer, .segment-timeline .segment-timeline__next-preview .segment-timeline__part .segment-timeline__output-group .segment-timeline__layer {
+        border-bottom: 2px solid #00000050;
+    }
+
+    // Segment timeline section with pieces
+    .segment-timeline .segment-timeline__timeline-background {
+        background: lighten($segment-color, 5%);
+    }
+    
+    // Hide "Back to rundowns" button
+    .rundown-view.rundown-view--unpublished > .rundown-view__label > p > button {
+        display: none;
+    }
+    
+    // Default piece color
+    .segment-timeline .segment-timeline__timeline .segment-timeline__part .segment-timeline__output-group .segment-timeline__layer .segment-timeline__piece, .segment-timeline .segment-timeline__next-preview .segment-timeline__part .segment-timeline__output-group .segment-timeline__layer .segment-timeline__piece {
+        background: lighten($evs-gray, 8%);
+    }
+    
+    // Rundowns list header
+    .rundown-list .rundown-list__header {
+        background: $evs-gray-lighter;
+    }
+
+    // Notification active tab and panel
+    $notification: lighten($fcr-widget-bg, 10%);
+
+    .rundown-view .status-bar .status-bar__controls__button.status-bar__controls__button--open.notifications__toggle-button {
+        background: $notification;
+    }
+
+    .rundown-view .notification-center-panel {
+        background: $notification;
+    }
+    
+    // Hide evaluation form
+    .afterbroadcastform-container {
+        display: none;
+    }
+    
+    // Hide shelf handle
+    .rundown-view__shelf .rundown-view__shelf__handle {
+        display: none;
+    }
+
+    .adlib-panel > .adlib-panel__list-view__list > .adlib-panel__list-view__list__table > tbody.adlib-panel__list-view__list__segment > .adlib-panel__list-view__list__segment__item > td {
+        border-color: #141414;
+    }
+
+    // Primary button
+    .btn-primary {
+        background: $evs-primary;
+        border-color: $evs-primary;
+
+        &.btn-warn {
+            background: $evs-danger;
+            border-color: $evs-danger;
+        }
+    }
+}
