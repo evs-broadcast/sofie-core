@@ -1,9 +1,10 @@
 import * as _ from 'underscore'
 import { logger } from '../../lib/logging'
-import { PeripheralDevice, PeripheralDeviceId } from '../../lib/collections/PeripheralDevices'
+import { PeripheralDevice } from '../../lib/collections/PeripheralDevices'
 import { MeteorCall } from '../../lib/api/methods'
 import { Time } from '../../lib/lib'
 import { getEventTimestamp } from './lib'
+import { PeripheralDeviceId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 
 export async function callPeripheralDeviceFunction(
 	e: any,
@@ -20,6 +21,16 @@ export async function callPeripheralDeviceFunction(
 		functionName,
 		...params
 	)
+}
+export async function callPeripheralDeviceAction(
+	e: any,
+	deviceId: PeripheralDeviceId,
+	timeoutTime: number | undefined,
+	actionId: string,
+	payload?: Record<string, any>
+): Promise<any> {
+	const eventContext = eventContextForLog(e)
+	return MeteorCall.client.callPeripheralDeviceAction(eventContext[0], deviceId, timeoutTime, actionId, payload)
 }
 
 export namespace PeripheralDevicesAPI {

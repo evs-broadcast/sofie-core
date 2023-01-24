@@ -1,7 +1,7 @@
 import { AdLibAction } from '@sofie-automation/corelib/dist/dataModel/AdlibAction'
 import { AdLibPiece } from '@sofie-automation/corelib/dist/dataModel/AdLibPiece'
 import { ExpectedPackageDBType } from '@sofie-automation/corelib/dist/dataModel/ExpectedPackages'
-import { PeripheralDeviceId, SegmentId } from '@sofie-automation/corelib/dist/dataModel/Ids'
+import { BlueprintId, PeripheralDeviceId, SegmentId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import { SegmentNote, PartNote, RundownNote } from '@sofie-automation/corelib/dist/dataModel/Notes'
 import { DBPart } from '@sofie-automation/corelib/dist/dataModel/Part'
 import { Piece, serializePieceTimelineObjectsBlob } from '@sofie-automation/corelib/dist/dataModel/Piece'
@@ -10,9 +10,8 @@ import { RundownBaselineAdLibAction } from '@sofie-automation/corelib/dist/dataM
 import { RundownBaselineAdLibItem } from '@sofie-automation/corelib/dist/dataModel/RundownBaselineAdLibPiece'
 import { RundownBaselineObj } from '@sofie-automation/corelib/dist/dataModel/RundownBaselineObj'
 import { DBSegment, SegmentOrphanedReason } from '@sofie-automation/corelib/dist/dataModel/Segment'
-import { ShowStyleCompound } from '@sofie-automation/corelib/dist/dataModel/ShowStyleCompound'
 import { getRandomId, literal, stringifyError } from '@sofie-automation/corelib/dist/lib'
-import { unprotectString, protectString } from '@sofie-automation/corelib/dist/protectedString'
+import { protectString } from '@sofie-automation/corelib/dist/protectedString'
 import { WrappedShowStyleBlueprint } from '../blueprints/cache'
 import { StudioUserContext, SegmentUserContext, GetRundownContext } from '../blueprints/context'
 import { WatchedPackagesHelper } from '../blueprints/context/watchedPackages'
@@ -46,11 +45,6 @@ export interface UpdateSegmentsResult {
 	pieces: Piece[]
 	adlibPieces: AdLibPiece[]
 	adlibActions: AdLibAction[]
-
-	/** ShowStyle, if loaded to reuse */
-	showStyle: ReadonlyDeep<ShowStyleCompound> | undefined
-	/** Blueprint, if loaded to reuse */
-	blueprint: ReadonlyDeep<WrappedShowStyleBlueprint> | undefined
 }
 
 async function getWatchedPackagesHelper(
@@ -69,6 +63,10 @@ async function getWatchedPackagesHelper(
 			(p) => 'segmentId' in p && segmentIds.has(p.segmentId)
 		)
 	}
+}
+
+function translationNamespace(id: BlueprintId): string {
+	return 'blueprint_' + id
 }
 
 /**
@@ -128,16 +126,14 @@ export async function calculateSegmentsFromIngestData(
 					// This isn't much entropy, blueprints may want to add more for each Part they generate
 					identifier: `rundownId=${rundown._id}`,
 				},
-				context.studio,
-				context.getStudioBlueprintConfig(),
+				context,
 				showStyle,
-				context.getShowStyleBlueprintConfig(showStyle),
 				rundown,
 				watchedPackages
 			)
 			let blueprintSegment0: BlueprintResultSegment | null = null
 			try {
-				blueprintSegment0 = blueprint.blueprint.getSegment(context2, ingestSegment)
+				blueprintSegment0 = await blueprint.blueprint.getSegment(context2, ingestSegment)
 			} catch (err) {
 				logger.error(`Error in showStyleBlueprint.getSegment: ${stringifyError(err)}`)
 				blueprintSegment0 = null
@@ -157,7 +153,7 @@ export async function calculateSegmentsFromIngestData(
 							type: NoteSeverity.ERROR,
 							message: {
 								key: 'Internal Error generating segment',
-								namespaces: [unprotectString(blueprint.blueprintId)],
+								namespaces: [translationNamespace(blueprint.blueprintId)],
 							},
 							origin: {
 								name: '', // TODO
@@ -183,7 +179,7 @@ export async function calculateSegmentsFromIngestData(
 							type: note.type,
 							message: {
 								...note.message,
-								namespaces: [unprotectString(blueprint.blueprintId)],
+								namespaces: [translationNamespace(blueprint.blueprintId)],
 							},
 							origin: {
 								name: '', // TODO
@@ -216,7 +212,7 @@ export async function calculateSegmentsFromIngestData(
 								type: note.type,
 								message: {
 									...note.message,
-									namespaces: [unprotectString(blueprint.blueprintId)],
+									namespaces: [translationNamespace(blueprint.blueprintId)],
 								},
 								origin: {
 									name: '', // TODO
@@ -239,7 +235,7 @@ export async function calculateSegmentsFromIngestData(
 								...blueprintPart.part.invalidReason,
 								message: {
 									...blueprintPart.part.invalidReason.message,
-									namespaces: [unprotectString(blueprint.blueprintId)],
+									namespaces: [translationNamespace(blueprint.blueprintId)],
 								},
 						  }
 						: undefined,
@@ -285,23 +281,10 @@ export async function calculateSegmentsFromIngestData(
 
 			preserveOrphanedSegmentPositionInRundown(context, cache, newSegment)
 		}
-
-		span?.end()
-		return {
-			...res,
-
-			showStyle,
-			blueprint,
-		}
-	} else {
-		span?.end()
-		return {
-			...res,
-
-			showStyle: undefined,
-			blueprint: undefined,
-		}
 	}
+
+	span?.end()
+	return res
 }
 
 function preserveOrphanedSegmentPositionInRundown(context: JobContext, cache: CacheForIngest, newSegment: DBSegment) {
@@ -309,15 +292,10 @@ function preserveOrphanedSegmentPositionInRundown(context: JobContext, cache: Ca
 	// It may work for mos-gateway, but this has not yet been tested and so is behind a feature/config field until it has been verified or adapted
 	if (context.studio.settings.preserveOrphanedSegmentPositionInRundown) {
 		// When we have orphaned segments, try to keep the order correct when adding and removing other segments
-		const orphanedDeletedSegments = cache.Segments.findFetch({
-			orphaned: SegmentOrphanedReason.DELETED,
-			rundownId: newSegment.rundownId,
-		})
+		const orphanedDeletedSegments = cache.Segments.findAll((s) => s.orphaned === SegmentOrphanedReason.DELETED)
 		if (orphanedDeletedSegments.length) {
-			const allSegmentsByRank = cache.Segments.findFetch(
-				{ rundownId: newSegment.rundownId },
-				{ sort: { _rank: -1 } }
-			)
+			const allSegmentsByRank = cache.Segments.findAll(null, { sort: { _rank: -1 } })
+
 			// Rank padding
 			const rankPad = 0.0001
 			for (const orphanedSegment of orphanedDeletedSegments) {
@@ -355,7 +333,10 @@ function preserveOrphanedSegmentPositionInRundown(context: JobContext, cache: Ca
 						}
 					}
 				}
-				cache.Segments.update({ _id: orphanedSegment._id }, { $set: { _rank: newRank } })
+				cache.Segments.updateOne(orphanedSegment._id, (s) => {
+					s._rank = newRank
+					return s
+				})
 			}
 		}
 	}
@@ -374,24 +355,24 @@ export function saveSegmentChangesToCache(
 	data: UpdateSegmentsResult,
 	isWholeRundownUpdate: boolean
 ): void {
-	const newPartIds = data.parts.map((p) => p._id)
-	const newSegmentIds = data.segments.map((p) => p._id)
+	const newPartIds = new Set(data.parts.map((p) => p._id))
+	const newSegmentIds = new Set(data.segments.map((p) => p._id))
 
 	const partChanges = saveIntoCache<DBPart>(
 		context,
 		cache.Parts,
-		isWholeRundownUpdate ? {} : { $or: [{ segmentId: { $in: newSegmentIds } }, { _id: { $in: newPartIds } }] },
+		isWholeRundownUpdate ? null : (p) => newSegmentIds.has(p.segmentId) || newPartIds.has(p._id),
 		data.parts
 	)
 	logChanges('Parts', partChanges)
-	const affectedPartIds = [...partChanges.removed, ...newPartIds]
+	const affectedPartIds = new Set([...partChanges.removed, ...newPartIds.values()])
 
 	logChanges(
 		'Pieces',
 		saveIntoCache<Piece>(
 			context,
 			cache.Pieces,
-			isWholeRundownUpdate ? {} : { startPartId: { $in: affectedPartIds } },
+			isWholeRundownUpdate ? null : (p) => affectedPartIds.has(p.startPartId),
 			data.pieces
 		)
 	)
@@ -400,7 +381,7 @@ export function saveSegmentChangesToCache(
 		saveIntoCache<AdLibAction>(
 			context,
 			cache.AdLibActions,
-			isWholeRundownUpdate ? {} : { partId: { $in: affectedPartIds } },
+			isWholeRundownUpdate ? null : (p) => affectedPartIds.has(p.partId),
 			data.adlibActions
 		)
 	)
@@ -409,7 +390,7 @@ export function saveSegmentChangesToCache(
 		saveIntoCache<AdLibPiece>(
 			context,
 			cache.AdLibPieces,
-			isWholeRundownUpdate ? {} : { partId: { $in: affectedPartIds } },
+			isWholeRundownUpdate ? null : (p) => !!p.partId && affectedPartIds.has(p.partId),
 			data.adlibPieces
 		)
 	)
@@ -446,9 +427,6 @@ export async function updateSegmentFromIngestData(
 		renamedSegments: new Map(),
 
 		removeRundown: false,
-
-		showStyle: segmentChanges.showStyle,
-		blueprint: segmentChanges.blueprint,
 	}
 }
 
@@ -495,9 +473,6 @@ export async function regenerateSegmentsFromIngestData(
 		renamedSegments: new Map(),
 
 		removeRundown: false,
-
-		showStyle: segmentChanges.showStyle,
-		blueprint: segmentChanges.blueprint,
 	}
 
 	span?.end()
@@ -586,9 +561,6 @@ export async function updateRundownFromIngestData(
 		renamedSegments: new Map(),
 
 		removeRundown: false,
-
-		showStyle: showStyle.compound,
-		blueprint: showStyleBlueprint,
 	})
 }
 export async function getRundownFromIngestData(
@@ -614,10 +586,8 @@ export async function getRundownFromIngestData(
 			name: `${showStyle.base.name}-${showStyle.variant.name}`,
 			identifier: `showStyleBaseId=${showStyle.base._id},showStyleVariantId=${showStyle.variant._id}`,
 		},
-		context.studio,
-		context.getStudioBlueprintConfig(),
+		context,
 		showStyle.compound,
-		context.getShowStyleBlueprintConfig(showStyle.compound),
 		rundownBaselinePackages,
 		async () => {
 			// Note: This can cause a mild race-condition, in the case of two Rundowns being created at the same time.
@@ -658,10 +628,10 @@ export async function getRundownFromIngestData(
 
 	const translationNamespaces: string[] = []
 	if (showStyleBlueprint.blueprintId) {
-		translationNamespaces.push(unprotectString(showStyleBlueprint.blueprintId))
+		translationNamespaces.push(translationNamespace(showStyleBlueprint.blueprintId))
 	}
 	if (context.studio.blueprintId) {
-		translationNamespaces.push(unprotectString(context.studio.blueprintId))
+		translationNamespaces.push(translationNamespace(context.studio.blueprintId))
 	}
 
 	// Ensure the ids in the notes are clean
@@ -731,7 +701,7 @@ export async function saveChangesForRundown(
 
 	const { baselineObjects, baselineAdlibPieces, baselineAdlibActions } = await cache.loadBaselineCollections()
 	const rundownBaselineChanges = sumChanges(
-		saveIntoCache<RundownBaselineObj>(context, baselineObjects, {}, [
+		saveIntoCache<RundownBaselineObj>(context, baselineObjects, null, [
 			{
 				_id: getRandomId(7),
 				rundownId: dbRundown._id,
@@ -744,7 +714,7 @@ export async function saveChangesForRundown(
 		saveIntoCache<RundownBaselineAdLibItem>(
 			context,
 			baselineAdlibPieces,
-			{},
+			null,
 			postProcessAdLibPieces(
 				context,
 				showStyle.base.blueprintId,
@@ -756,16 +726,15 @@ export async function saveChangesForRundown(
 		saveIntoCache<RundownBaselineAdLibAction>(
 			context,
 			baselineAdlibActions,
-			{},
+			null,
 			postProcessGlobalAdLibActions(showStyle.base.blueprintId, dbRundown._id, rundownRes.globalActions || [])
 		)
 	)
 	if (anythingChanged(rundownBaselineChanges)) {
 		// If any of the rundown baseline datas was modified, we'll update the baselineModifyHash of the rundown
-		cache.Rundown.update({
-			$set: {
-				baselineModifyHash: getCurrentTime() + '',
-			},
+		cache.Rundown.update((rd) => {
+			rd.baselineModifyHash = getCurrentTime() + ''
+			return rd
 		})
 	}
 
@@ -786,7 +755,8 @@ export async function resolveSegmentChangesForUpdatedRundown(
 	)
 
 	/** Don't remove segments for now, orphan them instead. The 'commit' phase will clean them up if possible */
-	const removedSegments = cache.Segments.findFetch({ _id: { $nin: segmentChanges.segments.map((s) => s._id) } })
+	const changedSegmentIds = new Set(segmentChanges.segments.map((s) => s._id))
+	const removedSegments = cache.Segments.findAll((s) => !changedSegmentIds.has(s._id))
 	for (const oldSegment of removedSegments) {
 		segmentChanges.segments.push({
 			...oldSegment,

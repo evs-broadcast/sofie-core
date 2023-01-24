@@ -12,7 +12,7 @@ function multilineText(txt: string) {
 }
 
 function isEventInInputField(e: Event) {
-	// @ts-ignore localName
+	// @ts-expect-error localName
 	return e && e.target && ['textarea', 'input'].indexOf(e.target.localName + '') !== -1
 }
 
@@ -53,7 +53,7 @@ export function fetchFrom(input: RequestInfo, init?: RequestInit) {
 
 export function ensureHasTrailingSlash(input: string | null): string | undefined {
 	if (input) {
-		return input.substr(-1) === '/' ? input : input + '/'
+		return input.endsWith('/') ? input : input + '/'
 	} else {
 		return undefined
 	}

@@ -3,7 +3,7 @@ import { Meteor } from 'meteor/meteor'
 import * as _ from 'underscore'
 import { ServerResponse, IncomingMessage } from 'http'
 import { check, Match } from '../../lib/check'
-import { Studio, Studios, StudioId } from '../../lib/collections/Studios'
+import { Studio, Studios } from '../../lib/collections/Studios'
 import {
 	Snapshots,
 	SnapshotType,
@@ -11,7 +11,6 @@ import {
 	SnapshotDebug,
 	SnapshotBase,
 	SnapshotRundownPlaylist,
-	SnapshotId,
 } from '../../lib/collections/Snapshots'
 import { UserActionsLog, UserActionsLogItem } from '../../lib/collections/UserActionsLog'
 import { PieceGeneric } from '../../lib/collections/Pieces'
@@ -28,8 +27,12 @@ import {
 	unprotectStringArray,
 	unprotectString,
 } from '../../lib/lib'
-import { ShowStyleBases, ShowStyleBase, ShowStyleBaseId } from '../../lib/collections/ShowStyleBases'
-import { PeripheralDevices, PeripheralDevice, PeripheralDeviceId } from '../../lib/collections/PeripheralDevices'
+import { ShowStyleBases, ShowStyleBase } from '../../lib/collections/ShowStyleBases'
+import {
+	PeripheralDevices,
+	PeripheralDevice,
+	PERIPHERAL_SUBTYPE_PROCESS,
+} from '../../lib/collections/PeripheralDevices'
 import { logger } from '../logging'
 import { Timeline, TimelineComplete } from '../../lib/collections/Timeline'
 import { PeripheralDeviceCommands, PeripheralDeviceCommand } from '../../lib/collections/PeripheralDeviceCommands'
@@ -40,14 +43,13 @@ import { ICoreSystem, CoreSystem, parseVersion, getCoreSystemAsync } from '../..
 import { CURRENT_SYSTEM_VERSION } from '../migration/currentSystemVersion'
 import { isVersionSupported } from '../migration/databaseMigration'
 import { ShowStyleVariant, ShowStyleVariants } from '../../lib/collections/ShowStyleVariants'
-import { Blueprints, Blueprint, BlueprintId } from '../../lib/collections/Blueprints'
+import { Blueprints, Blueprint } from '../../lib/collections/Blueprints'
 import { IngestRundown, VTContent } from '@sofie-automation/blueprints-integration'
 import { MongoQuery } from '../../lib/typings/meteor'
 import { importIngestRundown } from './ingest/http'
-import { RundownPlaylists, RundownPlaylistId, RundownPlaylist } from '../../lib/collections/RundownPlaylists'
+import { RundownPlaylists, RundownPlaylist } from '../../lib/collections/RundownPlaylists'
 import { RundownLayouts, RundownLayoutBase } from '../../lib/collections/RundownLayouts'
 import { DBTriggeredActions, TriggeredActions } from '../../lib/collections/TriggeredActions'
-import { OrganizationId } from '../../lib/collections/Organization'
 import { Settings } from '../../lib/Settings'
 import { MethodContext, MethodContextAPI } from '../../lib/api/methods'
 import { Credentials, isResolvedCredentials } from '../security/lib/credentials'
@@ -72,7 +74,17 @@ import { QueueStudioJob } from '../worker/worker'
 import { StudioJobs } from '@sofie-automation/corelib/dist/worker/studio'
 import { ReadonlyDeep } from 'type-fest'
 import { checkAccessToPlaylist, VerifiedRundownPlaylistContentAccess } from './lib'
-import { PackageInfo } from '../coreSystem'
+import { getSystemStorePath, PackageInfo } from '../coreSystem'
+import { JSONBlobParse, JSONBlobStringify } from '@sofie-automation/shared-lib/dist/lib/JSONBlob'
+import {
+	BlueprintId,
+	OrganizationId,
+	PeripheralDeviceId,
+	RundownPlaylistId,
+	ShowStyleBaseId,
+	SnapshotId,
+	StudioId,
+} from '@sofie-automation/corelib/dist/dataModel/Ids'
 
 interface RundownPlaylistSnapshot extends CoreRundownPlaylistSnapshot {
 	versionExtended: string | undefined
@@ -256,7 +268,7 @@ async function createDebugSnapshot(studioId: StudioId, organizationId: Organizat
 	const deviceSnaphots: Array<DeviceSnapshot> = _.compact(
 		await Promise.all(
 			systemSnapshot.devices.map(async (device) => {
-				if (device.connected && device.subType === PeripheralDeviceAPI.SUBTYPE_PROCESS) {
+				if (device.connected && device.subType === PERIPHERAL_SUBTYPE_PROCESS) {
 					const startTime = getCurrentTime()
 
 					// defer to another fiber
@@ -316,7 +328,7 @@ async function createRundownPlaylistSnapshot(
 		full,
 	})
 	const coreResult = await queuedJob.complete
-	const coreSnapshot: CoreRundownPlaylistSnapshot = JSON.parse(coreResult.snapshotJson)
+	const coreSnapshot: CoreRundownPlaylistSnapshot = JSONBlobParse(coreResult.snapshotJson)
 
 	const mediaObjectIds: Array<string> = [
 		...getPiecesMediaObjects(coreSnapshot.pieces),
@@ -411,12 +423,9 @@ async function storeSnaphot(
 	organizationId: OrganizationId | null,
 	comment: string
 ): Promise<SnapshotId> {
-	const system = await getCoreSystemAsync()
-	if (!system) throw new Meteor.Error(500, `CoreSystem not found!`)
-	if (!system.storePath) throw new Meteor.Error(500, `CoreSystem.storePath not set!`)
-
+	const storePath = getSystemStorePath()
 	const fileName = fixValidPath(snapshot.snapshot.name) + '.json'
-	const filePath = Path.join(system.storePath, fileName)
+	const filePath = Path.join(storePath, fileName)
 
 	const str = JSON.stringify(snapshot)
 
@@ -459,11 +468,8 @@ async function retreiveSnapshot(snapshotId: SnapshotId, cred0: Credentials): Pro
 		}
 	}
 
-	const system = await getCoreSystemAsync()
-	if (!system) throw new Meteor.Error(500, `CoreSystem not found!`)
-	if (!system.storePath) throw new Meteor.Error(500, `CoreSystem.storePath not set!`)
-
-	const filePath = Path.join(system.storePath, snapshot.fileName)
+	const storePath = getSystemStorePath()
+	const filePath = Path.join(storePath, snapshot.fileName)
 
 	const dataStr = !Meteor.isTest // If we're running in a unit-test, don't access files
 		? await fs.promises.readFile(filePath, { encoding: 'utf8' })
@@ -478,7 +484,7 @@ async function restoreFromSnapshot(snapshot: AnySnapshot): Promise<void> {
 
 	if (!_.isObject(snapshot)) throw new Meteor.Error(500, `Restore input data is not an object`)
 	// First, some special (debugging) cases:
-	// @ts-ignore is's not really a snapshot here:
+	// @ts-expect-error is's not really a snapshot here:
 	if (snapshot.externalId && snapshot.segments && snapshot.type === 'mos') {
 		// Special: Not a snapshot, but a datadump of a MOS rundown
 		const studioId: StudioId = Meteor.settings.manualSnapshotIngestStudioId || 'studio0'
@@ -529,7 +535,7 @@ async function restoreFromRundownPlaylistSnapshot(
 	}
 
 	const queuedJob = await QueueStudioJob(StudioJobs.RestorePlaylistSnapshot, studioId, {
-		snapshotJson: JSON.stringify(omit(snapshot, 'mediaObjects', 'userActions')),
+		snapshotJson: JSONBlobStringify(omit(snapshot, 'mediaObjects', 'userActions')),
 	})
 	await queuedJob.complete
 
@@ -650,11 +656,8 @@ export async function removeSnapshot(context: MethodContext, snapshotId: Snapsho
 
 	if (snapshot.fileName) {
 		// remove from disk
-		const system = await getCoreSystemAsync()
-		if (!system) throw new Meteor.Error(500, `CoreSystem not found!`)
-		if (!system.storePath) throw new Meteor.Error(500, `CoreSystem.storePath not set!`)
-
-		const filePath = Path.join(system.storePath, snapshot.fileName)
+		const storePath = getSystemStorePath()
+		const filePath = Path.join(storePath, snapshot.fileName)
 		try {
 			logger.info(`Removing snapshot file ${filePath}`)
 
@@ -673,7 +676,7 @@ export async function removeSnapshot(context: MethodContext, snapshotId: Snapsho
 if (!Settings.enableUserAccounts) {
 	// For backwards compatibility:
 
-	PickerGET.route('/snapshot/system/:studioId', async (params, req: IncomingMessage, response: ServerResponse) => {
+	PickerGET.route('/snapshot/system/:studioId', async (params, _req: IncomingMessage, response: ServerResponse) => {
 		return handleResponse(response, async () => {
 			check(params.studioId, Match.Optional(String))
 
@@ -698,14 +701,14 @@ if (!Settings.enableUserAccounts) {
 			return createRundownPlaylistSnapshot(playlist, params.full === 'true')
 		})
 	}
-	PickerGET.route('/snapshot/rundown/:playlistId', async (params, req: IncomingMessage, response: ServerResponse) =>
+	PickerGET.route('/snapshot/rundown/:playlistId', async (params, _req: IncomingMessage, response: ServerResponse) =>
 		createRundownSnapshot(response, params)
 	)
 	PickerGET.route(
 		'/snapshot/rundown/:playlistId/:full',
-		async (params, req: IncomingMessage, response: ServerResponse) => createRundownSnapshot(response, params)
+		async (params, _req: IncomingMessage, response: ServerResponse) => createRundownSnapshot(response, params)
 	)
-	PickerGET.route('/snapshot/debug/:studioId', async (params, req: IncomingMessage, response: ServerResponse) => {
+	PickerGET.route('/snapshot/debug/:studioId', async (params, _req: IncomingMessage, response: ServerResponse) => {
 		return handleResponse(response, async () => {
 			check(params.studioId, String)
 
@@ -717,7 +720,7 @@ if (!Settings.enableUserAccounts) {
 		})
 	})
 }
-PickerPOST.route('/snapshot/restore', async (params, req: IncomingMessage, response: ServerResponse) => {
+PickerPOST.route('/snapshot/restore', async (_params, req: IncomingMessage, response: ServerResponse) => {
 	const content = 'ok'
 	try {
 		response.setHeader('Content-Type', 'text/plain')
@@ -749,7 +752,7 @@ if (!Settings.enableUserAccounts) {
 	// Retrieve snapshot:
 	PickerGET.route(
 		'/snapshot/retrieve/:snapshotId',
-		async (params, req: IncomingMessage, response: ServerResponse) => {
+		async (params, _req: IncomingMessage, response: ServerResponse) => {
 			return handleResponse(response, async () => {
 				check(params.snapshotId, String)
 				return retreiveSnapshot(protectString(params.snapshotId), { userId: null })
@@ -760,7 +763,7 @@ if (!Settings.enableUserAccounts) {
 // Retrieve snapshot:
 PickerGET.route(
 	'/snapshot/:token/retrieve/:snapshotId',
-	async (params, req: IncomingMessage, response: ServerResponse) => {
+	async (params, _req: IncomingMessage, response: ServerResponse) => {
 		return handleResponse(response, async () => {
 			check(params.snapshotId, String)
 			return retreiveSnapshot(protectString(params.snapshotId), { userId: null, token: params.token })

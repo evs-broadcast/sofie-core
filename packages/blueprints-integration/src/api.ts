@@ -1,4 +1,4 @@
-import { TSRTimelineObjBase } from 'timeline-state-resolver-types'
+import { TSRTimelineContent, TSRTimelineObj } from 'timeline-state-resolver-types'
 
 import { ActionUserData, IBlueprintActionManifest } from './action'
 import { ConfigManifestEntry } from './config'
@@ -15,8 +15,8 @@ import {
 	IRundownDataChangedEventContext,
 	IRundownTimingEventContext,
 	IStudioBaselineContext,
-	IRundownUserContext,
 	IGetRundownContext,
+	IDataStoreActionExecutionContext,
 } from './context'
 import { IngestAdlib, ExtendedIngestRundown, IngestSegment } from './ingest'
 import { IBlueprintExternalMessageQueueObj } from './message'
@@ -111,7 +111,11 @@ export interface StudioBlueprintManifest extends BlueprintManifestBase {
 	) => BlueprintResultRundownPlaylist | null
 
 	/** Preprocess config before storing it by core to later be returned by context's getStudioConfig. If not provided, getStudioConfig will return unprocessed blueprint config */
-	preprocessConfig?: (context: ICommonContext, config: IBlueprintConfig) => unknown
+	preprocessConfig?: (
+		context: ICommonContext,
+		config: IBlueprintConfig,
+		coreConfig: BlueprintConfigCoreConfig
+	) => unknown
 }
 
 export interface ShowStyleBlueprintManifest extends BlueprintManifestBase {
@@ -142,7 +146,10 @@ export interface ShowStyleBlueprintManifest extends BlueprintManifestBase {
 	) => BlueprintResultRundown | null | Promise<BlueprintResultRundown | null>
 
 	/** Generate segment from ingest data */
-	getSegment: (context: ISegmentUserContext, ingestSegment: IngestSegment) => BlueprintResultSegment
+	getSegment: (
+		context: ISegmentUserContext,
+		ingestSegment: IngestSegment
+	) => BlueprintResultSegment | Promise<BlueprintResultSegment>
 
 	/**
 	 * Allows the blueprint to custom-modify the PartInstance, on ingest data update (this is run after getSegment())
@@ -150,6 +157,8 @@ export interface ShowStyleBlueprintManifest extends BlueprintManifestBase {
 	 * `playStatus: previous` means that the currentPartInstance is `orphaned: adlib-part`
 	 * and thus possibly depends on an already past PartInstance for some of it's properties. Therefore
 	 * the blueprint is allowed to modify the most recently played non-adlibbed PartInstance using ingested data.
+	 *
+	 * `newData.part` will be `undefined` when the PartInstance is orphaned
 	 */
 	syncIngestUpdateToPartInstance?: (
 		context: ISyncIngestUpdateToPartInstanceContext,
@@ -159,14 +168,13 @@ export interface ShowStyleBlueprintManifest extends BlueprintManifestBase {
 		playoutStatus: 'previous' | 'current' | 'next'
 	) => void
 
-	/**
-	 * Allows the blueprint to remove the next part instance if it has become orphaned.
-	 * This call will only be made if the part instance has been orphaned.
-	 */
-	shouldRemoveOrphanedPartInstance?: (
-		context: IRundownUserContext,
-		partInstance: BlueprintRemoveOrphanedPartInstance
-	) => boolean
+	/** Execute an action defined by an IBlueprintActionManifest */
+	executeDataStoreAction?: (
+		context: IDataStoreActionExecutionContext,
+		actionId: string,
+		userData: ActionUserData,
+		triggerMode?: string
+	) => Promise<void>
 
 	/** Execute an action defined by an IBlueprintActionManifest */
 	executeAction?: (
@@ -183,7 +191,11 @@ export interface ShowStyleBlueprintManifest extends BlueprintManifestBase {
 	) => IBlueprintAdLibPiece | IBlueprintActionManifest | null
 
 	/** Preprocess config before storing it by core to later be returned by context's getShowStyleConfig. If not provided, getShowStyleConfig will return unprocessed blueprint config */
-	preprocessConfig?: (context: ICommonContext, config: IBlueprintConfig) => unknown
+	preprocessConfig?: (
+		context: ICommonContext,
+		config: IBlueprintConfig,
+		coreConfig: BlueprintConfigCoreConfig
+	) => unknown
 
 	// Events
 
@@ -198,7 +210,7 @@ export interface ShowStyleBlueprintManifest extends BlueprintManifestBase {
 	/** Called after the timeline has been generated, used to manipulate the timeline */
 	onTimelineGenerate?: (
 		context: ITimelineEventContext,
-		timeline: OnGenerateTimelineObj[],
+		timeline: OnGenerateTimelineObj<TSRTimelineContent>[],
 		previousPersistentState: TimelinePersistentState | undefined,
 		previousPartEndState: PartEndState | undefined,
 		resolvedPieces: IBlueprintResolvedPieceInstance[]
@@ -229,11 +241,11 @@ export type PartEndState = unknown
 export type TimelinePersistentState = unknown
 
 export interface BlueprintResultTimeline {
-	timeline: OnGenerateTimelineObj[]
+	timeline: OnGenerateTimelineObj<TSRTimelineContent>[]
 	persistentState: TimelinePersistentState
 }
 export interface BlueprintResultBaseline {
-	timelineObjects: TSRTimelineObjBase[]
+	timelineObjects: TSRTimelineObj<TSRTimelineContent>[]
 	/** @deprecated */
 	expectedPlayoutItems?: ExpectedPlayoutItemGeneric[]
 	expectedPackages?: ExpectedPackage.Any[]
@@ -260,7 +272,7 @@ export interface BlueprintResultPart {
 export interface BlueprintSyncIngestNewData {
 	// source: BlueprintSyncIngestDataSource
 	/** The new part */
-	part: IBlueprintPartDB
+	part: IBlueprintPartDB | undefined
 	/** A list of pieces (including infinites) that would be present in a fresh copy of this partInstance */
 	pieceInstances: IBlueprintPieceInstance[]
 	/** The adlib pieces belonging to this part */
@@ -289,11 +301,6 @@ export interface BlueprintSyncIngestPartInstance {
 	// adLibActionInstances: IBlueprintAdlibActionInstance[]
 }
 
-export interface BlueprintRemoveOrphanedPartInstance {
-	partInstance: IBlueprintPartInstance
-	pieceInstances: IBlueprintPieceInstance[]
-}
-
 /** Key is the ID of the external ID of the Rundown, Value is the rank to be assigned */
 export interface BlueprintResultOrderedRundowns {
 	[rundownExternalId: string]: number
@@ -303,4 +310,8 @@ export interface BlueprintResultRundownPlaylist {
 	playlist: IBlueprintResultRundownPlaylist
 	/** Returns information about the order of rundowns in a playlist, null will use natural sorting on rundown name */
 	order: BlueprintResultOrderedRundowns | null
+}
+
+export interface BlueprintConfigCoreConfig {
+	hostUrl: string
 }

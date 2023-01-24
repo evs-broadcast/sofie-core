@@ -1,6 +1,6 @@
 {
 	"name": "playout-gateway",
-	"version": "1.45.22",
+	"version": "1.48.0-in-testing.1",
 	"private": true,
 	"description": "Connect to Core, play stuff",
 	"license": "MIT",
@@ -40,7 +40,7 @@
 		"evs-rename:dependency": "node rename-deps.mjs"
 	},
 	"engines": {
-		"node": "^14.18 || ^16.14 || ^18.5"
+		"node": "^14.19 || ^16.14 || ^18.12"
 	},
 	"keywords": [
 		"broadcast",
@@ -65,7 +65,7 @@
 		"timeline-state-resolver": "npm:@evs/timeline-state-resolver@7.4.18",
 		"tslib": "^2.4.0",
 		"underscore": "^1.13.4",
-		"winston": "^3.8.1"
+		"winston": "^3.8.2"
 	},
 	"lint-staged": {
 		"*.{css,json,md,scss}": [

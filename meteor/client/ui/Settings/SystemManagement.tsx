@@ -93,7 +93,7 @@ export default translateWithTracker<IProps, {}, ITrackedProps>((_props: IProps) 
 									attribute="logLevel"
 									obj={this.props.coreSystem}
 									type="dropdown"
-									options={LogLevel}
+									options={{ ...LogLevel, 'Use fallback': undefined }}
 									collection={CoreSystem}
 									className="mdinput"
 								/>
@@ -146,7 +146,7 @@ export default translateWithTracker<IProps, {}, ITrackedProps>((_props: IProps) 
 
 						<div className="row">
 							<div className="col c12 r1-c12">
-								<TriggeredActionsEditor showStyleBaseId={null} />
+								<TriggeredActionsEditor showStyleBaseId={null} sourceLayers={{}} outputLayers={{}} />
 							</div>
 						</div>
 

@@ -1,3 +1,4 @@
+import { TSRTimelineContent } from 'timeline-state-resolver-types'
 import { Time } from './common'
 import { TimelineObjectCoreExt } from './timeline'
 
@@ -18,9 +19,6 @@ export enum SourceLayerType {
 	SPLITS = 6,
 	/** Audio-only sources */
 	AUDIO = 7,
-	// CAMERA_MOVEMENT = 8,
-	// TODOSYNC: What is this intended to be used for? Why isnt UNKNOWN used instead?
-	METADATA = 9,
 	/** Graphical overlays on top of other video */
 	LOWER_THIRD = 10,
 	/** Video-only clips or clips with only environment audio */
@@ -33,7 +31,7 @@ export enum SourceLayerType {
 }
 
 export type WithTimeline<T extends BaseContent> = T & {
-	timelineObjects: TimelineObjectCoreExt[]
+	timelineObjects: TimelineObjectCoreExt<TSRTimelineContent>[]
 }
 
 export interface BaseContent {

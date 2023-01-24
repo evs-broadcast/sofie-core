@@ -23,7 +23,6 @@ import {
 	setShelfFollowsOnAir,
 	setReportNotifications,
 	unsetReportNotifications,
-	setUseOnePartPerLine,
 } from '../lib/localStorage'
 import Status from './Status'
 import { Settings as SettingsView } from './Settings'
@@ -115,9 +114,6 @@ export const App = translateWithTracker(() => {
 			if (params['ignore_piece_content_status']) {
 				setIgnorePieceContentStatus(params['ignore_piece_content_status'] === '1')
 			}
-			if (params['useOnePartPerLine']) {
-				setUseOnePartPerLine(params['useOnePartPerLine'] === '1')
-			}
 			if (params['reportNotificationsId'] && params['reportNotificationsId'] === '0') {
 				setReportNotifications(params['reportNotificationsId'])
 			} else {
@@ -174,8 +170,7 @@ export const App = translateWithTracker(() => {
 				// and not in an active rundown
 				document.querySelector('.rundown.active') === null
 			) {
-				// forceReload is marked as deprecated, but it's still usable
-				// @ts-ignore
+				// @ts-expect-error forceReload is marked as deprecated, but it's still usable
 				setTimeout(() => window.location.reload(true))
 			}
 		}
@@ -206,7 +201,7 @@ export const App = translateWithTracker(() => {
 					// Use Keyboard API to lock the keyboard and disable all browser shortcuts
 					if ('keyboard' in navigator) {
 						// @ts-expect-error: Keyboard API isn't yet available in TypeScript DOM library,
-						// but we check for it's availability so it should be fine.
+						// but we check for its availability, so it should be fine.
 						// Keyboard Lock: https://wicg.github.io/keyboard-lock/
 						navigator.keyboard
 							.lock()
@@ -240,8 +235,9 @@ export const App = translateWithTracker(() => {
 
 			setInterval(this.cronJob, CRON_INTERVAL)
 
-			document.body.classList.add('evs')
-
+			if (Settings.customizationClassName) {
+				document.body.classList.add(Settings.customizationClassName)
+			}
 			const uiZoom = getUIZoom()
 			if (uiZoom !== 1) {
 				document.documentElement.style.fontSize = uiZoom * 16 + 'px'

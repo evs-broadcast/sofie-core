@@ -101,6 +101,10 @@
 	.settings-studio-package-containers-table {
 		width: 100%;
 
+		.deleted {
+			text-decoration: line-through;
+		}
+
 		> thead > tr {
 			> .actions {
 				text-align: right;
@@ -214,6 +218,14 @@
 		.svg-inline--fa {
 			color: $color-status-warning;
 		}
+	}
+
+	.option-missing {
+		text-decoration: line-through;
+	}
+
+	select.option-missing {
+		border-color: $color-status-fatal;
 	}
 }
 

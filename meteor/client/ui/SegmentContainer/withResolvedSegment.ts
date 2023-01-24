@@ -1,14 +1,9 @@
 import * as React from 'react'
 import * as _ from 'underscore'
 import { ISourceLayer, NoteSeverity, PieceLifespan } from '@sofie-automation/blueprints-integration'
-import {
-	RundownPlaylist,
-	RundownPlaylistCollectionUtil,
-	RundownPlaylistId,
-} from '../../../lib/collections/RundownPlaylists'
+import { RundownPlaylist, RundownPlaylistCollectionUtil } from '../../../lib/collections/RundownPlaylists'
 import { withTracker } from '../../lib/ReactMeteorData/react-meteor-data'
-import { Segments, SegmentId } from '../../../lib/collections/Segments'
-import { Studio } from '../../../lib/collections/Studios'
+import { Segments } from '../../../lib/collections/Segments'
 import {
 	IOutputLayerExtended,
 	ISourceLayerExtended,
@@ -17,23 +12,31 @@ import {
 	SegmentExtended,
 } from '../../../lib/Rundown'
 import { IContextMenuContext } from '../RundownView'
-import { ShowStyleBase, ShowStyleBaseId } from '../../../lib/collections/ShowStyleBases'
 import { equalSets } from '../../../lib/lib'
 import { RundownUtils } from '../../lib/rundown'
-import { Rundown, RundownId, Rundowns } from '../../../lib/collections/Rundowns'
+import { Rundown, Rundowns } from '../../../lib/collections/Rundowns'
 import { PartInstance } from '../../../lib/collections/PartInstances'
 import { PieceInstances } from '../../../lib/collections/PieceInstances'
-import { PartId, Part } from '../../../lib/collections/Parts'
+import { Part } from '../../../lib/collections/Parts'
 import { memoizedIsolatedAutorun, slowDownReactivity } from '../../lib/reactiveData/reactiveDataHelper'
 import { ScanInfoForPackages } from '../../../lib/mediaObjects'
 import { getBasicNotesForSegment } from '../../../lib/rundownNotifications'
 import { getIsFilterActive } from '../../lib/rundownLayouts'
-import { RundownViewLayout } from '../../../lib/collections/RundownLayouts'
-import { getMinimumReactivePieceNotesForPart } from './getMinimumReactivePieceNotesForPart'
+import { RundownLayoutFilterBase, RundownViewLayout } from '../../../lib/collections/RundownLayouts'
+import { getReactivePieceNoteCountsForPart } from './getMinimumReactivePieceNotesForPart'
 import { SegmentViewMode } from './SegmentViewModes'
-import { SegmentNote, TrackedNote } from '@sofie-automation/corelib/dist/dataModel/Notes'
 import { PlaylistTiming } from '@sofie-automation/corelib/dist/playout/rundownTiming'
 import { AdlibSegmentUi } from '../../lib/shelf'
+import { UIShowStyleBase } from '../../../lib/api/showStyles'
+import { UIStudio } from '../../../lib/api/studios'
+import {
+	PartId,
+	RundownId,
+	RundownPlaylistId,
+	SegmentId,
+	ShowStyleBaseId,
+} from '@sofie-automation/corelib/dist/dataModel/Ids'
+import { ITranslatableMessage } from '@sofie-automation/corelib/dist/TranslatableMessage'
 
 export interface SegmentUi extends SegmentExtended {
 	/** Output layers available in the installation used by this segment */
@@ -57,7 +60,7 @@ export interface PieceUi extends PieceExtended {
 	/** Metadata object */
 	contentMetaData?: any
 	contentPackageInfos?: ScanInfoForPackages
-	message?: string | null
+	messages?: ITranslatableMessage[]
 }
 
 export type MinimalRundown = Pick<Rundown, '_id' | 'name' | 'timing' | 'showStyleBaseId' | 'endOfRundownIsShowBreak'>
@@ -71,8 +74,8 @@ export interface IProps {
 	segmentsIdsBefore: Set<SegmentId>
 	rundownIdsBefore: RundownId[]
 	rundownsToShowstyles: Map<RundownId, ShowStyleBaseId>
-	studio: Studio
-	showStyleBase: ShowStyleBase
+	studio: UIStudio
+	showStyleBase: UIShowStyleBase
 	playlist: RundownPlaylist
 	rundown: MinimalRundown
 	timeScale: number
@@ -88,6 +91,7 @@ export interface IProps {
 	ownCurrentPartInstance: PartInstance | undefined
 	ownNextPartInstance: PartInstance | undefined
 	adLibSegmentUi?: AdlibSegmentUi
+	miniShelfFilter: RundownLayoutFilterBase | undefined
 	isFollowingOnAirSegment: boolean
 	rundownViewLayout: RundownViewLayout | undefined
 	countdownToSegmentRequireLayers: string[] | undefined
@@ -96,10 +100,15 @@ export interface IProps {
 	showDurationSourceLayers?: Set<ISourceLayer['_id']>
 }
 
+export interface SegmentNoteCounts {
+	criticial: number
+	warning: number
+}
+
 export interface ITrackedProps {
 	segmentui: SegmentUi | undefined
 	parts: Array<PartUi>
-	segmentNotes: Array<SegmentNote>
+	segmentNoteCounts: SegmentNoteCounts
 	hasRemoteItems: boolean
 	hasGuestItems: boolean
 	hasAlreadyPlayed: boolean
@@ -125,7 +134,7 @@ export function withResolvedSegment<T extends IProps, IState = {}>(
 				return {
 					segmentui: undefined,
 					parts: [],
-					segmentNotes: [],
+					segmentNoteCounts: { criticial: 0, warning: 0 },
 					hasRemoteItems: false,
 					hasGuestItems: false,
 					hasAlreadyPlayed: false,
@@ -234,29 +243,33 @@ export function withResolvedSegment<T extends IProps, IState = {}>(
 				}
 			}
 
-			const notes: TrackedNote[] = getBasicNotesForSegment(
+			const segmentNoteCounts: SegmentNoteCounts = {
+				criticial: 0,
+				warning: 0,
+			}
+			const rawNotes = getBasicNotesForSegment(
 				segment,
 				rundownNrcsName ?? 'NRCS',
 				o.parts.map((p) => p.instance.part),
 				o.parts.map((p) => p.instance)
 			)
-			o.parts.forEach((part) => {
-				notes.push(
-					...getMinimumReactivePieceNotesForPart(props.studio, props.showStyleBase, part.instance.part).map(
-						(note): TrackedNote => ({
-							...note,
-							rank: segment._rank,
-							origin: {
-								...note.origin,
-								partId: part.partId,
-								rundownId: segment.rundownId,
-								segmentId: segment._id,
-								segmentName: segment.name,
-							},
-						})
-					)
+			for (const note of rawNotes) {
+				if (note.type === NoteSeverity.ERROR) {
+					segmentNoteCounts.criticial++
+				} else if (note.type === NoteSeverity.WARNING) {
+					segmentNoteCounts.warning++
+				}
+			}
+
+			for (const part of o.parts) {
+				const pieceNoteCounts = getReactivePieceNoteCountsForPart(
+					props.studio,
+					props.showStyleBase,
+					part.instance.part
 				)
-			})
+				segmentNoteCounts.criticial += pieceNoteCounts.criticial
+				segmentNoteCounts.warning += pieceNoteCounts.warning
+			}
 
 			let lastValidPartIndex = o.parts.length - 1
 
@@ -299,7 +312,7 @@ export function withResolvedSegment<T extends IProps, IState = {}>(
 			return {
 				segmentui: o.segmentExtended,
 				parts: o.parts,
-				segmentNotes: notes,
+				segmentNoteCounts,
 				hasAlreadyPlayed: o.hasAlreadyPlayed,
 				hasRemoteItems: o.hasRemoteItems,
 				hasGuestItems: o.hasGuestItems,
@@ -320,11 +333,11 @@ export function withResolvedSegment<T extends IProps, IState = {}>(
 				props.segmentRef !== nextProps.segmentRef ||
 				props.timeScale !== nextProps.timeScale ||
 				props.isFollowingOnAirSegment !== nextProps.isFollowingOnAirSegment ||
-				props.ownCurrentPartInstance !== nextProps.ownCurrentPartInstance ||
-				props.ownNextPartInstance !== nextProps.ownNextPartInstance ||
+				!_.isEqual(props.ownCurrentPartInstance, nextProps.ownCurrentPartInstance) ||
+				!_.isEqual(props.ownNextPartInstance, nextProps.ownNextPartInstance) ||
 				!equalSets(props.segmentsIdsBefore, nextProps.segmentsIdsBefore) ||
 				!_.isEqual(props.countdownToSegmentRequireLayers, nextProps.countdownToSegmentRequireLayers) ||
-				props.rundownViewLayout !== nextProps.rundownViewLayout ||
+				!_.isEqual(props.rundownViewLayout, nextProps.rundownViewLayout) ||
 				props.fixedSegmentDuration !== nextProps.fixedSegmentDuration ||
 				!_.isEqual(props.adLibSegmentUi?.pieces, nextProps.adLibSegmentUi?.pieces) ||
 				props.adLibSegmentUi?.showShelf !== nextProps.adLibSegmentUi?.showShelf
@@ -373,9 +386,7 @@ export function withResolvedSegment<T extends IProps, IState = {}>(
 				props.playlist.nextTimeOffset !== nextProps.playlist.nextTimeOffset ||
 				props.playlist.activationId !== nextProps.playlist.activationId ||
 				PlaylistTiming.getExpectedStart(props.playlist.timing) !==
-					PlaylistTiming.getExpectedStart(nextProps.playlist.timing) ||
-				props.ownCurrentPartInstance !== nextProps.ownCurrentPartInstance ||
-				props.ownNextPartInstance !== nextProps.ownNextPartInstance
+					PlaylistTiming.getExpectedStart(nextProps.playlist.timing)
 			) {
 				return true
 			}

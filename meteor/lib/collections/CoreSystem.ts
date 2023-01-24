@@ -1,14 +1,13 @@
-import { FindOptions } from '../typings/meteor'
+import { FindOptions } from '../collections/lib'
 import { LogLevel, protectString } from '../lib'
 import { Meteor } from 'meteor/meteor'
 import { logger } from '../logging'
 import * as semver from 'semver'
-import { createMongoCollection } from './lib'
+import { createMongoCollection, MongoCursor } from './lib'
 import _ from 'underscore'
 import { CoreSystemId, BlueprintId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import { CollectionName } from '@sofie-automation/corelib/dist/dataModel/Collections'
 import { StatusCode } from '@sofie-automation/blueprints-integration'
-export { CoreSystemId }
 
 export const SYSTEM_ID: CoreSystemId = protectString('core')
 
@@ -54,9 +53,6 @@ export interface ICoreSystem {
 
 	/** Id of the blueprint used by this system */
 	blueprintId?: BlueprintId
-
-	/** File path to store persistant data (like snapshots, etc) */
-	storePath: string
 
 	/** Support info */
 	support?: {
@@ -121,7 +117,7 @@ export function getCoreSystem(): ICoreSystem | undefined {
 export async function getCoreSystemAsync(): Promise<ICoreSystem | undefined> {
 	return CoreSystem.findOneAsync(SYSTEM_ID)
 }
-export function getCoreSystemCursor(options?: FindOptions<ICoreSystem>) {
+export function getCoreSystemCursor(options?: FindOptions<ICoreSystem>): MongoCursor<ICoreSystem> {
 	return CoreSystem.find(SYSTEM_ID, options)
 }
 export function setCoreSystemVersion(versionStr: string): string {
@@ -154,29 +150,6 @@ export function setCoreSystemVersion(versionStr: string): string {
 			500,
 			`Unable to set version. Parsed version differ from expected: "${versionStr}", "${version}"`
 		)
-	}
-}
-export function setCoreSystemStorePath(storePath: string | undefined): void {
-	const system = getCoreSystem()
-	if (!system) throw new Meteor.Error(500, 'CoreSystem not found')
-	if (!Meteor.isServer) throw new Meteor.Error(500, 'This function can only be run server-side')
-
-	if (storePath) {
-		storePath = storePath.trim().replace(/(.*)[\/\\]$/, '$1') // remove last "/" or "\"
-	}
-
-	if (!storePath) {
-		CoreSystem.update(system._id, {
-			$unset: {
-				storePath: 1,
-			},
-		})
-	} else {
-		CoreSystem.update(system._id, {
-			$set: {
-				storePath: storePath,
-			},
-		})
 	}
 }
 

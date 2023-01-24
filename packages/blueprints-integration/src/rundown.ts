@@ -1,11 +1,11 @@
 import { DeviceType as TSR_DeviceType, ExpectedPlayoutItemContent } from 'timeline-state-resolver-types'
-import { Time } from './common'
-import { ExpectedPackage } from './package'
-import { SomeContent, WithTimeline } from './content'
-import { ITranslatableMessage } from './translations'
-import { PartEndState } from './api'
 import { ActionUserData } from './action'
+import { PartEndState } from './api'
+import { Time } from './common'
+import { SomeContent, WithTimeline } from './content'
 import { NoteSeverity } from './lib'
+import { ExpectedPackage } from './package'
+import { ITranslatableMessage } from './translations'
 
 /** Playlist, as generated from Blueprints */
 export interface IBlueprintResultRundownPlaylist {
@@ -227,7 +227,16 @@ export interface IBlueprintMutatablePart<TMetadata = unknown> {
 	/** Classes to set on the TimelineGroupObj for the following part */
 	classesForNext?: string[]
 
+	/**
+	 * Use and provide timing to a `displayDurationGroup` with the same ID. This allows Parts to "share" timing.
+	 *
+	 * **NOTE**: The behavior of the system is undefined when using both `displayDurationGroups` and `budgetDuration`
+	 */
 	displayDurationGroup?: string
+	/**
+	 * How long to make the Part appear in the UI, if other than expectedDuration.
+	 *
+	 * **NOTE**: The behavior of the system is undefined when using both `displayDurationGroups` and `budgetDuration` */
 	displayDuration?: number
 
 	/** User-facing identifier that can be used by the User to identify the contents of a segment in the Rundown source system */
@@ -235,12 +244,14 @@ export interface IBlueprintMutatablePart<TMetadata = unknown> {
 
 	/** Contextual information, primarily for consumption by external systems */
 	tags?: string[]
+	/** MediaObjects that when created/updated, should cause the blueprint to be rerun for the Segment of this Part */
+	hackListenToMediaObjectUpdates?: HackPartMediaObjectSubscription[]
 }
 
-// export interface HackPartMediaObjectSubscription {
-// 	/** The playable reference (CasparCG clip name, quantel GUID, etc) */
-// 	mediaId: string
-// }
+export interface HackPartMediaObjectSubscription {
+	/** The playable reference (CasparCG clip name, quantel GUID, etc) */
+	mediaId: string
+}
 
 /** The Part generated from Blueprint */
 export interface IBlueprintPart<TMetadata = unknown> extends IBlueprintMutatablePart<TMetadata> {
@@ -333,18 +344,10 @@ export interface IBlueprintPartInstance<TMetadata = unknown> {
 }
 
 export interface IBlueprintPartInstanceTimings {
-	/** Point in time the Part was taken, (ie the time of the user action) */
-	take?: Time
-	/** Point in time the "take" action has finished executing */
-	takeDone?: Time
 	/** Point in time the Part started playing (ie the time of the playout) */
-	startedPlayback?: Time
-	/** Point in time the Part stopped playing (ie the time of the user action) */
-	takeOut?: Time
+	reportedStartedPlayback?: Time
 	/** Point in time the Part stopped playing (ie the time of the playout) */
-	stoppedPlayback?: Time
-	/** Point in time the Part was set as Next (ie the time of the user action) */
-	next?: Time
+	reportedStoppedPlayback?: Time
 }
 
 export enum PartHoldMode {
@@ -501,11 +504,11 @@ export interface IBlueprintPieceInstance<TMetadata = unknown> {
 	piece: IBlueprintPieceDB<TMetadata>
 
 	/** The time the system started playback of this part, undefined if not yet played back (milliseconds since epoch) */
-	startedPlayback?: Time
+	reportedStartedPlayback?: Time
 	/** Whether the piece has stopped playback (the most recent time it was played), undefined if not yet played back or is currently playing.
 	 * This is set from a callback from the playout gateway (milliseconds since epoch)
 	 */
-	stoppedPlayback?: Time
+	reportedStoppedPlayback?: Time
 
 	infinite?: {
 		infinitePieceId: string
