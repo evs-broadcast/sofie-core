@@ -24,9 +24,9 @@ export class AdLibActionsHandler
 	changed(id: string, changeType: string): void {
 		this._logger.info(`${this._name} ${changeType} ${id}`)
 		if (!this._collection) return
-		const col = this._core.getCollection(this._collection)
+		const col = this._core.getCollection<AdLibAction>(this._collection)
 		if (!col) throw new Error(`collection '${this._collection}' not found!`)
-		this._collectionData = col.find(undefined) as unknown as AdLibAction[]
+		this._collectionData = col.find(undefined)
 		this.notify(this._collectionData)
 	}
 
@@ -48,9 +48,9 @@ export class AdLibActionsHandler
 					this._dbObserver.added = (id: string) => this.changed(id, 'added')
 					this._dbObserver.changed = (id: string) => this.changed(id, 'changed')
 
-					const col = this._core.getCollection(this._collection)
+					const col = this._core.getCollection<AdLibAction>(this._collection)
 					if (!col) throw new Error(`collection '${this._collection}' not found!`)
-					this._collectionData = col.find(undefined) as unknown as AdLibAction[]
+					this._collectionData = col.find(undefined)
 					this.notify(this._collectionData)
 				}
 			}

@@ -11,28 +11,16 @@ import {
 	PeripheralDeviceType,
 	PERIPHERAL_SUBTYPE_PROCESS,
 } from '@sofie-automation/shared-lib/dist/peripheralDevice/peripheralDeviceAPI'
-import { protectString } from '@sofie-automation/shared-lib/dist/lib/protectedString'
-import { PeripheralDeviceId } from '@sofie-automation/shared-lib/dist/core/model/Ids'
-import { PeripheralDeviceAPIMethods } from '@sofie-automation/shared-lib/dist/peripheralDevice/methodsAPI'
+import { protectString, unprotectString } from '@sofie-automation/shared-lib/dist/lib/protectedString'
+import { PeripheralDeviceId, StudioId } from '@sofie-automation/shared-lib/dist/core/model/Ids'
 import { StatusCode } from '@sofie-automation/shared-lib/dist/lib/status'
+import { PeripheralDevicePublic } from '@sofie-automation/shared-lib/dist/core/model/peripheralDevice'
+import { PeripheralDeviceCommand } from '@sofie-automation/shared-lib/dist/core/model/PeripheralDeviceCommand'
 
 export interface CoreConfig {
 	host: string
 	port: number
 	watchdog: boolean
-}
-export interface PeripheralDeviceCommand {
-	_id: string
-
-	deviceId: PeripheralDeviceId
-	functionName: string
-	args: Array<any>
-
-	hasReply: boolean
-	reply?: any
-	replyError?: any
-
-	time: number // time
 }
 
 export interface MemoryUsageReport {
@@ -59,7 +47,7 @@ export class CoreHandler {
 	private _coreConfig?: CoreConfig
 	private _process?: Process
 
-	private _studioId: string | undefined
+	private _studioId: StudioId | undefined
 
 	private _statusInitialized = false
 	private _statusDestroyed = false
@@ -192,7 +180,7 @@ export class CoreHandler {
 
 	onDeviceChanged(id: PeripheralDeviceId): void {
 		if (id !== this.core.deviceId) return
-		const col = this.core.getCollection('peripheralDevices')
+		const col = this.core.getCollection<PeripheralDevicePublic>('peripheralDevices')
 		if (!col) throw new Error('collection "peripheralDevices" not found!')
 		const device = col.findOne(id)
 		if (device) {
@@ -225,25 +213,25 @@ export class CoreHandler {
 		return this.core
 	}
 
-	get studioId(): string | undefined {
+	get studioId(): StudioId | undefined {
 		return this._studioId
 	}
 
 	executeFunction(cmd: PeripheralDeviceCommand, fcnObject: CoreHandler): void {
 		if (cmd) {
-			if (this._executedFunctions[cmd._id]) return // prevent it from running multiple times
+			if (this._executedFunctions[unprotectString(cmd._id)]) return // prevent it from running multiple times
 
 			// Ignore specific commands, to reduce noise:
 			if (cmd.functionName !== 'getDebugStates') {
 				this.logger.debug(`Executing function "${cmd.functionName}", args: ${JSON.stringify(cmd.args)}`)
 			}
 
-			this._executedFunctions[cmd._id] = true
+			this._executedFunctions[unprotectString(cmd._id)] = true
 			const cb = (err: any, res?: any) => {
 				if (err) {
 					this.logger.error('executeFunction error', err, err.stack)
 				}
-				fcnObject.core.callMethod(PeripheralDeviceAPIMethods.functionReply, [cmd._id, err, res]).catch((e) => {
+				fcnObject.core.coreMethods.functionReply(cmd._id, err, res).catch((e) => {
 					this.logger.error(e)
 				})
 			}

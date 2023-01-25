@@ -33,9 +33,9 @@ export class PartInstancesHandler
 	changed(id: string, changeType: string): void {
 		this._logger.info(`${this._name} ${changeType} ${id}`)
 		if (!this._collection) return
-		const col = this._core.getCollection(this._collection)
+		const col = this._core.getCollection<DBPartInstance>(this._collection)
 		if (!col) throw new Error(`collection '${this._collection}' not found!`)
-		const partInstances = col.find(undefined) as unknown as DBPartInstance[]
+		const partInstances = col.find(undefined)
 		const curPartInstance = partInstances.find((p) => p._id === this._curPlaylist?.currentPartInstanceId)
 		const nextPartInstance = partInstances.find((p) => p._id === this._curPlaylist?.nextPartInstanceId)
 		this._collectionData?.forEach((_pi, key) => {
@@ -81,9 +81,9 @@ export class PartInstancesHandler
 					this._dbObserver.added = (id: string) => this.changed(id, 'added')
 					this._dbObserver.changed = (id: string) => this.changed(id, 'changed')
 
-					const col = this._core.getCollection(this._collection)
+					const col = this._core.getCollection<DBPartInstance>(this._collection)
 					if (!col) throw new Error(`collection '${this._collection}' not found!`)
-					const partInstances = col.find(undefined) as unknown as DBPartInstance[]
+					const partInstances = col.find(undefined)
 					const curPartInstance = partInstances.find(
 						(p) => p._id === this._curPlaylist?.currentPartInstanceId
 					)
@@ -95,9 +95,9 @@ export class PartInstancesHandler
 					this.notify(this._collectionData)
 				})
 			} else if (this._subscriptionId) {
-				const col = this._core.getCollection(this._collection)
+				const col = this._core.getCollection<DBPartInstance>(this._collection)
 				if (!col) throw new Error(`collection '${this._collection}' not found!`)
-				const partInstances = col.find(undefined) as unknown as DBPartInstance[]
+				const partInstances = col.find(undefined)
 				const curPartInstance = partInstances.find((p) => p._id === this._curPlaylist?.currentPartInstanceId)
 				const nextPartInstance = partInstances.find((p) => p._id === this._curPlaylist?.nextPartInstanceId)
 				this._collectionData?.forEach((_pi, key) => {
