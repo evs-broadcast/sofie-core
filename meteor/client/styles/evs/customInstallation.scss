@@ -103,10 +103,39 @@ body.evs {
 
     // Top rundown header - active and rehearsal
     .header.rundown.active.rehearsal .first-row {
-        background: darken($evs-color-blue-600, 40%);
+        background: darken($evs-color-blue-600, 36%);
     }
 
-    
+    // Floating header
+    .segment-opl__title-float-parent {
+        padding-left: 0;
+     
+        .segment-opl__title {
+            background: $segment-color;
+        }
+    }
+
+    // List view segment text shaddow
+    .segment-timeline.segment-opl.next .segment-opl__title > h2.segment-opl__title__label, .segment-timeline.segment-opl.live .segment-opl__title > h2.segment-opl__title__label, .segment-opl__title-float-parent.next .segment-opl__title > h2.segment-opl__title__label, .segment-opl__title-float-parent.live .segment-opl__title > h2.segment-opl__title__label {
+        text-shadow: none;
+    }
+
+    // List view part names
+    .segment-timeline.segment-opl > .segment-opl__part-list > .segment-opl__part--next > .segment-opl__part-header {
+        text-shadow: none;
+    }
+
+    // Mini inspector
+    .segment-timeline__mini-inspector.segment-timeline__mini-inspector--small-parts {
+        // Up and down colors
+        background: $segment-color;
+        box-shadow: 1px -1.5px 30px 15px rgba($segment-color, 0.9);
+
+        & > .segment-timeline__mini-inspector__mini-timeline {
+            background: lighten($segment-color, 5%);
+        }
+    }
+
     // Segment box
     .segment-timeline {
         box-shadow: none;
@@ -116,7 +145,27 @@ body.evs {
         border: 0;
         
         grid-template-columns: [segment-name] 11.5rem [segment-group-controls] 130px [timeline] auto [end];
-        
+    
+        // List view
+        &.segment-opl > .segment-opl__part-list {
+            & > .segment-opl__part {
+                // Right side
+                & > .segment-opl__piece-indicators {
+                    background: $segment-color;
+                }
+
+                // Shaddow
+                & > .segment-opl__part-timeline > .segment-opl__overtime-shadow {
+                    background-color: rgba($segment-color, 0.7);
+                }
+            }
+
+            // Played part
+            & > .segment-opl__part--has-played::before {
+                background: rgba($segment-color, 0.7);
+            }
+        }
+
         // This fixes next flag arrow gap
         .segment-timeline__timeline .segment-timeline__part.next .segment-timeline__part__nextline:not(.segment-timeline__part__nextline--endline):not(.offset):not(.invalid) .segment-timeline__part__nextline__label::after, .segment-timeline__next-preview .segment-timeline__part.next .segment-timeline__part__nextline:not(.segment-timeline__part__nextline--endline):not(.offset):not(.invalid) .segment-timeline__part__nextline__label::after {
             border-width: 10px 0 9px 10px;
@@ -196,6 +245,7 @@ body.evs {
             background: $audio-bed-color;
         }
     }
+
 
     .segment-storyboard__part__piece.audio {
         background: $audio-color;
@@ -281,9 +331,16 @@ body.evs {
         display: none;
     }
     
-    // Hide shelf handle
-    .rundown-view__shelf .rundown-view__shelf__handle {
-        display: none;
+    .rundown-view__shelf {
+        // Shelf handle
+        .rundown-view__shelf__handle {
+            display: none;        
+        }
+
+        // Tab triangle
+        .rundown-view__shelf__tabs .rundown-view__shelf__tabs__tab.selected::after {
+            background: $fcr-widget-header
+        }
     }
 
     .adlib-panel > .adlib-panel__list-view__list > .adlib-panel__list-view__list__table > tbody.adlib-panel__list-view__list__segment > .adlib-panel__list-view__list__segment__item > td {
