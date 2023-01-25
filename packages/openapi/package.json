@@ -15,7 +15,7 @@
 		"cov": "yarn unit && open-cli coverage/lcov-report/index.html",
 		"cov-open": "open-cli coverage/lcov-report/index.html",
 		"ci": "yarn genserver && node --experimental-fetch run_server_tests.mjs",
-		"lint:raw": "eslint . --ext .ts --ext .js --ext .yaml --ignore-pattern dist && exit 0 #",
+		"lint:raw": "eslint . --ext .ts --ext .js --ext .yaml --ignore-pattern dist #",
 		"lint": "yarn lint:raw",
 		"lint-fix": "yarn lint --fix",
 		"genclient:ts": "rimraf client/ts && openapi-generator-cli generate -i ./api/actions.yaml -o client/ts -g typescript-fetch -p supportsES6=true",
