@@ -678,7 +678,7 @@ PickerPOST.route('/devices/:deviceId/resetAuth', async (params, _req: IncomingMe
 
 PickerPOST.route(
 	'/devices/:deviceId/resetAppCredentials',
-	async (params, req: IncomingMessage, res: ServerResponse) => {
+	async (params, _req: IncomingMessage, res: ServerResponse) => {
 		res.setHeader('Content-Type', 'text/plain')
 
 		let content = ''
