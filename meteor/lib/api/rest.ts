@@ -1,12 +1,15 @@
 import { ClientAPI } from '../api/client'
 import { MethodContext } from './methods'
-import { RundownPlaylistId } from '../collections/RundownPlaylists'
-import { AdLibActionId } from '../collections/AdLibActions'
-import { RundownBaselineAdLibActionId } from '../collections/RundownBaselineAdLibActions'
-import { PartId } from '../collections/Parts'
-import { SegmentId } from '../collections/Segments'
-import { PieceId } from '../collections/Pieces'
-import { BucketAdLibId, StudioId } from '@sofie-automation/corelib/dist/dataModel/Ids'
+import {
+	AdLibActionId,
+	BucketAdLibId,
+	PartId,
+	PieceId,
+	RundownBaselineAdLibActionId,
+	RundownPlaylistId,
+	SegmentId,
+	StudioId,
+} from '@sofie-automation/corelib/dist/dataModel/Ids'
 import { Meteor } from 'meteor/meteor'
 
 export interface RestAPI extends MethodContext {
