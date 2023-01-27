@@ -75,7 +75,7 @@ export interface NewPeripheralDeviceAPI {
 	): Promise<string>
 	timelineTriggerTime(deviceId: PeripheralDeviceId, deviceToken: string, r: TimelineTriggerTimeResult): Promise<void>
 	requestUserAuthToken(deviceId: PeripheralDeviceId, deviceToken: string, authUrl: string): Promise<void>
-	storeAccessToken(deviceId: PeripheralDeviceId, deviceToken: string, authToken: string): Promise<void>
+	storeAccessToken(deviceId: PeripheralDeviceId, deviceToken: string, authToken: unknown): Promise<void>
 	removePeripheralDevice(deviceId: PeripheralDeviceId): Promise<void>
 	reportResolveDone(
 		deviceId: PeripheralDeviceId,
