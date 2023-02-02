@@ -160,7 +160,7 @@ export class ActivePlaylistTopic
 		})
 	}
 
-	update(
+	async update(
 		source: string,
 		data:
 			| DBRundownPlaylist
@@ -169,7 +169,7 @@ export class ActivePlaylistTopic
 			| AdLibAction[]
 			| RundownBaselineAdLibAction[]
 			| undefined
-	): void {
+	): Promise<void> {
 		const rundownPlaylist = data ? (data as DBRundownPlaylist) : undefined
 		const sourceLayers = data ? applyAndValidateOverrides((data as DBShowStyleBase).sourceLayersWithOverrides) : []
 		const partInstances = data as Map<PartInstanceName, DBPartInstance | undefined>

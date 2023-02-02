@@ -23,7 +23,7 @@ export class PartHandler
 		this._observerName = this._name
 	}
 
-	changed(id: string, changeType: string): void {
+	async changed(id: string, changeType: string): Promise<void> {
 		this._logger.info(`${this._name} ${changeType} ${id}`)
 		if (!this._collection) return
 		const col = this._core.getCollection<DBPart>(this._collection)
@@ -33,13 +33,13 @@ export class PartHandler
 		} else {
 			this._collectionData = undefined
 		}
-		this.notify(this._collectionData)
+		await this.notify(this._collectionData)
 	}
 
-	update(
+	async update(
 		source: string,
 		data: DBRundownPlaylist | Map<PartInstanceName, DBPartInstance | undefined> | undefined
-	): void {
+	): Promise<void> {
 		const prevPlaylist = this._activePlaylist
 		const prevCurPartInstance = this._curPartInstance
 
@@ -58,37 +58,35 @@ export class PartHandler
 				throw new Error(`${this._name} received unsupported update from ${source}}`)
 		}
 
-		process.nextTick(async () => {
-			if (!this._collection) return
-			if (prevPlaylist?.rundownIdsInOrder !== this._activePlaylist?.rundownIdsInOrder) {
-				if (this._subscriptionId) this._coreHandler.unsubscribe(this._subscriptionId)
-				if (this._dbObserver) this._dbObserver.stop()
-				if (this._activePlaylist) {
-					const rundownIds = this._activePlaylist.rundownIdsInOrder.map((r) => unprotectString(r))
-					this._subscriptionId = await this._coreHandler.setupSubscription(
-						this._collection,
-						rundownIds,
-						undefined
-					)
-					this._dbObserver = this._coreHandler.setupObserver(this._collection)
-					this._dbObserver.added = (id: string) => this.changed(id, 'added')
-					this._dbObserver.changed = (id: string) => this.changed(id, 'changed')
-				}
-			}
-
-			if (prevCurPartInstance !== this._curPartInstance) {
-				this._logger.info(
-					`${this._name} found updated partInstances with current part ${this._activePlaylist?.currentPartInstanceId}`
+		if (!this._collection) return
+		if (prevPlaylist?.rundownIdsInOrder !== this._activePlaylist?.rundownIdsInOrder) {
+			if (this._subscriptionId) this._coreHandler.unsubscribe(this._subscriptionId)
+			if (this._dbObserver) this._dbObserver.stop()
+			if (this._activePlaylist) {
+				const rundownIds = this._activePlaylist.rundownIdsInOrder.map((r) => unprotectString(r))
+				this._subscriptionId = await this._coreHandler.setupSubscription(
+					this._collection,
+					rundownIds,
+					undefined
 				)
-				const col = this._core.getCollection<DBPart>(this._collection)
-				if (!col) throw new Error(`collection '${this._collection}' not found!`)
-				if (this._curPartInstance?.part._id) {
-					this._collectionData = col.findOne(this._curPartInstance?.part._id)
-				} else {
-					this._collectionData = undefined
-				}
-				this.notify(this._collectionData)
+				this._dbObserver = this._coreHandler.setupObserver(this._collection)
+				this._dbObserver.added = (id: string) => void this.changed(id, 'added')
+				this._dbObserver.changed = (id: string) => void this.changed(id, 'changed')
 			}
-		})
+		}
+
+		if (prevCurPartInstance !== this._curPartInstance) {
+			this._logger.info(
+				`${this._name} found updated partInstances with current part ${this._activePlaylist?.currentPartInstanceId}`
+			)
+			const col = this._core.getCollection<DBPart>(this._collection)
+			if (!col) throw new Error(`collection '${this._collection}' not found!`)
+			if (this._curPartInstance) {
+				this._collectionData = col.findOne(this._curPartInstance.part._id)
+			} else {
+				this._collectionData = undefined
+			}
+			await this.notify(this._collectionData)
+		}
 	}
 }
