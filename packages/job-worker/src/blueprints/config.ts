@@ -116,7 +116,8 @@ export function preprocessStudioConfig(
 				name: `preprocessStudioConfig`,
 				identifier: `studioId=${studio._id}`,
 			})
-			res = blueprint.preprocessConfig(context, res, compileCoreConfigValues())
+			const coreConfigValues = compileCoreConfigValues()
+			res = blueprint.preprocessConfig(context, res, coreConfigValues)
 			console.log(res, 'aaa')
 		}
 	} catch (err) {
@@ -148,7 +149,8 @@ export function preprocessShowStyleConfig(
 				name: `preprocessShowStyleConfig`,
 				identifier: `showStyleBaseId=${showStyle._id},showStyleVariantId=${showStyle.showStyleVariantId}`,
 			})
-			res = blueprint.preprocessConfig(context, res, compileCoreConfigValues())
+			const coreConfigValues = compileCoreConfigValues()
+			res = blueprint.preprocessConfig(context, res, coreConfigValues)
 		}
 	} catch (err) {
 		logger.error(`Error in showStyleBlueprint.preprocessConfig: ${stringifyError(err)}`)
