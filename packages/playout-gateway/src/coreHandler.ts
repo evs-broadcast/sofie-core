@@ -450,7 +450,7 @@ export class CoreHandler {
 		}
 	}
 	async getDebugStates(): Promise<any> {
-		if (!this._tsrHandler) throw new Error('TSRHandler is not initialized')
+		if (!this._tsrHandler) return {}
 
 		return Object.fromEntries(this._tsrHandler.getDebugStates().entries())
 	}
