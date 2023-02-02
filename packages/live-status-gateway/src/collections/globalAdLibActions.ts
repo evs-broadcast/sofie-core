@@ -28,7 +28,7 @@ export class GlobalAdLibActionsHandler
 		if (!this._collection) return
 		const col = this._core.getCollection<RundownBaselineAdLibAction>(this._collection)
 		if (!col) throw new Error(`collection '${this._collection}' not found!`)
-		this._collectionData = col.find(this._curRundownId)
+		this._collectionData = col.find({ rundownId: this._curRundownId })
 		this.notify(this._collectionData)
 	}
 
@@ -52,7 +52,7 @@ export class GlobalAdLibActionsHandler
 
 					const col = this._core.getCollection<RundownBaselineAdLibAction>(this._collection)
 					if (!col) throw new Error(`collection '${this._collection}' not found!`)
-					this._collectionData = col.find(undefined)
+					this._collectionData = col.find({ rundownId: this._curRundownId })
 					this.notify(this._collectionData)
 				}
 			}
