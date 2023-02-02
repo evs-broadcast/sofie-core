@@ -9420,10 +9420,10 @@ timecode@0.0.4:
   resolved "https://registry.yarnpkg.com/timecode/-/timecode-0.0.4.tgz#cdea9d2352009700e50da657cb7fb7c1720f5704"
   integrity sha512-xFVZlWnqls5eVphtUJo0UuXeJa0grBmxESSn5QPQB7CMsaVgTnLdP9PTZqb4KyFmLdrE+PUu3eEt42zHsMxCtw==
 
-"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.0-release48.0-CER-2572-R48.201":
-  version "8.0.0-release48.0-CER-2572-R48.201"
-  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver-types/-/@evs/timeline-state-resolver-types-8.0.0-release48.0-CER-2572-R48.201.tgz#fdd533bbf5c25250db2a5c22cdfd58807ad64309"
-  integrity sha512-bkZ/Jo37rtmPn50jd2Jj6uK4eWvv3HAQ0SoFreYcZM5QtoAS9h9HeNt/hv+9Lvw3ftC6iUqJgSuWr3ekm9FPYA==
+"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.0-release48.0-CER-2572-R48.215":
+  version "8.0.0-release48.0-CER-2572-R48.215"
+  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver-types/-/@evs/timeline-state-resolver-types-8.0.0-release48.0-CER-2572-R48.215.tgz#a9c29057c5764f8c13d4c0eb9b7e3680f0a9741f"
+  integrity sha512-RA5jVcycgrAw7H85jN/WlGzR3r/UXnqncfB6hUCDUudqUsaHmPMupvSd5yKtoGHOqUbQGA77D8Fnjw/LhvahKw==
   dependencies:
     tslib "^2.4.1"
 
