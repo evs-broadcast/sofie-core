@@ -78,9 +78,9 @@ export abstract class CollectionBase<T> {
 		if (this._dbObserver) this._dbObserver.stop()
 	}
 
-	subscribe(observer: CollectionObserver<T>): void {
+	async subscribe(observer: CollectionObserver<T>): Promise<void> {
 		this._logger.info(`${observer._observerName}' added observer for '${this._name}'`)
-		if (this._collectionData) observer.update(this._name, this._collectionData)
+		if (this._collectionData) await observer.update(this._name, this._collectionData)
 		this._observers.add(observer)
 	}
 
@@ -89,8 +89,8 @@ export abstract class CollectionBase<T> {
 		this._observers.delete(observer)
 	}
 
-	notify(data: T | undefined): void {
-		this._observers.forEach((o) => o.update(this._name, data))
+	async notify(data: T | undefined): Promise<void> {
+		for (const o of this._observers) await o.update(this._name, data)
 	}
 }
 
@@ -104,5 +104,5 @@ export interface Collection<T> {
 
 export interface CollectionObserver<T> {
 	_observerName: string
-	update(source: string, data: T | undefined): void
+	update(source: string, data: T | undefined): Promise<void>
 }
