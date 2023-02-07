@@ -15,6 +15,13 @@ tags:
 paths:
   /:
     $ref: 'definitions/sofie.yaml#/resources/index'
+  # peripheral devices
+  /devices:
+    $ref: 'definitions/devices.yaml#/resources/getPeripheralDevices'
+  /devices/{deviceId}:
+    $ref: 'definitions/devices.yaml#/resources/getPeripheralDevice'
+  /devices/{deviceId}/action:
+    $ref: 'definitions/devices.yaml#/resources/peripheralDeviceAction'
   # playlist operations
   /playlists/{playlistId}/activate:
     $ref: 'definitions/playlists.yaml#/resources/activate'
@@ -43,3 +50,5 @@ paths:
   # studio operations
   /studios/{studioId}/switchRouteSet:
     $ref: 'definitions/studios.yaml#/resources/switchRouteSet'
+  /studios/{studioId}/devices:
+    $ref: 'definitions/studios.yaml#/resources/getPeripheralDevicesForStudio'

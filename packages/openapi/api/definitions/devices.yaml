@@ -1,0 +1,124 @@
+title: devices
+description: Peripheral device methods
+resources:
+  getPeripheralDevices:
+    get:
+      operationId: getPeripheralDevices
+      tags:
+        - devices
+      summary: Gets all peripheral devices attached to Sofie.
+      responses:
+        200:
+          description: Command successfully handled - returns an array of peripheral device Ids
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: number
+                    example: 200
+                  result:
+                    type: array
+                    items:
+                      type: string
+  getPeripheralDevice:
+    get:
+      operationId: getPeripheralDevice
+      tags:
+        - devices
+      summary: Gets a specified Peripheral Device.
+      parameters:
+        - name: deviceId
+          in: path
+          description: Requested device.
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Command successfully handled - returns the peripheral device
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: number
+                    example: 200
+                  result:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        description: Device Id.
+                      name:
+                        type: string
+                        description: Device Name.
+                      status:
+                        type: string
+                        enum: ['unknown', 'good', 'warning_major', 'warning_minor', 'bad', 'fatal']
+                        description: Device status.
+                      messages:
+                        type: array
+                        items:
+                          type: string
+                        description: Service messages from the device.
+                      deviceType:
+                        type: string
+                        enum: ['mos', 'spreadsheet', 'inews', 'playout', 'package_manager', 'live_status']
+                        description: Device type.
+                      connected:
+                        type: boolean
+                        description: Whether device is currently connected.
+                    required:
+                      - id
+                      - name
+                      - status
+                      - messages
+                      - deviceType
+                      - connected
+        404:
+          description: The requested device does not exist.
+  peripheralDeviceAction:
+    post:
+      operationId: peripheralDeviceAction
+      tags:
+        - devices
+      summary: Sends a command to a specified peripheral device
+      parameters:
+        - name: deviceId
+          in: path
+          description: Target device.
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: Contains the action to perform.
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/restartDevice'
+      responses:
+        202:
+          description: The action is valid for the requested device. It may not yet have been dispatched.
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: number
+                  example: 202
+        404:
+          description: The requested device does not exist.
+
+components:
+  schemas:
+    restartDevice:
+      type: object
+      properties:
+        action:
+          type: string
+          const: 'restart'

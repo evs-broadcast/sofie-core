@@ -44,6 +44,38 @@ resources:
                     type: string
         500:
           $ref: '#/components/responses/internalServerError'
+  getPeripheralDevicesForStudio:
+    get:
+      operationId: getPeripheralDevicesForStudio
+      tags:
+        - studios
+      summary: Returns a list of all devices for a given studio.
+      parameters:
+        - name: studioId
+          in: path
+          description: Studio the route set belongs to.
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Command successfully handled - returns an array of peripheral device Ids
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: number
+                    example: 200
+                  result:
+                    type: array
+                    items:
+                      type: string
+        404:
+          description: The specified studio does not exist.
+        500:
+          $ref: '#/components/responses/internalServerError'
 components:
   responses:
     postSuccess:
