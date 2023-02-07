@@ -170,19 +170,19 @@ export class ActivePlaylistTopic
 			| RundownBaselineAdLibAction[]
 			| undefined
 	): Promise<void> {
-		const rundownPlaylist = data ? (data as DBRundownPlaylist) : undefined
-		const sourceLayers = data ? applyAndValidateOverrides((data as DBShowStyleBase).sourceLayersWithOverrides) : []
-		const partInstances = data as Map<PartInstanceName, DBPartInstance | undefined>
-		const adLibActions = data ? (data as AdLibAction[]) : []
-		const globalAdLibActions = data ? (data as RundownBaselineAdLibAction[]) : []
 		switch (source) {
-			case 'PlaylistHandler':
+			case 'PlaylistHandler': {
+				const rundownPlaylist = data ? (data as DBRundownPlaylist) : undefined
 				this._logger.info(
 					`${this._name} received playlist update ${rundownPlaylist?._id}, activationId ${rundownPlaylist?.activationId}`
 				)
 				this._activePlaylist = unprotectString(rundownPlaylist?.activationId) ? rundownPlaylist : undefined
 				break
-			case 'ShowStyleBaseHandler':
+			}
+			case 'ShowStyleBaseHandler': {
+				const sourceLayers = data
+					? applyAndValidateOverrides((data as DBShowStyleBase).sourceLayersWithOverrides)
+					: []
 				this._logger.info(
 					`${this._name} received showStyleBase update with sourceLayers [${Object.values(sourceLayers).map(
 						(s) => s.name
@@ -194,19 +194,26 @@ export class ActivePlaylistTopic
 					this._sourceLayersMap.set(layerId, sourceLayer.name)
 				}
 				break
-			case 'PartInstancesHandler':
+			}
+			case 'PartInstancesHandler': {
+				const partInstances = data as Map<PartInstanceName, DBPartInstance | undefined>
 				this._logger.info(`${this._name} received partInstances update from ${source}`)
 				this._currentPartInstance = partInstances.get(PartInstanceName.cur)
 				this._nextPartInstance = partInstances.get(PartInstanceName.next)
 				break
-			case 'AdLibActionHandler':
+			}
+			case 'AdLibActionHandler': {
+				const adLibActions = data ? (data as AdLibAction[]) : []
 				this._logger.info(`${this._name} received adLibActions update from ${source}`)
 				this._adLibActions = adLibActions
 				break
-			case 'GlobalAdLibActionHandler':
+			}
+			case 'GlobalAdLibActionHandler': {
+				const globalAdLibActions = data ? (data as RundownBaselineAdLibAction[]) : []
 				this._logger.info(`${this._name} received globalAdLibActions update from ${source}`)
 				this._globalAdLibActions = globalAdLibActions
 				break
+			}
 			default:
 				throw new Error(`${this._name} received unsupported update from ${source}}`)
 		}
