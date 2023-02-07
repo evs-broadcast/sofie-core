@@ -14,7 +14,6 @@ import {
 import { literal } from '@sofie-automation/shared-lib/dist/lib/lib'
 import { WsTopicBase, WsTopic, CollectionObserver } from '../wsHandler'
 import { PartInstanceName } from '../collections/partInstances'
-import { applyAndValidateOverrides } from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
 
 interface PartStatus {
 	id: string
@@ -171,7 +170,7 @@ export class ActivePlaylistTopic
 			| undefined
 	): void {
 		const rundownPlaylist = data ? (data as DBRundownPlaylist) : undefined
-		const sourceLayers = data ? applyAndValidateOverrides((data as DBShowStyleBase).sourceLayersWithOverrides) : []
+		const sourceLayers = data ? (data as DBShowStyleBase).sourceLayersWithOverrides : []
 		const partInstances = data as Map<PartInstanceName, DBPartInstance | undefined>
 		const adLibActions = data ? (data as AdLibAction[]) : []
 		const globalAdLibActions = data ? (data as RundownBaselineAdLibAction[]) : []
