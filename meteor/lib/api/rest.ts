@@ -4,6 +4,7 @@ import {
 	BucketAdLibId,
 	PartId,
 	PartInstanceId,
+	PeripheralDeviceId,
 	PieceId,
 	RundownBaselineAdLibActionId,
 	RundownPlaylistId,
@@ -11,6 +12,9 @@ import {
 	StudioId,
 } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import { Meteor } from 'meteor/meteor'
+import { PeripheralDevice, PeripheralDeviceType } from '../collections/PeripheralDevices'
+import { assertNever, unprotectString } from '../lib'
+import { StatusCode } from '@sofie-automation/blueprints-integration'
 
 export interface RestAPI {
 	/**
@@ -226,6 +230,55 @@ export interface RestAPI {
 		rundownPlaylistId: RundownPlaylistId,
 		sourceLayerId: string
 	): Promise<ClientAPI.ClientResponse<void>>
+	/**
+	 * Gets all devices attached to Sofie.
+	 *
+	 * @param connection Connection data including client and header details
+	 * @param event User event string
+	 */
+	getPeripheralDevices(connection: Meteor.Connection, event: string): Promise<ClientAPI.ClientResponse<Array<string>>>
+	/**
+	 * Get a specific device.
+	 *
+	 * Throws if the requested device does not exist.
+	 * @param connection Connection data including client and header details
+	 * @param event User event string
+	 * @param deviceId Device to get
+	 */
+	getPeripheralDevice(
+		connection: Meteor.Connection,
+		event: string,
+		deviceId: PeripheralDeviceId
+	): Promise<ClientAPI.ClientResponse<APIPeripheralDevice>>
+	/**
+	 * Send an action to a device.
+	 *
+	 * Throws if the requested device does not exits.
+	 * Throws if the action is not valid for the requested device.
+	 * @param connection Connection data including client and header details
+	 * @param event User event string
+	 * @param deviceId Device to target
+	 * @param action Action to perform
+	 */
+	peripheralDeviceAction(
+		connection: Meteor.Connection,
+		event: string,
+		deviceId: PeripheralDeviceId,
+		action: PeripheralDeviceAction
+	): Promise<ClientAPI.ClientResponse<void>>
+	/**
+	 * Fetches all of the peripheral devices attached to a studio.
+	 *
+	 * Throws if the requested Studio does not exist.
+	 * @param connection Connection data including client and header details
+	 * @param event User event string
+	 * @param studioId Studio to fetch devices for
+	 */
+	getPeripheralDevicesForStudio(
+		connection: Meteor.Connection,
+		event: string,
+		studioId: StudioId
+	): Promise<ClientAPI.ClientResponse<Array<string>>>
 }
 
 export enum RestAPIMethods {
@@ -243,3 +296,97 @@ export enum RestAPIMethods {
 	'take' = 'restAPI.take',
 	'switchRouteSet' = 'restAPI.switchRouteSet',
 }
+
+// This interface should be auto-generated in future
+export interface APIPeripheralDevice {
+	id: string
+	name: string
+	status: 'unknown' | 'good' | 'warning_major' | 'marning_minor' | 'bad' | 'fatal'
+	messages: string[]
+	deviceType:
+		| 'unknown'
+		| 'mos'
+		| 'spreadsheet'
+		| 'inews'
+		| 'playout'
+		| 'media_manager'
+		| 'package_manager'
+		| 'live_status'
+	connected: boolean
+}
+
+export function APIPeripheralDeviceFrom(device: PeripheralDevice): APIPeripheralDevice {
+	let status: APIPeripheralDevice['status'] = 'unknown'
+	switch (device.status.statusCode) {
+		case StatusCode.BAD:
+			status = 'bad'
+			break
+		case StatusCode.FATAL:
+			status = 'fatal'
+			break
+		case StatusCode.GOOD:
+			status = 'good'
+			break
+		case StatusCode.WARNING_MAJOR:
+			status = 'warning_major'
+			break
+		case StatusCode.WARNING_MINOR:
+			status = 'marning_minor'
+			break
+		case StatusCode.UNKNOWN:
+			status = 'unknown'
+			break
+		default:
+			assertNever(device.status.statusCode)
+	}
+
+	let deviceType: APIPeripheralDevice['deviceType'] = 'unknown'
+	switch (device.type) {
+		case PeripheralDeviceType.INEWS:
+			deviceType = 'inews'
+			break
+		case PeripheralDeviceType.LIVE_STATUS:
+			deviceType = 'live_status'
+			break
+		case PeripheralDeviceType.MEDIA_MANAGER:
+			deviceType = 'media_manager'
+			break
+		case PeripheralDeviceType.MOS:
+			deviceType = 'mos'
+			break
+		case PeripheralDeviceType.PACKAGE_MANAGER:
+			deviceType = 'package_manager'
+			break
+		case PeripheralDeviceType.PLAYOUT:
+			deviceType = 'playout'
+			break
+		case PeripheralDeviceType.SPREADSHEET:
+			deviceType = 'spreadsheet'
+			break
+		default:
+			assertNever(device.type)
+	}
+
+	return {
+		id: unprotectString(device._id),
+		name: device.name,
+		status,
+		messages: device.status.messages ?? [],
+		deviceType,
+		connected: device.connected,
+	}
+}
+
+export enum PeripheralDeviceActionType {
+	RESTART = 'restart',
+}
+
+export interface PeripheralDeviceActionBase {
+	type: PeripheralDeviceActionType
+}
+
+export interface PeripheralDeviceActionRestart extends PeripheralDeviceActionBase {
+	type: PeripheralDeviceActionType.RESTART
+}
+
+export type PeripheralDeviceAction = PeripheralDeviceActionRestart

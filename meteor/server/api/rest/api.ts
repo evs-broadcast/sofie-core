@@ -6,8 +6,14 @@ import { WebApp } from 'meteor/webapp'
 import { check, Match } from '../../../lib/check'
 import { Meteor } from 'meteor/meteor'
 import { ClientAPI } from '../../../lib/api/client'
-import { getCurrentTime, getRandomString, protectString } from '../../../lib/lib'
-import { RestAPI } from '../../../lib/api/rest'
+import { getCurrentTime, getRandomString, protectString, unprotectString } from '../../../lib/lib'
+import {
+	APIPeripheralDevice,
+	APIPeripheralDeviceFrom,
+	PeripheralDeviceActionRestart,
+	PeripheralDeviceActionType,
+	RestAPI,
+} from '../../../lib/api/rest'
 import { RundownPlaylists } from '../../../lib/collections/RundownPlaylists'
 import { MethodContextAPI } from '../../../lib/api/methods'
 import { ServerClientAPI } from '../client'
@@ -20,6 +26,7 @@ import {
 	BucketAdLibId,
 	PartId,
 	PartInstanceId,
+	PeripheralDeviceId,
 	PieceId,
 	RundownBaselineAdLibActionId,
 	RundownPlaylistId,
@@ -37,6 +44,9 @@ import { ServerPlayoutAPI } from '../playout/playout'
 import { TriggerReloadDataResponse } from '../../../lib/api/userActions'
 import { interpollateTranslation, translateMessage } from '@sofie-automation/corelib/dist/TranslatableMessage'
 import { Credentials } from '../../security/lib/credentials'
+import { PeripheralDevices } from '../../../lib/collections/PeripheralDevices'
+import { PeripheralDeviceAPI } from '../../../lib/api/peripheralDevice'
+import { assertNever } from '@sofie-automation/shared-lib/dist/lib/lib'
 
 function restAPIUserEvent(
 	ctx: Koa.ParameterizedContext<
@@ -457,7 +467,7 @@ class ServerRestAPI implements RestAPI {
 		)
 	}
 
-	recallStickyPiece(
+	async recallStickyPiece(
 		connection: Meteor.Connection,
 		event: string,
 		rundownPlaylistId: RundownPlaylistId,
@@ -478,6 +488,66 @@ class ServerRestAPI implements RestAPI {
 				sourceLayerId,
 			}
 		)
+	}
+
+	async getPeripheralDevices(
+		_connection: Meteor.Connection,
+		_event: string
+	): Promise<ClientAPI.ClientResponse<string[]>> {
+		return ClientAPI.responseSuccess(PeripheralDevices.find().map((p) => unprotectString(p._id)))
+	}
+
+	async getPeripheralDevice(
+		_connection: Meteor.Connection,
+		_event: string,
+		deviceId: PeripheralDeviceId
+	): Promise<ClientAPI.ClientResponse<APIPeripheralDevice>> {
+		const device = PeripheralDevices.findOne(deviceId)
+		if (!device)
+			return ClientAPI.responseError(
+				UserError.from(
+					new Error(`Device ${deviceId} does not exist`),
+					UserErrorMessage.PeripheralDeviceNotFound
+				),
+				404
+			)
+		return ClientAPI.responseSuccess(APIPeripheralDeviceFrom(device))
+	}
+
+	async peripheralDeviceAction(
+		_connection: Meteor.Connection,
+		_event: string,
+		deviceId: PeripheralDeviceId,
+		action: PeripheralDeviceActionRestart
+	): Promise<ClientAPI.ClientResponse<void>> {
+		const device = PeripheralDevices.findOne(deviceId)
+		if (!device)
+			return ClientAPI.responseError(
+				UserError.from(
+					new Error(`Device ${deviceId} does not exist`),
+					UserErrorMessage.PeripheralDeviceNotFound
+				),
+				404
+			)
+
+		switch (action.type) {
+			case PeripheralDeviceActionType.RESTART:
+				// This dispatches the command but does not wait for it to complete
+				await PeripheralDeviceAPI.executeFunction(deviceId, 'killProcess', 1).catch(logger.error)
+				break
+			default:
+				assertNever(action.type)
+		}
+
+		return ClientAPI.responseSuccess(undefined, 202)
+	}
+
+	async getPeripheralDevicesForStudio(
+		_connection: Meteor.Connection,
+		_event: string,
+		studioId: StudioId
+	): Promise<ClientAPI.ClientResponse<string[]>> {
+		return ClientAPI.responseSuccess(PeripheralDevices.find({ studioId }).map((p) => unprotectString(p._id)))
 	}
 }
 
@@ -530,7 +600,7 @@ async function sofieAPIRequest<Params, Body, Response>(
 			)
 			if (ClientAPI.isClientResponseError(response)) throw response
 			ctx.body = response
-			ctx.status = 200
+			ctx.status = response.success
 		} catch (e) {
 			const errCode = extractErrorCode(e)
 			const errMsg = errCode === 500 ? 'Internal Server Error' : extractErrorMessage(e)
@@ -731,6 +801,35 @@ sofieAPIRequest<{ playlistId: string; sourceLayerId: string }, never, void>(
 		check(playlistId, String)
 		check(sourceLayerId, String)
 		return await serverAPI.recallStickyPiece(connection, event, playlistId, sourceLayerId)
+	}
+)
+
+sofieAPIRequest<never, never, string[]>('post', '/devices', async (serverAPI, connection, event, _params, _body) => {
+	logger.info(`koa GET: peripheral devices`)
+	return await serverAPI.getPeripheralDevices(connection, event)
+})
+
+sofieAPIRequest<{ deviceId: string }, never, APIPeripheralDevice>(
+	'get',
+	'/devices/{deviceId}',
+	async (serverAPI, connection, event, params, _) => {
+		const deviceId = protectString<PeripheralDeviceId>(params.deviceId)
+		logger.info(`koa GET: peripheral device ${deviceId}`)
+
+		check(deviceId, String)
+		return await serverAPI.getPeripheralDevice(connection, event, deviceId)
+	}
+)
+
+sofieAPIRequest<{ studioId: string }, never, string[]>(
+	'get',
+	'/studios/{studioId}/devices',
+	async (serverAPI, connection, event, params, _) => {
+		const studioId = protectString<StudioId>(params.studioId)
+		logger.info(`koa GET: peripheral devices for studio ${studioId}`)
+
+		check(studioId, String)
+		return await serverAPI.getPeripheralDevicesForStudio(connection, event, studioId)
 	}
 )
 

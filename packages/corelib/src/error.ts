@@ -46,6 +46,7 @@ export enum UserErrorMessage {
 	TakeBlockedDuration = 31,
 	TakeFromIncorrectPart = 32,
 	RundownPlaylistNotFound = 33,
+	PeripheralDeviceNotFound = 44,
 }
 
 const UserErrorMessagesTranslations: { [key in UserErrorMessage]: string } = {
@@ -91,6 +92,7 @@ const UserErrorMessagesTranslations: { [key in UserErrorMessage]: string } = {
 	[UserErrorMessage.TakeBlockedDuration]: t(`Cannot perform take for {{duration}}ms`),
 	[UserErrorMessage.TakeFromIncorrectPart]: t(`Ignoring take as playing part has changed since TAKE was requested.`),
 	[UserErrorMessage.RundownPlaylistNotFound]: t(`Rundown Playlist not found!`),
+	[UserErrorMessage.PeripheralDeviceNotFound]: t(`Peripheral Device not found!`),
 }
 
 export class UserError {
