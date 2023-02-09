@@ -1,9 +1,9 @@
 title: devices
 description: Peripheral device methods
 resources:
-  getPeripheralDevices:
+  devices:
     get:
-      operationId: getPeripheralDevices
+      operationId: devices
       tags:
         - devices
       summary: Gets all peripheral devices attached to Sofie.
@@ -22,12 +22,12 @@ resources:
                     type: array
                     items:
                       type: string
-  getPeripheralDevice:
+  device:
     get:
-      operationId: getPeripheralDevice
+      operationId: device
       tags:
         - devices
-      summary: Gets a specified Peripheral Device.
+      summary: Gets a specified peripheral device.
       parameters:
         - name: deviceId
           in: path
@@ -90,9 +90,9 @@ resources:
                       - connected
         404:
           description: The requested device does not exist.
-  peripheralDeviceAction:
+  action:
     post:
-      operationId: peripheralDeviceAction
+      operationId: action
       tags:
         - devices
       summary: Sends a command to a specified peripheral device
@@ -111,6 +111,8 @@ resources:
             schema:
               oneOf:
                 - $ref: '#/components/schemas/restartDevice'
+              example:
+                action: restart
       responses:
         202:
           description: The action is valid for the requested device. It may not yet have been dispatched.
@@ -131,4 +133,6 @@ components:
       properties:
         action:
           type: string
-          const: 'restart'
+          const: restart
+      required: [action]
+      additionalProperties: false

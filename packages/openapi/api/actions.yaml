@@ -17,11 +17,11 @@ paths:
     $ref: 'definitions/sofie.yaml#/resources/index'
   # peripheral devices
   /devices:
-    $ref: 'definitions/devices.yaml#/resources/getPeripheralDevices'
+    $ref: 'definitions/devices.yaml#/resources/devices'
   /devices/{deviceId}:
-    $ref: 'definitions/devices.yaml#/resources/getPeripheralDevice'
+    $ref: 'definitions/devices.yaml#/resources/device'
   /devices/{deviceId}/action:
-    $ref: 'definitions/devices.yaml#/resources/peripheralDeviceAction'
+    $ref: 'definitions/devices.yaml#/resources/action'
   # playlist operations
   /playlists/{playlistId}/activate:
     $ref: 'definitions/playlists.yaml#/resources/activate'
@@ -43,7 +43,7 @@ paths:
     $ref: 'definitions/playlists.yaml#/resources/setNextSegment'
   /playlists/{playlistId}/take:
     $ref: 'definitions/playlists.yaml#/resources/take'
-  /playlists/{playlistId}/sourceLayer/{sourceLayerId}':
+  /playlists/{playlistId}/sourceLayer/{sourceLayerId}:
     $ref: 'definitions/playlists.yaml#/resources/sourceLayer'
   /playlists/{playlistId}/sourceLayer/{sourceLayerId}/recallSticky:
     $ref: 'definitions/playlists.yaml#/resources/recallSticky'
@@ -51,4 +51,4 @@ paths:
   /studios/{studioId}/switchRouteSet:
     $ref: 'definitions/studios.yaml#/resources/switchRouteSet'
   /studios/{studioId}/devices:
-    $ref: 'definitions/studios.yaml#/resources/getPeripheralDevicesForStudio'
+    $ref: 'definitions/studios.yaml#/resources/devices'
