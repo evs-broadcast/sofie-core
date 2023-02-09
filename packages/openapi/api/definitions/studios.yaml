@@ -44,9 +44,9 @@ resources:
                     type: string
         500:
           $ref: '#/components/responses/internalServerError'
-  getPeripheralDevicesForStudio:
+  devices:
     get:
-      operationId: getPeripheralDevicesForStudio
+      operationId: devices
       tags:
         - studios
       summary: Returns a list of all devices for a given studio.
