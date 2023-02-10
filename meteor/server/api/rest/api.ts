@@ -595,8 +595,8 @@ async function sofieAPIRequest<Params, Body, Response>(
 				serverAPI,
 				makeConnection(ctx),
 				restAPIUserEvent(ctx),
-				ctx.params as Params,
-				ctx.req.body as Body
+				ctx.params as unknown as Params,
+				ctx.req.body as unknown as Body
 			)
 			if (ClientAPI.isClientResponseError(response)) throw response
 			ctx.body = response
