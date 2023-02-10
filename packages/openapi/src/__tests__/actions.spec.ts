@@ -1,6 +1,7 @@
 import {
 	Configuration,
-	UserActionsApi,
+	SofieApi,
+	PlaylistsApi,
 	Middleware,
 	ResponseContext,
 	ErrorContext,
@@ -49,15 +50,16 @@ describe('Network client', () => {
 			middleware: httpLogging ? [new Logging()] : [],
 		})
 
-		const actionsApi = new UserActionsApi(config)
+		const sofieApi = new SofieApi(config)
 		test('can request current version of Sofie application', async () => {
-			const sofieVersion = await actionsApi.index()
+			const sofieVersion = await sofieApi.index()
 			expect(sofieVersion.success).toBe(200)
 			expect(sofieVersion.result.version).toBe('1.44.0')
 		})
 
+		const playlistsApi = new PlaylistsApi(config)
 		test('can activate a playlist', async () => {
-			const active = await actionsApi.activate({
+			const active = await playlistsApi.activate({
 				playlistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_',
 				activateRequest: { rehearsal: true },
 			})
@@ -65,73 +67,64 @@ describe('Network client', () => {
 		})
 
 		test('can set next part in a playlist', async () => {
-			const setNext = await actionsApi.setNextPart({
+			const setNext = await playlistsApi.setNextPart({
 				playlistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_',
-				partId: '9Qk3eNHtqwBRGxsGqQiVCxJsYwE_',
+				setNextPartRequest: { partId: '9Qk3eNHtqwBRGxsGqQiVCxJsYwE_' },
 			})
 			expect(setNext.success).toBe(200)
 		})
 
 		test('can set next segment in a playlist', async () => {
-			const setNext = await actionsApi.setNextSegment({
+			const setNext = await playlistsApi.setNextSegment({
 				playlistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_',
-				segmentId: 'cIt0kEWuHOvQVMDEKzCrBpgGWSs_',
+				setNextSegmentRequest: { segmentId: 'cIt0kEWuHOvQVMDEKzCrBpgGWSs_' },
 			})
 			expect(setNext.success).toBe(200)
 		})
 
 		test('can move next part in a playlist', async () => {
-			const move = await actionsApi.moveNextPart({
+			const move = await playlistsApi.moveNextPart({
 				playlistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_',
-				delta: 2,
+				moveNextPartRequest: { delta: 2 },
 			})
 			expect(move.success).toBe(200)
 			expect(move.result).toBe('3Y9at66pZipxE8Kkn850LLV9Cz0_')
 		})
 
 		test('can move next segment in a playlist', async () => {
-			const move = await actionsApi.moveNextSegment({
+			const move = await playlistsApi.moveNextSegment({
 				playlistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_',
-				delta: 2,
+				moveNextSegmentRequest: { delta: 2 },
 			})
 			expect(move.success).toBe(200)
 			expect(move.result).toBe('YjGd_1dWjta_E1ZuDaOczP1lsgk_')
 		})
 
 		test('can send take action to the Sofie application', async () => {
-			const take = await actionsApi.take({ playlistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_' })
+			const take = await playlistsApi.take({ playlistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_' })
 			expect(take.success).toBe(200)
 		})
 
-		test('can execute an action', async () => {
-			const execute = await actionsApi.executeAction({
-				playlistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_',
-				actionId: 'JustDoIt',
-				body: { userData: { really: 'yes' } },
-			})
-			expect(execute.success).toBe(200)
-		})
-
 		test('can execute an adLib', async () => {
-			const execute = await actionsApi.executeAdLib({
+			const execute = await playlistsApi.executeAdLib({
 				playlistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_',
-				adLibId: 'JustDoIt',
+				executeAdLibRequest: { adLibId: 'JustDoIt' },
 			})
 			expect(execute.success).toBe(200)
 		})
 
 		test('can deactivate a playlist', async () => {
-			const deactive = await actionsApi.deactivate({ playlistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_' })
+			const deactive = await playlistsApi.deactivate({ playlistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_' })
 			expect(deactive.success).toBe(200)
 		})
 
 		test('can reset a playlist', async () => {
-			const reset = await actionsApi.resetPlaylist({ playlistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_' })
+			const reset = await playlistsApi.resetPlaylist({ playlistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_' })
 			expect(reset.success).toBe(200)
 		})
 
 		test('can reload a playlist', async () => {
-			const reload = await actionsApi.reloadPlaylist({ playlistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_' })
+			const reload = await playlistsApi.reloadPlaylist({ playlistId: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_' })
 			expect(reload.success).toBe(200)
 		})
 	} else {
