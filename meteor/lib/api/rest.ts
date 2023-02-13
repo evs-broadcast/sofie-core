@@ -301,6 +301,26 @@ export interface RestAPI {
 		event: string,
 		blueprintId: BlueprintId
 	): Promise<ClientAPI.ClientResponse<APIBlueprint>>
+	/*
+	 * Assigns a specified Blueprint to the system.
+	 *
+	 * Throws if the specified Blueprint does not exist.
+	 * Throws if the specified Blueprint is not a 'system' Blueprint.
+	 * @param connection Connection data including client and header details
+	 * @param event User event string
+	 * @param blueprintId Blueprint to assign
+	 */
+	assignSystemBlueprint(
+		connection: Meteor.Connection,
+		event: string,
+		blueprintId: BlueprintId
+	): Promise<ClientAPI.ClientResponse<void>>
+	/**
+	 * Unassigns the assigned system Blueprint, if any Blueprint is currently assigned.
+	 * @param connection Connection data including client and header details
+	 * @param event User event string
+	 */
+	unassignSystemBlueprint(connection: Meteor.Connection, event: string): Promise<ClientAPI.ClientResponse<void>>
 }
 
 export enum RestAPIMethods {

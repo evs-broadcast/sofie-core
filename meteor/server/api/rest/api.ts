@@ -17,7 +17,7 @@ import {
 	RestAPI,
 } from '../../../lib/api/rest'
 import { RundownPlaylists } from '../../../lib/collections/RundownPlaylists'
-import { MethodContextAPI } from '../../../lib/api/methods'
+import { MeteorCall, MethodContextAPI } from '../../../lib/api/methods'
 import { ServerClientAPI } from '../client'
 import { ServerRundownAPI } from '../rundown'
 import { triggerWriteAccess } from '../../security/lib/securityVerify'
@@ -577,6 +577,20 @@ class ServerRestAPI implements RestAPI {
 		if (!apiBlueprint) throw new Error(`Blueprint could not be converted to API representation`)
 		return ClientAPI.responseSuccess(apiBlueprint)
 	}
+	async assignSystemBlueprint(
+		_connection: Meteor.Connection,
+		_event: string,
+		blueprintId: BlueprintId
+	): Promise<ClientAPI.ClientResponse<void>> {
+		return ClientAPI.responseSuccess(await MeteorCall.blueprint.assignSystemBlueprint(blueprintId))
+	}
+
+	async unassignSystemBlueprint(
+		_connection: Meteor.Connection,
+		_event: string
+	): Promise<ClientAPI.ClientResponse<void>> {
+		return ClientAPI.responseSuccess(await MeteorCall.blueprint.assignSystemBlueprint(undefined))
+	}
 }
 
 const koaRouter = new KoaRouter()
@@ -606,7 +620,7 @@ function extractErrorMessage(e: unknown): string {
 }
 
 async function sofieAPIRequest<Params, Body, Response>(
-	method: 'get' | 'post' | 'delete',
+	method: 'get' | 'post' | 'put' | 'delete',
 	route: string,
 	handler: (
 		serverAPI: RestAPI,
@@ -875,6 +889,24 @@ sofieAPIRequest<{ blueprints: string }, never, APIBlueprint>(
 
 		check(blueprintId, String)
 		return await serverAPI.getBlueprint(connection, event, blueprintId)
+	}
+)
+sofieAPIRequest<never, { blueprintId: string }, void>(
+	'put',
+	'/system/blueprint',
+	async (serverAPI, connection, events, _, body) => {
+		const blueprintId = protectString<BlueprintId>(body.blueprintId)
+
+		check(blueprintId, String)
+		return await serverAPI.assignSystemBlueprint(connection, events, blueprintId)
+	}
+)
+
+sofieAPIRequest<never, never, void>(
+	'delete',
+	'/system/blueprint',
+	async (serverAPI, connection, events, _params, _body) => {
+		return await serverAPI.unassignSystemBlueprint(connection, events)
 	}
 )
 
