@@ -1,6 +1,7 @@
 import { ClientAPI } from '../api/client'
 import {
 	AdLibActionId,
+	BlueprintId,
 	BucketAdLibId,
 	PartId,
 	PartInstanceId,
@@ -15,6 +16,7 @@ import { Meteor } from 'meteor/meteor'
 import { PeripheralDevice, PeripheralDeviceType } from '../collections/PeripheralDevices'
 import { assertNever, unprotectString } from '../lib'
 import { StatusCode } from '@sofie-automation/blueprints-integration'
+import { Blueprint } from '../collections/Blueprints'
 
 export interface RestAPI {
 	/**
@@ -279,6 +281,26 @@ export interface RestAPI {
 		event: string,
 		studioId: StudioId
 	): Promise<ClientAPI.ClientResponse<Array<string>>>
+	/*
+	 * Gets all available Blueprints.
+	 * @param connection Connection data including client and header details
+	 * @param event User event string
+	 */
+	getAllBlueprints(connection: Meteor.Connection, event: string): Promise<ClientAPI.ClientResponse<string[]>>
+	/**
+	 * Gets a specific Blueprint.
+	 *
+	 * Throws if the specified Blueprint does not exist.
+	 * Throws if the specified Blueprint is of unknown type.
+	 * @param connection Connection data including client and header details
+	 * @param event User event string
+	 * @param blueprintId Blueprint to fetch
+	 */
+	getBlueprint(
+		connection: Meteor.Connection,
+		event: string,
+		blueprintId: BlueprintId
+	): Promise<ClientAPI.ClientResponse<APIBlueprint>>
 }
 
 export enum RestAPIMethods {
@@ -390,3 +412,20 @@ export interface PeripheralDeviceActionRestart extends PeripheralDeviceActionBas
 }
 
 export type PeripheralDeviceAction = PeripheralDeviceActionRestart
+export interface APIBlueprint {
+	id: string
+	name: string
+	blueprintType: 'system' | 'studio' | 'showstyle'
+	blueprintVersion: string
+}
+
+export function APIBlueprintFrom(blueprint: Blueprint): APIBlueprint | undefined {
+	if (!blueprint.blueprintType) return undefined
+
+	return {
+		id: unprotectString(blueprint._id),
+		name: blueprint.name,
+		blueprintType: blueprint.blueprintType,
+		blueprintVersion: blueprint.blueprintVersion,
+	}
+}

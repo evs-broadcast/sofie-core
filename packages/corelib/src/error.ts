@@ -46,7 +46,8 @@ export enum UserErrorMessage {
 	TakeBlockedDuration = 31,
 	TakeFromIncorrectPart = 32,
 	RundownPlaylistNotFound = 33,
-	PeripheralDeviceNotFound = 44,
+	PeripheralDeviceNotFound = 34,
+	BlueprintNotFound = 35,
 }
 
 const UserErrorMessagesTranslations: { [key in UserErrorMessage]: string } = {
@@ -93,6 +94,7 @@ const UserErrorMessagesTranslations: { [key in UserErrorMessage]: string } = {
 	[UserErrorMessage.TakeFromIncorrectPart]: t(`Ignoring take as playing part has changed since TAKE was requested.`),
 	[UserErrorMessage.RundownPlaylistNotFound]: t(`Rundown Playlist not found!`),
 	[UserErrorMessage.PeripheralDeviceNotFound]: t(`Peripheral Device not found!`),
+	[UserErrorMessage.BlueprintNotFound]: t(`Blueprint not found!`),
 }
 
 export class UserError {

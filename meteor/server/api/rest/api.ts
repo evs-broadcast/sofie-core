@@ -12,6 +12,8 @@ import {
 	APIPeripheralDeviceFrom,
 	PeripheralDeviceActionRestart,
 	PeripheralDeviceActionType,
+	APIBlueprint,
+	APIBlueprintFrom,
 	RestAPI,
 } from '../../../lib/api/rest'
 import { RundownPlaylists } from '../../../lib/collections/RundownPlaylists'
@@ -23,6 +25,7 @@ import { ExecuteActionResult, StudioJobs } from '@sofie-automation/corelib/dist/
 import { CURRENT_SYSTEM_VERSION } from '../../migration/currentSystemVersion'
 import {
 	AdLibActionId,
+	BlueprintId,
 	BucketAdLibId,
 	PartId,
 	PartInstanceId,
@@ -47,6 +50,7 @@ import { Credentials } from '../../security/lib/credentials'
 import { PeripheralDevices } from '../../../lib/collections/PeripheralDevices'
 import { PeripheralDeviceAPI } from '../../../lib/api/peripheralDevice'
 import { assertNever } from '@sofie-automation/shared-lib/dist/lib/lib'
+import { Blueprints } from '../../../lib/collections/Blueprints'
 
 function restAPIUserEvent(
 	ctx: Koa.ParameterizedContext<
@@ -549,6 +553,30 @@ class ServerRestAPI implements RestAPI {
 	): Promise<ClientAPI.ClientResponse<string[]>> {
 		return ClientAPI.responseSuccess(PeripheralDevices.find({ studioId }).map((p) => unprotectString(p._id)))
 	}
+	async getAllBlueprints(
+		_connection: Meteor.Connection,
+		_event: string
+	): Promise<ClientAPI.ClientResponse<string[]>> {
+		return ClientAPI.responseSuccess(Blueprints.find().map((blueprint) => unprotectString(blueprint._id)))
+	}
+
+	async getBlueprint(
+		_connection: Meteor.Connection,
+		_event: string,
+		blueprintId: BlueprintId
+	): Promise<ClientAPI.ClientResponse<APIBlueprint>> {
+		const blueprint = Blueprints.findOne(blueprintId)
+		if (!blueprint) {
+			return ClientAPI.responseError(
+				UserError.from(new Error(`Blueprint ${blueprintId} not found`), UserErrorMessage.BlueprintNotFound),
+				404
+			)
+		}
+
+		const apiBlueprint = APIBlueprintFrom(blueprint)
+		if (!apiBlueprint) throw new Error(`Blueprint could not be converted to API representation`)
+		return ClientAPI.responseSuccess(apiBlueprint)
+	}
 }
 
 const koaRouter = new KoaRouter()
@@ -830,6 +858,23 @@ sofieAPIRequest<{ studioId: string }, never, string[]>(
 
 		check(studioId, String)
 		return await serverAPI.getPeripheralDevicesForStudio(connection, event, studioId)
+	}
+)
+
+sofieAPIRequest<never, never, string[]>('get', '/blueprints', async (serverAPI, connection, event, _params, _body) => {
+	logger.info(`koa GET: blueprints`)
+	return await serverAPI.getAllBlueprints(connection, event)
+})
+
+sofieAPIRequest<{ blueprints: string }, never, APIBlueprint>(
+	'get',
+	'/blueprints/{blueprintId}',
+	async (serverAPI, connection, event, params, _) => {
+		const blueprintId = protectString<BlueprintId>(params.blueprints)
+		logger.info(`koa GET: blueprint ${blueprintId}`)
+
+		check(blueprintId, String)
+		return await serverAPI.getBlueprint(connection, event, blueprintId)
 	}
 )
 

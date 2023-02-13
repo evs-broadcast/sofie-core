@@ -22,6 +22,11 @@ paths:
     $ref: 'definitions/devices.yaml#/resources/device'
   /devices/{deviceId}/action:
     $ref: 'definitions/devices.yaml#/resources/action'
+  # blueprint operations
+  /blueprints:
+    $ref: 'definitions/blueprints.yaml#/resources/blueprints'
+  /blueprints/{blueprintId}:
+    $ref: 'definitions/blueprints.yaml#/resources/blueprint'
   # playlist operations
   /playlists/{playlistId}/activate:
     $ref: 'definitions/playlists.yaml#/resources/activate'
