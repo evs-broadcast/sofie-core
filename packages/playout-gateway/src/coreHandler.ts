@@ -285,6 +285,7 @@ export class CoreHandler {
 	executeFunction(cmd: PeripheralDeviceCommand, fcnObject: CoreHandler | CoreTSRDeviceHandler): void {
 		if (cmd) {
 			if (this._executedFunctions[unprotectString(cmd._id)]) return // prevent it from running multiple times
+
 			const cb = (err: any, res?: any) => {
 				if (err) {
 					this.logger.error('executeFunction error', err, err.stack)
@@ -450,7 +451,7 @@ export class CoreHandler {
 		}
 	}
 	async getDebugStates(): Promise<any> {
-		if (!this._tsrHandler) return {}
+		if (!this._tsrHandler) throw new Error('TSRHandler is not initialized')
 
 		return Object.fromEntries(this._tsrHandler.getDebugStates().entries())
 	}

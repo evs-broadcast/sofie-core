@@ -23,8 +23,8 @@ import {
 import { ConfigManifestEntryComponent } from './ConfigManifestEntryComponent'
 import { ConfigManifestOAuthFlowComponent } from './ConfigManifestOAuthFlow'
 import { protectString, unprotectString } from '../../../../lib/lib'
+import { PeripheralDeviceId } from '@sofie-automation/shared-lib/dist/core/model/Ids'
 import { MeteorCall } from '../../../../lib/api/methods'
-import { PeripheralDeviceId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 
 type EditId = PeripheralDeviceId | string
 interface IGenericDeviceSettingsComponentState {
@@ -461,6 +461,7 @@ export const GenericDeviceSettingsComponent = withTranslation()(
 		}
 
 		getConfigSummaryFields(configManifest: TableConfigManifestEntry) {
+			const { t } = this.props
 			const fieldNames: { [field: string]: TableEntryConfigManifestEntry } = {}
 
 			_.each(configManifest.config, (c) => {
@@ -474,8 +475,8 @@ export const GenericDeviceSettingsComponent = withTranslation()(
 			if (configManifest.config && Object.keys(configManifest.config).length > 1) {
 				fieldNames[configManifest.typeField || 'type'] = {
 					id: 'type',
-					name: 'Type',
-					columnName: 'Type',
+					name: t('Type'),
+					columnName: t('Type'),
 					type: ConfigManifestEntryType.STRING,
 				}
 			}

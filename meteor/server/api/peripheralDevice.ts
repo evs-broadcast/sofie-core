@@ -63,6 +63,8 @@ import {
 	NewPeripheralDeviceAPI,
 	PeripheralDeviceAPIMethods,
 } from '@sofie-automation/shared-lib/dist/peripheralDevice/methodsAPI'
+import { insertInputDeviceTriggerIntoPreview } from '../publications/deviceTriggersPreview'
+import { receiveInputDeviceTrigger } from './deviceTriggers/observer'
 import { upsertBundles, generateTranslationBundleOriginId } from './translationsBundles'
 import { isTranslatableMessage } from '@sofie-automation/corelib/dist/TranslatableMessage'
 
@@ -664,8 +666,6 @@ PickerPOST.route('/devices/:deviceId/resetAuth', async (params, _req: IncomingMe
 			},
 		})
 
-		// PeripheralDeviceAPI.executeFunction(deviceId, 'killProcess', 1).catch(logger.error)
-
 		res.statusCode = 200
 	} catch (e) {
 		res.statusCode = 500
@@ -688,7 +688,7 @@ PickerPOST.route(
 
 			if (!deviceId) throw new Meteor.Error(400, `parameter deviceId is missing`)
 
-			const peripheralDevice = PeripheralDevices.findOne(deviceId)
+			const peripheralDevice = await PeripheralDevices.findOneAsync(deviceId)
 			if (!peripheralDevice) throw new Meteor.Error(404, `Peripheral device "${deviceId}" not found`)
 
 			PeripheralDevices.update(peripheralDevice._id, {
@@ -985,7 +985,7 @@ class ServerPeripheralDeviceAPIClass extends MethodContextAPI implements NewPeri
 	async mosRoReplace(deviceId: PeripheralDeviceId, deviceToken: string, mosRunningOrder: MOS.IMOSRunningOrder) {
 		return MosIntegration.mosRoReplace(this, deviceId, deviceToken, mosRunningOrder)
 	}
-	async mosRoDelete(deviceId: PeripheralDeviceId, deviceToken: string, mosRunningOrderId: MOS.MosString128) {
+	async mosRoDelete(deviceId: PeripheralDeviceId, deviceToken: string, mosRunningOrderId: MOS.IMOSString128) {
 		return MosIntegration.mosRoDelete(this, deviceId, deviceToken, mosRunningOrderId)
 	}
 	async mosRoMetadata(deviceId: PeripheralDeviceId, deviceToken: string, metadata: MOS.IMOSRunningOrderBase) {
@@ -1036,7 +1036,7 @@ class ServerPeripheralDeviceAPIClass extends MethodContextAPI implements NewPeri
 		deviceId: PeripheralDeviceId,
 		deviceToken: string,
 		Action: MOS.IMOSStoryAction,
-		Stories: Array<MOS.MosString128>
+		Stories: Array<MOS.IMOSString128>
 	) {
 		return MosIntegration.mosRoStoryMove(this, deviceId, deviceToken, Action, Stories)
 	}
@@ -1044,7 +1044,7 @@ class ServerPeripheralDeviceAPIClass extends MethodContextAPI implements NewPeri
 		deviceId: PeripheralDeviceId,
 		deviceToken: string,
 		Action: MOS.IMOSItemAction,
-		Items: Array<MOS.MosString128>
+		Items: Array<MOS.IMOSString128>
 	) {
 		return MosIntegration.mosRoItemMove(this, deviceId, deviceToken, Action, Items)
 	}
@@ -1052,7 +1052,7 @@ class ServerPeripheralDeviceAPIClass extends MethodContextAPI implements NewPeri
 		deviceId: PeripheralDeviceId,
 		deviceToken: string,
 		Action: MOS.IMOSROAction,
-		Stories: Array<MOS.MosString128>
+		Stories: Array<MOS.IMOSString128>
 	) {
 		return MosIntegration.mosRoStoryDelete(this, deviceId, deviceToken, Action, Stories)
 	}
@@ -1060,7 +1060,7 @@ class ServerPeripheralDeviceAPIClass extends MethodContextAPI implements NewPeri
 		deviceId: PeripheralDeviceId,
 		deviceToken: string,
 		Action: MOS.IMOSStoryAction,
-		Items: Array<MOS.MosString128>
+		Items: Array<MOS.IMOSString128>
 	) {
 		return MosIntegration.mosRoItemDelete(this, deviceId, deviceToken, Action, Items)
 	}
@@ -1068,8 +1068,8 @@ class ServerPeripheralDeviceAPIClass extends MethodContextAPI implements NewPeri
 		deviceId: PeripheralDeviceId,
 		deviceToken: string,
 		Action: MOS.IMOSROAction,
-		StoryID0: MOS.MosString128,
-		StoryID1: MOS.MosString128
+		StoryID0: MOS.IMOSString128,
+		StoryID1: MOS.IMOSString128
 	) {
 		return MosIntegration.mosRoStorySwap(this, deviceId, deviceToken, Action, StoryID0, StoryID1)
 	}
@@ -1077,8 +1077,8 @@ class ServerPeripheralDeviceAPIClass extends MethodContextAPI implements NewPeri
 		deviceId: PeripheralDeviceId,
 		deviceToken: string,
 		Action: MOS.IMOSStoryAction,
-		ItemID0: MOS.MosString128,
-		ItemID1: MOS.MosString128
+		ItemID0: MOS.IMOSString128,
+		ItemID1: MOS.IMOSString128
 	) {
 		return MosIntegration.mosRoItemSwap(this, deviceId, deviceToken, Action, ItemID0, ItemID1)
 	}
@@ -1230,6 +1230,21 @@ class ServerPeripheralDeviceAPIClass extends MethodContextAPI implements NewPeri
 		packageId: ExpectedPackageId
 	) {
 		await PackageManagerIntegration.removePackageInfo(this, deviceId, deviceToken, type, packageId)
+	}
+	// --- Triggers ---
+	/**
+	 * This receives an arbitrary input from an Input-handling Peripheral Device. See
+	 * shared-lib\src\peripheralDevice\methodsAPI.ts inputDeviceTrigger for more info
+	 */
+	async inputDeviceTrigger(
+		deviceId: PeripheralDeviceId,
+		deviceToken: string,
+		triggerDeviceId: string,
+		triggerId: string,
+		values?: Record<string, string | number | boolean> | null
+	) {
+		await receiveInputDeviceTrigger(this, deviceId, deviceToken, triggerDeviceId, triggerId, values ?? undefined)
+		await insertInputDeviceTriggerIntoPreview(deviceId, triggerDeviceId, triggerId, values ?? undefined)
 	}
 }
 registerClassToMeteorMethods(PeripheralDeviceAPIMethods, ServerPeripheralDeviceAPIClass, false)

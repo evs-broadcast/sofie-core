@@ -60,7 +60,6 @@
 		"@sofie-automation/server-core-integration": "link:../server-core-integration",
 		"@sofie-automation/shared-lib": "link:../shared-lib",
 		"debug": "^4.3.2",
-		"fast-clone": "^1.5.13",
 		"influx": "^5.9.2",
 		"timeline-state-resolver": "npm:@evs/timeline-state-resolver@8.0.0-release48.0-CER-2572-R48.217",
 		"tslib": "^2.4.0",

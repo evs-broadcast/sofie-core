@@ -383,6 +383,7 @@ const PLAYOUT_SUBDEVICE_CONFIG: ImplementedSubDeviceConfig = {
 			id: 'options.playlistID',
 			name: '(Optional) Playlist ID',
 			type: ConfigManifestEntryType.STRING,
+			defaultVal: 'SOFIE',
 		},
 		{
 			id: 'options.preloadAllElements',

@@ -18,24 +18,24 @@ import * as _ from 'underscore'
 import { doModalDialog } from '../../lib/ModalDialog'
 import { MeteorReactComponent } from '../../lib/MeteorReactComponent'
 import { callPeripheralDeviceAction, PeripheralDevicesAPI } from '../../lib/clientAPI'
-import { NotificationCenter, NoticeLevel, Notification } from '../../lib/notifications/notifications'
+import { NotificationCenter, NoticeLevel, Notification } from '../../../lib/notifications/notifications'
 import { getAllowConfigure, getAllowDeveloper, getAllowStudio, getHelpMode } from '../../lib/localStorage'
 import { PubSub } from '../../../lib/api/pubsub'
 import ClassNames from 'classnames'
 import { StatusCode, TSR } from '@sofie-automation/blueprints-integration'
 import { CoreSystem, ICoreSystem } from '../../../lib/collections/CoreSystem'
 import { StatusResponse } from '../../../lib/api/systemStatus'
-import { doUserAction, UserAction } from '../../lib/userAction'
+import { doUserAction, UserAction } from '../../../lib/clientUserAction'
 import { MeteorCall } from '../../../lib/api/methods'
 import { RESTART_SALT } from '../../../lib/api/userActions'
 import { DEFAULT_TSR_ACTION_TIMEOUT_TIME } from '@sofie-automation/shared-lib/dist/core/constants'
 import { SubdeviceAction } from '@sofie-automation/shared-lib/dist/core/deviceConfigManifest'
 import { StatusCodePill } from './StatusCodePill'
-import { DebugStateTable } from './DebugState'
 import { isTranslatableMessage, translateMessage } from '@sofie-automation/corelib/dist/TranslatableMessage'
 import { i18nTranslator } from '../i18n'
 import { SchemaForm } from '../../lib/forms/schemaForm'
-import { PeripheralDeviceId } from '@sofie-automation/corelib/dist/dataModel/Ids'
+import { PeripheralDeviceId } from '@sofie-automation/shared-lib/dist/core/model/Ids'
+import { DebugStateTable } from './DebugState'
 
 interface IDeviceItemProps {
 	// key: string,
@@ -460,7 +460,7 @@ export const CoreItem = reacti18next.withTranslation()(
 															{},
 															UserAction.RESTART_CORE,
 															(e, ts) => MeteorCall.userAction.restartCore(e, ts, restartToken),
-															(err, token) => {
+															(err, token: string | undefined) => {
 																if (err || !token) {
 																	NotificationCenter.push(
 																		new Notification(

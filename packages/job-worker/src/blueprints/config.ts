@@ -1,16 +1,14 @@
 import { ShowStyleVariantId, StudioId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import { ReadonlyDeep } from 'type-fest'
 import {
-	BasicConfigItemValue,
 	BlueprintConfigCoreConfig,
 	ConfigItemValue,
 	ConfigManifestEntry,
 	IBlueprintConfig,
 	ShowStyleBlueprintManifest,
 	StudioBlueprintManifest,
-	TableConfigItemValue,
 } from '@sofie-automation/blueprints-integration'
-import { getSofieHostUrl, objectPathGet, objectPathSet, stringifyError } from '@sofie-automation/corelib/dist/lib'
+import { getSofieHostUrl, objectPathGet, stringifyError } from '@sofie-automation/corelib/dist/lib'
 import _ = require('underscore')
 import { logger } from '../logging'
 import { CommonContext } from './context'
@@ -31,6 +29,14 @@ export function getShowStyleConfigRef(showStyleVariantId: ShowStyleVariantId, co
 	return '${showStyle.' + showStyleVariantId + '.' + configKey + '}'
 }
 
+/**
+ * Parse a string containing BlueprintConfigRefs (`${studio.studio0.myConfigField}`) to replace the refs with the current values
+ * @param context The studio context this is being run in
+ * @param stringWithReferences String to resolve
+ * @param modifier Modify the value before performing the replacement
+ * @param bailOnError If true, errors will be thrown. If false, replacements will be skipped instead of throwing an error
+ * @returns string with BlueprintConfigRefs replaced with values
+ */
 export async function retrieveBlueprintConfigRefs(
 	context: StudioCacheContext,
 	stringWithReferences: string,
@@ -91,24 +97,25 @@ export interface ProcessedStudioConfig {
 	_studioConfig: never
 }
 
-function compileCoreConfigValues(): BlueprintConfigCoreConfig {
+/**
+ * Get the `BlueprintConfigCoreConfig`
+ * This is a set of values provided to the blueprints about the environment, such as the url to access sofie ui
+ */
+export function compileCoreConfigValues(): BlueprintConfigCoreConfig {
 	return {
 		hostUrl: getSofieHostUrl(),
 	}
 }
 
+/**
+ * Compile the complete Studio config
+ * Resolves any overrides defined by the user, and run the result through the `preprocessConfig` blueprint method
+ */
 export function preprocessStudioConfig(
 	studio: ReadonlyDeep<DBStudio>,
 	blueprint: ReadonlyDeep<StudioBlueprintManifest>
 ): ProcessedStudioConfig {
-	const rawBlueprintConfig = applyAndValidateOverrides(studio.blueprintConfigWithOverrides).obj
-
-	let res: any = {}
-	if (blueprint.studioConfigManifest !== undefined) {
-		applyToConfig(res, blueprint.studioConfigManifest, rawBlueprintConfig, `Studio ${studio._id}`)
-	} else {
-		res = rawBlueprintConfig
-	}
+	let res: any = applyAndValidateOverrides(studio.blueprintConfigWithOverrides).obj
 
 	try {
 		if (blueprint.preprocessConfig) {
@@ -116,9 +123,7 @@ export function preprocessStudioConfig(
 				name: `preprocessStudioConfig`,
 				identifier: `studioId=${studio._id}`,
 			})
-			const coreConfigValues = compileCoreConfigValues()
-			res = blueprint.preprocessConfig(context, res, coreConfigValues)
-			console.log(res, 'aaa')
+			res = blueprint.preprocessConfig(context, res, compileCoreConfigValues())
 		}
 	} catch (err) {
 		logger.error(`Error in studioBlueprint.preprocessConfig: ${stringifyError(err)}`)
@@ -127,21 +132,15 @@ export function preprocessStudioConfig(
 	return res
 }
 
+/**
+ * Compile the complete ShowStyle config
+ * Resolves any overrides defined by the user, and run the result through the `preprocessConfig` blueprint method
+ */
 export function preprocessShowStyleConfig(
 	showStyle: Pick<ReadonlyDeep<ProcessedShowStyleCompound>, '_id' | 'combinedBlueprintConfig' | 'showStyleVariantId'>,
 	blueprint: ReadonlyDeep<ShowStyleBlueprintManifest>
 ): ProcessedShowStyleConfig {
-	let res: any = {}
-	if (blueprint.showStyleConfigManifest !== undefined) {
-		applyToConfig(
-			res,
-			blueprint.showStyleConfigManifest,
-			showStyle.combinedBlueprintConfig,
-			`ShowStyle ${showStyle._id}`
-		)
-	} else {
-		res = showStyle.combinedBlueprintConfig
-	}
+	let res: any = showStyle.combinedBlueprintConfig
 
 	try {
 		if (blueprint.preprocessConfig) {
@@ -159,6 +158,12 @@ export function preprocessShowStyleConfig(
 	return res
 }
 
+/**
+ * Find any config manifest keys marked as `required` that do not have values specified
+ * @param manifest Blueprint Config Manifest to validate for
+ * @param config Blueprint Config to check
+ * @returns Array of manifest entry names that are missing values
+ */
 export function findMissingConfigs(
 	manifest: ReadonlyDeep<ConfigManifestEntry[]> | undefined,
 	config: ReadonlyDeep<IBlueprintConfig>
@@ -174,27 +179,4 @@ export function findMissingConfigs(
 	})
 
 	return missingKeys
-}
-
-export function applyToConfig(
-	res: unknown,
-	configManifest: ReadonlyDeep<ConfigManifestEntry[]>,
-	blueprintConfig: ReadonlyDeep<IBlueprintConfig>,
-	source: string
-): void {
-	for (const val of configManifest) {
-		let newVal = val.defaultVal
-
-		const overrideVal = objectPathGet(blueprintConfig, val.id) as
-			| BasicConfigItemValue
-			| TableConfigItemValue
-			| undefined
-		if (overrideVal !== undefined) {
-			newVal = overrideVal
-		} else if (val.required) {
-			logger.warn(`Required config not defined in ${source}: "${val.name}"`)
-		}
-
-		objectPathSet(res, val.id, newVal)
-	}
 }
