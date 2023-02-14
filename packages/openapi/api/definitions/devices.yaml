@@ -22,6 +22,7 @@ resources:
                     type: array
                     items:
                       type: string
+                    example: ['47', '27']
   device:
     get:
       operationId: device
@@ -52,35 +53,31 @@ resources:
                       id:
                         type: string
                         description: Device Id.
+                        example: 47
                       name:
                         type: string
                         description: Device Name.
+                        example: 'PlayoutGateway0'
                       status:
                         type: string
-                        enum: ['unknown', 'good', 'warning_major', 'warning_minor', 'bad', 'fatal']
+                        enum: [unknown, good, warning_major, warning_minor, bad, fatal]
                         description: Device status.
+                        example: warning_major
                       messages:
                         type: array
                         items:
                           type: string
+                          example: Device failed to start
                         description: Service messages from the device.
                       deviceType:
                         type: string
-                        enum:
-                          [
-                            'unknown',
-                            'mos',
-                            'spreadsheet',
-                            'inews',
-                            'playout',
-                            'media_manager',
-                            'package_manager',
-                            'live_status',
-                          ]
+                        enum: [unknown, mos, spreadsheet, inews, playout, media_manager, package_manager, live_status]
                         description: Device type.
+                        example: playout
                       connected:
                         type: boolean
                         description: Whether device is currently connected.
+                        example: true
                     required:
                       - id
                       - name
@@ -91,7 +88,7 @@ resources:
         404:
           description: The requested device does not exist.
   action:
-    post:
+    put:
       operationId: action
       tags:
         - devices
@@ -115,14 +112,15 @@ resources:
                 action: restart
       responses:
         202:
-          description: The action is valid for the requested device. It may not yet have been dispatched.
-          application/json:
-            schema:
-              type: object
-              properties:
-                success:
-                  type: number
-                  example: 202
+          description: The action is valid for the requested device. It may not have been dispatched yet.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: number
+                    example: 202
         404:
           description: The requested device does not exist.
 

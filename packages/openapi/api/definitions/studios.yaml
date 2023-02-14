@@ -2,7 +2,7 @@ title: studios
 description: Definitions for studios API
 resources:
   switchRouteSet:
-    post:
+    put:
       operationId: switchRouteSet
       tags:
         - studios

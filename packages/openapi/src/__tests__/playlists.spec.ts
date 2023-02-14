@@ -1,60 +1,14 @@
-import {
-	Configuration,
-	SofieApi,
-	PlaylistsApi,
-	Middleware,
-	ResponseContext,
-	ErrorContext,
-	RequestContext,
-	FetchParams,
-} from '../../client/ts'
+import { Configuration, PlaylistsApi } from '../../client/ts'
+import Logging from '../httpLogging'
 
 const httpLogging = false
-const runTests = false
-
-class TestError extends Error {
-	override name: 'TestError' = 'TestError' as const
-	constructor(msg: string) {
-		super(msg)
-	}
-}
-
-class Logging implements Middleware {
-	async pre(context: RequestContext): Promise<void | FetchParams> {
-		console.log(`Request ${context.url} - ${JSON.stringify(context.init).replace(/"/g, '')}`)
-	}
-
-	async onError(context: ErrorContext): Promise<void | Response> {
-		throw new TestError(context.error as string)
-	}
-
-	async post(context: ResponseContext): Promise<void | Response> {
-		await this._logResponse(context.response)
-	}
-
-	async _logResponse(response: Response) {
-		let message: string
-		try {
-			message = JSON.stringify(await response.json(), null, 2)
-		} catch (e) {
-			message = `response body not json`
-		}
-		console.log(`Response ${response.url} ${response.status} ${response.statusText} - ${message}`)
-	}
-}
+const runTests = process.env.TEST_SERVER
 
 describe('Network client', () => {
 	if (runTests) {
 		const config = new Configuration({
-			basePath: 'http://127.0.0.1:3000/api2',
+			basePath: process.env.ACTIONS_URL,
 			middleware: httpLogging ? [new Logging()] : [],
-		})
-
-		const sofieApi = new SofieApi(config)
-		test('can request current version of Sofie application', async () => {
-			const sofieVersion = await sofieApi.index()
-			expect(sofieVersion.success).toBe(200)
-			expect(sofieVersion.result.version).toBe('1.44.0')
 		})
 
 		const playlistsApi = new PlaylistsApi(config)
