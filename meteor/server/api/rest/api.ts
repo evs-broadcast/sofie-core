@@ -51,6 +51,7 @@ import { PeripheralDevices } from '../../../lib/collections/PeripheralDevices'
 import { PeripheralDeviceAPI } from '../../../lib/api/peripheralDevice'
 import { assertNever } from '@sofie-automation/shared-lib/dist/lib/lib'
 import { Blueprints } from '../../../lib/collections/Blueprints'
+import { Studios } from '../../../lib/collections/Studios'
 
 function restAPIUserEvent(
 	ctx: Koa.ParameterizedContext<
@@ -553,6 +554,7 @@ class ServerRestAPI implements RestAPI {
 	): Promise<ClientAPI.ClientResponse<string[]>> {
 		return ClientAPI.responseSuccess(PeripheralDevices.find({ studioId }).map((p) => unprotectString(p._id)))
 	}
+
 	async getAllBlueprints(
 		_connection: Meteor.Connection,
 		_event: string
@@ -590,6 +592,65 @@ class ServerRestAPI implements RestAPI {
 		_event: string
 	): Promise<ClientAPI.ClientResponse<void>> {
 		return ClientAPI.responseSuccess(await MeteorCall.blueprint.assignSystemBlueprint(undefined))
+	}
+
+	async attachDeviceToStudio(
+		_connection: Meteor.Connection,
+		_event: string,
+		studioId: StudioId,
+		deviceId: PeripheralDeviceId
+	) {
+		const studio = Studios.findOne(studioId)
+		if (!studio)
+			return ClientAPI.responseError(
+				UserError.from(new Error(`Studio does not exist`), UserErrorMessage.StudioNotFound),
+				404
+			)
+
+		const device = PeripheralDevices.findOne(deviceId)
+		if (!device)
+			return ClientAPI.responseError(
+				UserError.from(new Error(`Studio does not exist`), UserErrorMessage.PeripheralDeviceNotFound),
+				404
+			)
+
+		if (device.studioId !== undefined && device.studioId !== studio._id) {
+			return ClientAPI.responseError(
+				UserError.from(
+					new Error(`Device already attached to studio`),
+					UserErrorMessage.DeviceAlreadyAttachedToStudio
+				),
+				412
+			)
+		}
+		PeripheralDevices.update(deviceId, {
+			$set: {
+				studioId,
+			},
+		})
+
+		return ClientAPI.responseSuccess(undefined, 200)
+	}
+
+	async detachDeviceFromStudio(
+		_connection: Meteor.Connection,
+		_event: string,
+		studioId: StudioId,
+		deviceId: PeripheralDeviceId
+	) {
+		const studio = Studios.findOne(studioId)
+		if (!studio)
+			return ClientAPI.responseError(
+				UserError.from(new Error(`Studio does not exist`), UserErrorMessage.StudioNotFound),
+				404
+			)
+		PeripheralDevices.update(deviceId, {
+			$unset: {
+				studioId: 1,
+			},
+		})
+
+		return ClientAPI.responseSuccess(undefined, 200)
 	}
 }
 
@@ -896,6 +957,7 @@ sofieAPIRequest<never, { blueprintId: string }, void>(
 	'/system/blueprint',
 	async (serverAPI, connection, events, _, body) => {
 		const blueprintId = protectString<BlueprintId>(body.blueprintId)
+		logger.info(`koa PUT: system blueprint ${blueprintId}`)
 
 		check(blueprintId, String)
 		return await serverAPI.assignSystemBlueprint(connection, events, blueprintId)
@@ -906,7 +968,33 @@ sofieAPIRequest<never, never, void>(
 	'delete',
 	'/system/blueprint',
 	async (serverAPI, connection, events, _params, _body) => {
+		logger.info(`koa DELETE: system blueprint`)
+
 		return await serverAPI.unassignSystemBlueprint(connection, events)
+	}
+)
+
+sofieAPIRequest<{ studioId: string }, { deviceId: string }, void>(
+	'put',
+	'/studios/{studioId}/devices',
+	async (serverAPI, connection, events, params, body) => {
+		const studioId = protectString<StudioId>(params.studioId)
+		const deviceId = protectString<PeripheralDeviceId>(body.deviceId)
+		logger.info(`koa PUT: Attach device ${deviceId} to studio ${studioId}`)
+
+		return await serverAPI.attachDeviceToStudio(connection, events, studioId, deviceId)
+	}
+)
+
+sofieAPIRequest<{ studioId: string; deviceId: string }, never, void>(
+	'delete',
+	'/studios/{studioId}/devices/{deviceId}',
+	async (serverAPI, connection, events, params, _) => {
+		const studioId = protectString<StudioId>(params.studioId)
+		const deviceId = protectString<PeripheralDeviceId>(params.deviceId)
+		logger.info(`koa DELETE: Detach device ${deviceId} from studio ${studioId}`)
+
+		return await serverAPI.detachDeviceFromStudio(connection, events, studioId, deviceId)
 	}
 )
 

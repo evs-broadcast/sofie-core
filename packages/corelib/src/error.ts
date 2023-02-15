@@ -48,6 +48,8 @@ export enum UserErrorMessage {
 	RundownPlaylistNotFound = 33,
 	PeripheralDeviceNotFound = 34,
 	BlueprintNotFound = 35,
+	StudioNotFound = 36,
+	DeviceAlreadyAttachedToStudio = 37,
 }
 
 const UserErrorMessagesTranslations: { [key in UserErrorMessage]: string } = {
@@ -95,6 +97,8 @@ const UserErrorMessagesTranslations: { [key in UserErrorMessage]: string } = {
 	[UserErrorMessage.RundownPlaylistNotFound]: t(`Rundown Playlist not found!`),
 	[UserErrorMessage.PeripheralDeviceNotFound]: t(`Peripheral Device not found!`),
 	[UserErrorMessage.BlueprintNotFound]: t(`Blueprint not found!`),
+	[UserErrorMessage.StudioNotFound]: t(`Studio not found!`),
+	[UserErrorMessage.DeviceAlreadyAttachedToStudio]: t(`Device is already attached to another studio.`),
 }
 
 export class UserError {

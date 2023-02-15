@@ -317,10 +317,35 @@ export interface RestAPI {
 	): Promise<ClientAPI.ClientResponse<void>>
 	/**
 	 * Unassigns the assigned system Blueprint, if any Blueprint is currently assigned.
+	 *
 	 * @param connection Connection data including client and header details
 	 * @param event User event string
 	 */
 	unassignSystemBlueprint(connection: Meteor.Connection, event: string): Promise<ClientAPI.ClientResponse<void>>
+	/**
+	 * Assigns a device to a studio.
+	 *
+	 * Throws if the device is already attached to a studio.
+	 * @param connection Connection data including client and header details
+	 * @param event User event string
+	 * @param studioId Studio to attach to
+	 * @param deviceId Device to attach
+	 */
+	attachDeviceToStudio(connection: Meteor.Connection, event: string, studioId: StudioId, deviceId: PeripheralDeviceId)
+	/**
+	 * Detaches a device from a studio.
+	 *
+	 * @param connection Connection data including client and header details
+	 * @param event User event string
+	 * @param studioId Studio to detach from
+	 * @param deviceId Device to detach
+	 */
+	detachDeviceFromStudio(
+		connection: Meteor.Connection,
+		event: string,
+		studioId: StudioId,
+		deviceId: PeripheralDeviceId
+	)
 }
 
 export enum RestAPIMethods {

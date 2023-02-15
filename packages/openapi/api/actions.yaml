@@ -59,3 +59,5 @@ paths:
     $ref: 'definitions/studios.yaml#/resources/switchRouteSet'
   /studios/{studioId}/devices:
     $ref: 'definitions/studios.yaml#/resources/devices'
+  /studios/{studioId}/devices/{deviceId}:
+    $ref: 'definitions/studios.yaml#/resources/devices'
