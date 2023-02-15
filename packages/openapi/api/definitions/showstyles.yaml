@@ -1,0 +1,215 @@
+title: showstyles
+description: Definitions for ShowStyles API
+resources:
+  showStyleBases:
+    get:
+      operationId: getShowStyleBases
+      tags:
+        - showstyles
+      summary: Returns all ShowStyleBases.
+      responses:
+        200:
+          description: Get successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: number
+                    example: 200
+                  result:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/showStyleBase'
+        500:
+          $ref: '#/components/responses/internalServerError'
+    post:
+      operationId: addShowStyleBase
+      tags:
+        - showstyles
+      summary: Adds a ShowStyleBase.
+      responses:
+        200:
+          description: Create successful, Id of new ShowStyle is returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: number
+                    example: 200
+                  result:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        description: Id of the newly created ShowStyle.
+                    required:
+                      - id
+                    additionalProperties: false
+        500:
+          $ref: '#/components/responses/internalServerError'
+  showStyleBase:
+    put:
+      operationId: addOrUpdateShowStyleBase
+      tags:
+        - showstyles
+      summary: Updates an existing ShowStyleBase or creates a new one.
+      parameters:
+        - name: showStyleBaseId
+          in: path
+          description: Id of resource to update/create.
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/showStyleBase'
+      responses:
+        200:
+          description: Operation successful.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: number
+                    example: 200
+        500:
+          $ref: '#/components/responses/internalServerError'
+    delete:
+      operationId: deleteShowStyleBase
+      tags:
+        - showstyles
+      sumamry: Deletes a specified ShowStyleBase.
+      parameters:
+        - name: showStyleBaseId
+          in: path
+          description: Id of the ShowStyleBase to remvoe.
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Operation successful.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: number
+                    example: 200
+        500:
+          $ref: '#/components/responses/internalServerError'
+components:
+  responses:
+    internalServerError:
+      description: An error unlikely to be the fault of the caller has occurred.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+  schemas:
+    showStyleBase:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ShowStyleBase Id.
+        name:
+          type: string
+          description: ShowStyle Name.
+        blueprintId:
+          type: string
+          description: Id of the blueprint used by this ShowStyleBase.
+        outputLayers:
+          type: array
+          items:
+            $ref: '#/components/schemas/outputLayer'
+        sourceLayers:
+          type: array
+          items:
+            $ref: '#/components/schemas/sourceLayer'
+        config:
+          type: object
+          description: Blueprint config.
+        required:
+          - id
+          - name
+          - blueprintId
+          - outputLayers
+          - sourceLayers
+          - config
+        additionalProperties: false
+    outputLayer:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Output layer Id.
+        name:
+          type: string
+          description: Output layer name.
+        rank:
+          type: number
+          description: Display rank.
+        isPgm:
+          type: boolean
+          description: PGM treatment of this output should be in effect.
+      required:
+        - id
+        - name
+        - rank
+        - isPgm
+      additionalProperties: false
+    sourceLayer:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Source layer Id.
+        name:
+          type: string
+          description: Source layer name.
+        abbreviation:
+          type: string
+          description: Abbreviated display name.
+        rank:
+          type: string
+          description: Display rank.
+        layerType:
+          type: string
+          enum:
+            [
+              'unknown',
+              'camera',
+              'vt',
+              'remote',
+              'script',
+              'graphics',
+              'splits',
+              'audio',
+              'lower-third',
+              'live-speak',
+              'transition',
+              'local',
+            ]
+          description: Source layer content type.
+        exclusiveGroup:
+          type: string
+          description: Exclusivity group the layer belongs to.
+      required:
+        - id
+        - name
+        - rank
+        - layerType
+      additionalProperties: false

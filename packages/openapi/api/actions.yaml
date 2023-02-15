@@ -61,3 +61,8 @@ paths:
     $ref: 'definitions/studios.yaml#/resources/devices'
   /studios/{studioId}/devices/{deviceId}:
     $ref: 'definitions/studios.yaml#/resources/devices'
+  # showstyle operations
+  /showstyles:
+    $ref: 'definitions/showstyles.yaml#/resources/showStyleBases'
+  /showstyles/{showStyleBaseId}:
+    $ref: 'definitions/showstyles.yaml#/resources/showStyleBase'
