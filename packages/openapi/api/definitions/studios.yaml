@@ -2,7 +2,7 @@ title: studios
 description: Definitions for studios API
 resources:
   switchRouteSet:
-    post:
+    put:
       operationId: switchRouteSet
       tags:
         - studios
@@ -32,7 +32,7 @@ resources:
                 - active
       responses:
         200:
-          $ref: '#/components/responses/postSuccess'
+          $ref: '#/components/responses/putSuccess'
         404:
           description: The specified Studio or route set does not exist.
           content:
@@ -76,10 +76,11 @@ resources:
           description: The specified studio does not exist.
         500:
           $ref: '#/components/responses/internalServerError'
+  attachDevice:
     put:
       operationId: attachDevice
       tags:
-        - devices
+        - studios
       summary: Attaches a device to a studio.
       parameters:
         - name: studioId
@@ -117,10 +118,11 @@ resources:
           description: The specified device is already attached to a different studio.
         500:
           $ref: '#/components/responses/internalServerError'
+  detachDevice:
     delete:
       operationId: detachDevice
       tags:
-        - devices
+        - studios
       summary: Detaches a device from a studio.
       parameters:
         - name: studioId
@@ -152,7 +154,7 @@ resources:
           $ref: '#/components/responses/internalServerError'
 components:
   responses:
-    postSuccess:
+    putSuccess:
       description: Action successfully sent
       content:
         application/json:

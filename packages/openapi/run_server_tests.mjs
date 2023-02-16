@@ -2,7 +2,7 @@ import { exec } from 'child_process'
 import { exit } from 'process'
 import { join } from 'path'
 import { createServer } from 'http'
-import { expressAppConfig } from 'oas3-tools'
+import { expressAppConfig } from './server/node_modules/oas3-tools/dist/index.js'
 
 const serverPort = 8080
 const testTimeout = 120000

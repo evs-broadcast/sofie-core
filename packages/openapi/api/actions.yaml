@@ -59,8 +59,10 @@ paths:
     $ref: 'definitions/studios.yaml#/resources/switchRouteSet'
   /studios/{studioId}/devices:
     $ref: 'definitions/studios.yaml#/resources/devices'
+  /studios/{studioId}/devices/attach:
+    $ref: 'definitions/studios.yaml#/resources/attachDevice'
   /studios/{studioId}/devices/{deviceId}:
-    $ref: 'definitions/studios.yaml#/resources/devices'
+    $ref: 'definitions/studios.yaml#/resources/detachDevice'
   # showstyle operations
   /showstyles:
     $ref: 'definitions/showstyles.yaml#/resources/showStyleBases'

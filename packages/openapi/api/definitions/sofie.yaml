@@ -29,7 +29,7 @@ resources:
       operationId: assignSystemBlueprint
       tags:
         - sofie
-      summary: Assigns a blueprint to Sofie core.
+      summary: Assigns a system Blueprint to Sofie core.
       requestBody:
         required: true
         content:
@@ -61,6 +61,20 @@ resources:
       tags:
         - sofie
       summary: Unassigns the assigned system Blueprint, if any Blueprint is assigned.
+      responses:
+        200:
+          $ref: '#/components/responses/putSuccess'
+        404:
+          description: The specified Blueprint Id does not exist.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        500:
+          $ref: '#/components/responses/internalServerError'
 components:
   responses:
     putSuccess:
