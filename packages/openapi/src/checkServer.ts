@@ -1,3 +1,4 @@
+// eslint-disable-next-line node/no-missing-import
 import { Configuration, SofieApi } from '../client/ts'
 
 async function wait(ms: number): Promise<void> {
