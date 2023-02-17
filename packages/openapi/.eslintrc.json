@@ -5,6 +5,7 @@
 	"overrides": [
 		{
 			"files": ["*.yaml"],
+			"parser": "yaml-eslint-parser",
 			"rules": {
 				"yml/quotes": ["error", { "prefer": "single" }],
 				"yml/spaced-comment": ["error"],
@@ -17,6 +18,6 @@
 	},
 	"parserOptions": {
 		"sourceType": "module",
-		"project": ["./tsconfig.eslint.json"]
+		"project": ["./tsconfig.eslint.json", "./packages/openapi/tsconfig.eslint.json"]
 	}
 }

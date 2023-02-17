@@ -76,7 +76,6 @@ resources:
           description: The specified studio does not exist.
         500:
           $ref: '#/components/responses/internalServerError'
-  attachDevice:
     put:
       operationId: attachDevice
       tags:

@@ -1,3 +1,4 @@
+// eslint-disable-next-line node/no-missing-import
 import { Configuration, StudiosApi } from '../../client/ts'
 import Logging from '../httpLogging'
 

@@ -52,15 +52,11 @@ paths:
     $ref: 'definitions/playlists.yaml#/resources/take'
   /playlists/{playlistId}/sourceLayer/{sourceLayerId}:
     $ref: 'definitions/playlists.yaml#/resources/sourceLayer'
-  /playlists/{playlistId}/sourceLayer/{sourceLayerId}/recallSticky:
-    $ref: 'definitions/playlists.yaml#/resources/recallSticky'
   # studio operations
   /studios/{studioId}/switchRouteSet:
     $ref: 'definitions/studios.yaml#/resources/switchRouteSet'
   /studios/{studioId}/devices:
     $ref: 'definitions/studios.yaml#/resources/devices'
-  /studios/{studioId}/devices/attach:
-    $ref: 'definitions/studios.yaml#/resources/attachDevice'
   /studios/{studioId}/devices/{deviceId}:
     $ref: 'definitions/studios.yaml#/resources/detachDevice'
   # showstyle operations

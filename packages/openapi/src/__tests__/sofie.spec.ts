@@ -1,3 +1,4 @@
+// eslint-disable-next-line node/no-missing-import
 import { Configuration, SofieApi } from '../../client/ts'
 import Logging from '../httpLogging'
 
@@ -18,7 +19,7 @@ describe('Network client', () => {
 			expect(sofieVersion.result.version).toBe('1.44.0')
 		})
 
-		test('fails to assign a blueprint with null id', async () => {
+		test('fails to assign a system blueprint with null id', async () => {
 			await expect(sofieApi.assignSystemBlueprint({ assignSystemBlueprintRequest: null })).rejects.toThrow()
 		})
 

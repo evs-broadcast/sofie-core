@@ -422,7 +422,6 @@ resources:
                     type: string
         500:
           $ref: '#/components/responses/internalServerError'
-  recallSticky:
     put:
       operationId: recallSticky
       tags:
