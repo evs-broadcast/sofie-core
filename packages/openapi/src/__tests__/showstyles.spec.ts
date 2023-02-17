@@ -1,6 +1,6 @@
 // eslint-disable-next-line node/no-missing-import
 import { Configuration, ShowstylesApi } from '../../client/ts'
-import Logging from './httpLogging'
+import Logging from '../httpLogging'
 
 const httpLogging = false
 const runTests = process.env.TEST_SERVER
