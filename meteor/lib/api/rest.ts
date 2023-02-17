@@ -10,13 +10,28 @@ import {
 	RundownBaselineAdLibActionId,
 	RundownPlaylistId,
 	SegmentId,
+	ShowStyleBaseId,
+	ShowStyleVariantId,
 	StudioId,
 } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import { Meteor } from 'meteor/meteor'
 import { PeripheralDevice, PeripheralDeviceType } from '../collections/PeripheralDevices'
-import { assertNever, unprotectString } from '../lib'
-import { StatusCode } from '@sofie-automation/blueprints-integration'
-import { Blueprint } from '../collections/Blueprints'
+import { assertNever, getRandomId, literal, protectString, unprotectString } from '../lib'
+import {
+	BlueprintManifestType,
+	IOutputLayer,
+	ISourceLayer,
+	SourceLayerType,
+	StatusCode,
+} from '@sofie-automation/blueprints-integration'
+import { Blueprint, Blueprints } from '../collections/Blueprints'
+import { ShowStyleBase } from '../collections/ShowStyleBases'
+import {
+	applyAndValidateOverrides,
+	ObjectOverrideSetOp,
+	wrapDefaultObject,
+} from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
+import { ShowStyleVariant } from '../collections/ShowStyleVariants'
 
 export interface RestAPI {
 	/**
@@ -331,7 +346,12 @@ export interface RestAPI {
 	 * @param studioId Studio to attach to
 	 * @param deviceId Device to attach
 	 */
-	attachDeviceToStudio(connection: Meteor.Connection, event: string, studioId: StudioId, deviceId: PeripheralDeviceId)
+	attachDeviceToStudio(
+		connection: Meteor.Connection,
+		event: string,
+		studioId: StudioId,
+		deviceId: PeripheralDeviceId
+	): Promise<ClientAPI.ClientResponse<void>>
 	/**
 	 * Detaches a device from a studio.
 	 *
@@ -345,7 +365,143 @@ export interface RestAPI {
 		event: string,
 		studioId: StudioId,
 		deviceId: PeripheralDeviceId
-	)
+	): Promise<ClientAPI.ClientResponse<void>>
+	/**
+	 * Returns the Ids of all ShowStyleBases available in Sofie.
+	 *
+	 * @param connection Connection data including client and header details
+	 * @param event User event string
+	 */
+	getShowStyleBases(connection: Meteor.Connection, event: string): Promise<ClientAPI.ClientResponse<string[]>>
+	/**
+	 * Adds a ShowStyleBase, returning the newly created Id.
+	 *
+	 * @param connection Connection data including client and header details
+	 * @param event User event string
+	 * @param showStyleBase ShowStyleBase to insert
+	 */
+	addShowStyleBase(
+		connection: Meteor.Connection,
+		event: string,
+		showStyleBase: Omit<APIShowStyleBase, 'id'>
+	): Promise<ClientAPI.ClientResponse<string>>
+	/**
+	 * Gets a ShowStyleBase.
+	 *
+	 * Throws if the ShowStyleBase does not exist.
+	 * @param connection Connection data including client and header details
+	 * @param event User event string
+	 * @param showStyleBaseId ShowStyleBaseId to fetch
+	 */
+	getShowStyleBase(
+		connection: Meteor.Connection,
+		event: string,
+		showStyleBaseId: ShowStyleBaseId
+	): Promise<ClientAPI.ClientResponse<APIShowStyleBase>>
+	/**
+	 * Updates an existing ShowStyleBase, or creates it if it does not currently exist.
+	 *
+	 * Throws if the ShowStyleBase is currently in use in an active Rundown.
+	 * @param connection Connection data including client and header details
+	 * @param event User event string
+	 * @param showStyleBaseId ShowStyleBase to update or insert
+	 * @param showStyleBase ShowStyleBase to insert
+	 */
+	addOrUpdateShowStyleBase(
+		connection: Meteor.Connection,
+		event: string,
+		showStyleBaseId: ShowStyleBaseId,
+		showStyleBase: Omit<APIShowStyleBase, 'id'>
+	): Promise<ClientAPI.ClientResponse<void>>
+	/**
+	 * Removed a ShowStyleBase.
+	 *
+	 * Throws if the ShowStyleBase is in use in an active Rundown.
+	 * @param connection Connection data including client and header details
+	 * @param event User event string
+	 * @param showStyleBaseId ShowStyleBase to update or insert
+	 */
+	deleteShowStyleBase(
+		connection: Meteor.Connection,
+		event: string,
+		showStyleBaseId: ShowStyleBaseId
+	): Promise<ClientAPI.ClientResponse<void>>
+	/**
+	 * Gets the Ids of all ShowStyleVariants that belong to a specified ShowStyleBase.
+	 *
+	 * Throws if the specified ShowStyleBase does not exist.
+	 * @param connection Connection data including client and header details
+	 * @param event User event string
+	 * @param showStyleBaseId ShowStyleBase to fetch ShowStyleVariants for
+	 */
+	getShowStyleVariants(
+		connection: Meteor.Connection,
+		event: string,
+		showStyleBaseId: ShowStyleBaseId
+	): Promise<ClientAPI.ClientResponse<string[]>>
+	/**
+	 * Adds a ShowStyleVariant to a specified ShowStyleBase.
+	 *
+	 * Throws if the specified ShowStyleBase does not exist.
+	 * @param connection Connection data including client and header details
+	 * @param event User event string
+	 * @param showStyleBaseId ShowStyleBase to add a ShowStyleVariant to
+	 * @param showStyleVariant ShowStyleVariant to add
+	 */
+	addShowStyleVariant(
+		connection: Meteor.Connection,
+		event: string,
+		showStyleBaseId: ShowStyleBaseId,
+		showStyleVariant: Omit<APIShowStyleVariant, 'id'>
+	): Promise<ClientAPI.ClientResponse<string>>
+	/**
+	 * Gets a ShowStyleVariant.
+	 *
+	 * Throws if the specified ShowStyleVariant does not exist.
+	 * @param connection Connection data including client and header details
+	 * @param event User event string
+	 * @param showStyleBaseId ShowStyleBase the ShowStyleVariant belongs to
+	 * @param showStyleVariant ShowStyleVariant to fetch
+	 */
+	getShowStyleVariant(
+		connection: Meteor.Connection,
+		event: string,
+		showStyleBaseId: ShowStyleBaseId,
+		showStyleVariant: ShowStyleVariantId
+	): Promise<ClientAPI.ClientResponse<APIShowStyleVariant>>
+	/**
+	 * Updates an existing ShowStyleVariant, or creates it if it does not exist.
+	 *
+	 * Throws if the specified ShowStyleBase does not exist.
+	 * Throws if the ShowStyleVariant is currently in use in an active Rundown.
+	 * @param connection Connection data including client and header details
+	 * @param event User event string
+	 * @param showStyleBaseId ShowStyleBase to add a ShowStyleVariant to
+	 * @param showStyleVariantId ShowStyleVariant Id to add/update
+	 * @param showStyleVariant ShowStyleVariant to add/update
+	 */
+	addOrUpdateShowStyleVariant(
+		connection: Meteor.Connection,
+		event: string,
+		showStyleBaseId: ShowStyleBaseId,
+		showStyleVariantId: ShowStyleVariantId,
+		showStyleVariant: Omit<APIShowStyleVariant, 'id'>
+	): Promise<ClientAPI.ClientResponse<void>>
+	/**
+	 * Deletes a specified ShowStyleVariant.
+	 *
+	 * Throws if the specified ShowStyleBase does not exist.
+	 * @param connection Connection data including client and header details
+	 * @param event User event string
+	 * @param showStyleBaseId ShowStyleBase the ShowStyleVariant belongs to
+	 * @param showStyleVariantId ShowStyleVariant to delete
+	 */
+	deleteShowStyleVariant(
+		connection: Meteor.Connection,
+		event: string,
+		showStyleBaseId: ShowStyleBaseId,
+		showStyleVariantId: ShowStyleVariantId
+	): Promise<ClientAPI.ClientResponse<void>>
 }
 
 export enum RestAPIMethods {
@@ -472,5 +628,202 @@ export function APIBlueprintFrom(blueprint: Blueprint): APIBlueprint | undefined
 		name: blueprint.name,
 		blueprintType: blueprint.blueprintType,
 		blueprintVersion: blueprint.blueprintVersion,
+	}
+}
+
+export interface APIShowStyleBase {
+	id: string
+	name: string
+	blueprintId: string
+	outputLayers: APIOutputLayer[]
+	sourceLayers: APISourceLayer[]
+	config: object
+}
+
+export function showStyleBaseFrom(
+	apiShowStyleBase: Omit<APIShowStyleBase, 'id'>,
+	existingId?: ShowStyleBaseId
+): ShowStyleBase | undefined {
+	const blueprint = Blueprints.findOne(protectString(apiShowStyleBase.blueprintId))
+	if (!blueprint) return undefined
+	if (blueprint.blueprintType !== BlueprintManifestType.SHOWSTYLE) return undefined
+
+	const outputLayers = wrapDefaultObject({})
+	outputLayers.overrides = Object.entries(apiShowStyleBase.outputLayers).map(([key, value]) =>
+		literal<ObjectOverrideSetOp>({
+			op: 'set',
+			path: key,
+			value,
+		})
+	)
+	const sourceLayers = wrapDefaultObject({})
+	sourceLayers.overrides = Object.entries(apiShowStyleBase.sourceLayers).map(([key, value]) =>
+		literal<ObjectOverrideSetOp>({
+			op: 'set',
+			path: key,
+			value,
+		})
+	)
+	const blueprintConfig = wrapDefaultObject({})
+	blueprintConfig.overrides = Object.entries(apiShowStyleBase.config).map(([key, value]) =>
+		literal<ObjectOverrideSetOp>({
+			op: 'set',
+			path: key,
+			value,
+		})
+	)
+	return {
+		_id: existingId ?? getRandomId(),
+		name: apiShowStyleBase.name,
+		blueprintId: protectString(apiShowStyleBase.blueprintId),
+		organizationId: null,
+		outputLayersWithOverrides: outputLayers,
+		sourceLayersWithOverrides: sourceLayers,
+		blueprintConfigWithOverrides: blueprintConfig,
+		_rundownVersionHash: '',
+		lastBlueprintConfig: undefined,
+	}
+}
+
+export function APIShowStyleBaseFrom(showStyleBase: ShowStyleBase): APIShowStyleBase {
+	return {
+		id: unprotectString(showStyleBase._id),
+		name: showStyleBase.name,
+		blueprintId: unprotectString(showStyleBase.blueprintId),
+		outputLayers: Object.values(applyAndValidateOverrides(showStyleBase.outputLayersWithOverrides).obj).map(
+			(layer) => APIOutputLayerFrom(layer!)
+		),
+		sourceLayers: Object.values(applyAndValidateOverrides(showStyleBase.sourceLayersWithOverrides).obj).map(
+			(layer) => APISourceLayerFrom(layer!)
+		),
+		config: applyAndValidateOverrides(showStyleBase.blueprintConfigWithOverrides).obj,
+	}
+}
+
+export interface APIShowStyleVariant {
+	id: string
+	name: string
+	showStyleBaseId: string
+	config: object
+}
+
+export function showStyleVariantFrom(
+	apiShowStyleVariant: Omit<APIShowStyleVariant, 'id'>,
+	existingId?: ShowStyleVariantId
+): ShowStyleVariant | undefined {
+	const blueprintConfig = wrapDefaultObject({})
+	blueprintConfig.overrides = Object.entries(apiShowStyleVariant.config).map(([key, value]) =>
+		literal<ObjectOverrideSetOp>({
+			op: 'set',
+			path: key,
+			value,
+		})
+	)
+	return {
+		_id: existingId ?? getRandomId(),
+		showStyleBaseId: protectString(apiShowStyleVariant.showStyleBaseId),
+		name: apiShowStyleVariant.name,
+		blueprintConfigWithOverrides: blueprintConfig,
+		_rundownVersionHash: '',
+	}
+}
+
+export function APIShowStyleVariantFrom(showStyleVariant: ShowStyleVariant): APIShowStyleVariant {
+	return {
+		id: unprotectString(showStyleVariant._id),
+		name: showStyleVariant.name,
+		showStyleBaseId: unprotectString(showStyleVariant.showStyleBaseId),
+		config: applyAndValidateOverrides(showStyleVariant.blueprintConfigWithOverrides).obj,
+	}
+}
+
+export interface APIOutputLayer {
+	id: string
+	name: string
+	rank: number
+	isPgm: boolean
+}
+
+export function APIOutputLayerFrom(outputLayer: IOutputLayer): APIOutputLayer {
+	return {
+		id: outputLayer._id,
+		name: outputLayer.name,
+		rank: outputLayer._rank,
+		isPgm: outputLayer.isPGM,
+	}
+}
+
+export interface APISourceLayer {
+	id: string
+	name: string
+	abbreviation?: string
+	rank: number
+	layerType:
+		| 'unknown'
+		| 'camera'
+		| 'vt'
+		| 'remote'
+		| 'script'
+		| 'graphics'
+		| 'splits'
+		| 'audio'
+		| 'lower-third'
+		| 'live-speak'
+		| 'transition'
+		| 'local'
+	exclusiveGroup?: string
+}
+
+export function APISourceLayerFrom(sourceLayer: ISourceLayer): APISourceLayer {
+	let layerType: APISourceLayer['layerType'] = 'unknown'
+	switch (sourceLayer.type) {
+		case SourceLayerType.AUDIO:
+			layerType = 'audio'
+			break
+		case SourceLayerType.CAMERA:
+			layerType = 'camera'
+			break
+		case SourceLayerType.GRAPHICS:
+			layerType = 'graphics'
+			break
+		case SourceLayerType.LIVE_SPEAK:
+			layerType = 'live-speak'
+			break
+		case SourceLayerType.LOCAL:
+			layerType = 'local'
+			break
+		case SourceLayerType.LOWER_THIRD:
+			layerType = 'lower-third'
+			break
+		case SourceLayerType.REMOTE:
+			layerType = 'remote'
+			break
+		case SourceLayerType.SCRIPT:
+			layerType = 'script'
+			break
+		case SourceLayerType.SPLITS:
+			layerType = 'splits'
+			break
+		case SourceLayerType.TRANSITION:
+			layerType = 'transition'
+			break
+		case SourceLayerType.UNKNOWN:
+			layerType = 'unknown'
+			break
+		case SourceLayerType.VT:
+			layerType = 'vt'
+			break
+		default:
+			layerType = 'unknown'
+			assertNever(sourceLayer.type)
+	}
+
+	return {
+		id: sourceLayer._id,
+		name: sourceLayer.name,
+		abbreviation: sourceLayer.abbreviation,
+		rank: sourceLayer._rank,
+		layerType,
+		exclusiveGroup: sourceLayer.exclusiveGroup,
 	}
 }
