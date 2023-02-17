@@ -64,3 +64,7 @@ paths:
     $ref: 'definitions/showstyles.yaml#/resources/showStyleBases'
   /showstyles/{showStyleBaseId}:
     $ref: 'definitions/showstyles.yaml#/resources/showStyleBase'
+  /showstyles/{showStyleBaseId}/variants:
+    $ref: 'definitions/showstyles.yaml#/resources/showStyleVariants'
+  /showstyles/{showStyleBaseId}/variants/{showStyleVariantId}:
+    $ref: 'definitions/showstyles.yaml#/resources/showStyleVariant'

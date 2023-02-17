@@ -15,6 +15,12 @@ import {
 	APIBlueprint,
 	APIBlueprintFrom,
 	RestAPI,
+	APIShowStyleBase,
+	APIShowStyleVariant,
+	showStyleBaseFrom,
+	showStyleVariantFrom,
+	APIShowStyleBaseFrom,
+	APIShowStyleVariantFrom,
 } from '../../../lib/api/rest'
 import { RundownPlaylists } from '../../../lib/collections/RundownPlaylists'
 import { MeteorCall, MethodContextAPI } from '../../../lib/api/methods'
@@ -34,6 +40,8 @@ import {
 	RundownBaselineAdLibActionId,
 	RundownPlaylistId,
 	SegmentId,
+	ShowStyleBaseId,
+	ShowStyleVariantId,
 	StudioId,
 } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import { AdLibPieces } from '../../../lib/collections/AdLibPieces'
@@ -52,6 +60,9 @@ import { PeripheralDeviceAPI } from '../../../lib/api/peripheralDevice'
 import { assertNever } from '@sofie-automation/shared-lib/dist/lib/lib'
 import { Blueprints } from '../../../lib/collections/Blueprints'
 import { Studios } from '../../../lib/collections/Studios'
+import { ShowStyleBases } from '../../../lib/collections/ShowStyleBases'
+import { ShowStyleVariants } from '../../../lib/collections/ShowStyleVariants'
+import { Rundowns } from '../../../lib/collections/Rundowns'
 
 function restAPIUserEvent(
 	ctx: Koa.ParameterizedContext<
@@ -65,7 +76,17 @@ function restAPIUserEvent(
 
 class ServerRestAPI implements RestAPI {
 	static getMethodContext(connection: Meteor.Connection): MethodContextAPI {
-		return { userId: null, connection, isSimulation: false, setUserId: () => {}, unblock: () => {} }
+		return {
+			userId: null,
+			connection,
+			isSimulation: false,
+			setUserId: () => {
+				/* no-op */
+			},
+			unblock: () => {
+				/* no-op */
+			},
+		}
 	}
 
 	static getCredentials(_connection: Meteor.Connection): Credentials {
@@ -599,7 +620,7 @@ class ServerRestAPI implements RestAPI {
 		_event: string,
 		studioId: StudioId,
 		deviceId: PeripheralDeviceId
-	) {
+	): Promise<ClientAPI.ClientResponse<void>> {
 		const studio = Studios.findOne(studioId)
 		if (!studio)
 			return ClientAPI.responseError(
@@ -652,6 +673,177 @@ class ServerRestAPI implements RestAPI {
 
 		return ClientAPI.responseSuccess(undefined, 200)
 	}
+
+	async getShowStyleBases(
+		_connection: Meteor.Connection,
+		_event: string
+	): Promise<ClientAPI.ClientResponse<string[]>> {
+		return ClientAPI.responseSuccess(ShowStyleBases.find().map((base) => unprotectString(base._id)))
+	}
+
+	async addShowStyleBase(
+		_connection: Meteor.Connection,
+		_event: string,
+		showStyleBase: Omit<APIShowStyleBase, 'id'>
+	): Promise<ClientAPI.ClientResponse<string>> {
+		const showStyle = showStyleBaseFrom(showStyleBase)
+		if (!showStyle) throw new Meteor.Error(400, `Invalid ShowStyleBase`)
+		const showStyleId = showStyle._id
+		ShowStyleBases.insert(showStyle)
+
+		return ClientAPI.responseSuccess(unprotectString(showStyleId), 200)
+	}
+
+	async getShowStyleBase(
+		_connection: Meteor.Connection,
+		_event: string,
+		showStyleBaseId: ShowStyleBaseId
+	): Promise<ClientAPI.ClientResponse<APIShowStyleBase>> {
+		const showStyleBase = ShowStyleBases.findOne(showStyleBaseId)
+		if (!showStyleBase) throw new Meteor.Error(404, `ShowStyleBase ${showStyleBaseId} does not exist`)
+
+		return ClientAPI.responseSuccess(APIShowStyleBaseFrom(showStyleBase))
+	}
+
+	async addOrUpdateShowStyleBase(
+		_connection: Meteor.Connection,
+		_event: string,
+		showStyleBaseId: ShowStyleBaseId,
+		showStyleBase: Omit<APIShowStyleBase, 'id'>
+	): Promise<ClientAPI.ClientResponse<void>> {
+		const showStyle = showStyleBaseFrom(showStyleBase, showStyleBaseId)
+		if (!showStyle) throw new Meteor.Error(400, `Invalid ShowStyleBase`)
+
+		const existingShowStyle = ShowStyleBases.findOne(showStyleBaseId)
+		if (existingShowStyle) {
+			const rundowns = Rundowns.find({ showStyleBaseId })
+			const playlists = RundownPlaylists.find({ _id: { $in: rundowns.map((r) => r.playlistId) } }).fetch()
+			if (playlists.some((playlist) => playlist.activationId !== undefined)) {
+				throw new Meteor.Error(
+					412,
+					`Cannot update ShowStyleBase ${showStyleBaseId} as it is in use by an active Playlist`
+				)
+			}
+		}
+
+		ShowStyleBases.upsert(showStyleBaseId, showStyle)
+		return ClientAPI.responseSuccess(undefined, 200)
+	}
+
+	async deleteShowStyleBase(
+		_connection: Meteor.Connection,
+		_event: string,
+		showStyleBaseId: ShowStyleBaseId
+	): Promise<ClientAPI.ClientResponse<void>> {
+		const rundowns = Rundowns.find({ showStyleBaseId })
+		const playlists = RundownPlaylists.find({ _id: { $in: rundowns.map((r) => r.playlistId) } }).fetch()
+		if (playlists.some((playlist) => playlist.activationId !== undefined)) {
+			throw new Meteor.Error(
+				412,
+				`Cannot delete ShowStyleBase ${showStyleBaseId} as it is in use by an active Playlist`
+			)
+		}
+
+		ShowStyleBases.remove(showStyleBaseId)
+		return ClientAPI.responseSuccess(undefined)
+	}
+
+	async getShowStyleVariants(
+		_connection: Meteor.Connection,
+		_event: string,
+		showStyleBaseId: ShowStyleBaseId
+	): Promise<ClientAPI.ClientResponse<string[]>> {
+		const showStyleBase = ShowStyleBases.findOne(showStyleBaseId)
+		if (!showStyleBase) throw new Meteor.Error(404, `ShowStyleBase ${showStyleBaseId} not found`)
+
+		return ClientAPI.responseSuccess(
+			ShowStyleVariants.find({ showStyleBaseId }).map((variant) => unprotectString(variant._id))
+		)
+	}
+
+	async addShowStyleVariant(
+		_connection: Meteor.Connection,
+		_event: string,
+		showStyleBaseId: ShowStyleBaseId,
+		showStyleVariant: Omit<APIShowStyleVariant, 'id'>
+	): Promise<ClientAPI.ClientResponse<string>> {
+		const showStyleBase = ShowStyleBases.findOne(showStyleBaseId)
+		if (!showStyleBase) throw new Meteor.Error(404, `ShowStyleBase ${showStyleBaseId} not found`)
+
+		const variant = showStyleVariantFrom(showStyleVariant)
+		if (!variant) throw new Meteor.Error(400, `Invalid ShowStyleVariant`)
+
+		const showStyleId = variant._id
+		ShowStyleVariants.insert(variant)
+
+		return ClientAPI.responseSuccess(unprotectString(showStyleId), 200)
+	}
+
+	async getShowStyleVariant(
+		_connection: Meteor.Connection,
+		_event: string,
+		showStyleBaseId: ShowStyleBaseId,
+		showStyleVariantId: ShowStyleVariantId
+	): Promise<ClientAPI.ClientResponse<APIShowStyleVariant>> {
+		const showStyleBase = ShowStyleBases.findOne(showStyleBaseId)
+		if (!showStyleBase) throw new Meteor.Error(404, `ShowStyleBase ${showStyleBaseId} not found`)
+
+		const variant = ShowStyleVariants.findOne(showStyleVariantId)
+		if (!variant) throw new Meteor.Error(404, `ShowStyleVariant ${showStyleVariantId} not found`)
+
+		return ClientAPI.responseSuccess(APIShowStyleVariantFrom(variant))
+	}
+
+	async addOrUpdateShowStyleVariant(
+		_connection: Meteor.Connection,
+		_event: string,
+		showStyleBaseId: ShowStyleBaseId,
+		showStyleVariantId: ShowStyleVariantId,
+		showStyleVariant: Omit<APIShowStyleVariant, 'id'>
+	): Promise<ClientAPI.ClientResponse<void>> {
+		const showStyleBase = ShowStyleBases.findOne(showStyleBaseId)
+		if (!showStyleBase) throw new Meteor.Error(404, `ShowStyleBase ${showStyleBaseId} does not exist`)
+
+		const showStyle = showStyleVariantFrom(showStyleVariant, showStyleVariantId)
+		if (!showStyle) throw new Meteor.Error(400, `Invalid ShowStyleVariant`)
+
+		const existingShowStyle = ShowStyleVariants.findOne(showStyleVariantId)
+		if (existingShowStyle) {
+			const rundowns = Rundowns.find({ showStyleVariantId })
+			const playlists = RundownPlaylists.find({ _id: { $in: rundowns.map((r) => r.playlistId) } }).fetch()
+			if (playlists.some((playlist) => playlist.activationId !== undefined)) {
+				throw new Meteor.Error(
+					412,
+					`Cannot update ShowStyleVariant ${showStyleVariantId} as it is in use by an active Playlist`
+				)
+			}
+		}
+
+		ShowStyleVariants.upsert(showStyleVariantId, showStyle)
+		return ClientAPI.responseSuccess(undefined, 200)
+	}
+
+	async deleteShowStyleVariant(
+		_connection: Meteor.Connection,
+		_event: string,
+		showStyleBaseId: ShowStyleBaseId,
+		showStyleVariantId: ShowStyleVariantId
+	): Promise<ClientAPI.ClientResponse<void>> {
+		const showStyleBase = ShowStyleBases.findOne(showStyleBaseId)
+		if (!showStyleBase) throw new Meteor.Error(404, `ShowStyleBase ${showStyleBaseId} does not exist`)
+
+		const rundowns = Rundowns.find({ showStyleVariantId })
+		const playlists = RundownPlaylists.find({ _id: { $in: rundowns.map((r) => r.playlistId) } }).fetch()
+		if (playlists.some((playlist) => playlist.activationId !== undefined)) {
+			throw new Meteor.Error(
+				412,
+				`Cannot delete ShowStyleVariant ${showStyleVariantId} as it is in use by an active Playlist`
+			)
+		}
+
+		ShowStyleVariants.remove(showStyleVariantId)
+		return ClientAPI.responseSuccess(undefined, 200)
+	}
 }
 
 const koaRouter = new KoaRouter()
@@ -680,7 +872,7 @@ function extractErrorMessage(e: unknown): string {
 	}
 }
 
-async function sofieAPIRequest<Params, Body, Response>(
+function sofieAPIRequest<Params, Body, Response>(
 	method: 'get' | 'post' | 'put' | 'delete',
 	route: string,
 	handler: (
@@ -693,8 +885,8 @@ async function sofieAPIRequest<Params, Body, Response>(
 ) {
 	koaRouter[method](route, async (ctx, next) => {
 		try {
-			let serverAPI = new ServerRestAPI()
-			let response = await handler(
+			const serverAPI = new ServerRestAPI()
+			const response = await handler(
 				serverAPI,
 				makeConnection(ctx),
 				restAPIUserEvent(ctx),
@@ -719,7 +911,7 @@ async function sofieAPIRequest<Params, Body, Response>(
 
 koaRouter.get('/', async (ctx, next) => {
 	ctx.type = 'application/json'
-	let server = new ServerRestAPI()
+	const server = new ServerRestAPI()
 	ctx.body = ClientAPI.responseSuccess(await server.index())
 	ctx.status = 200
 	await next()
@@ -998,6 +1190,119 @@ sofieAPIRequest<{ studioId: string; deviceId: string }, never, void>(
 	}
 )
 
+sofieAPIRequest<never, never, string[]>('get', '/showstyles', async (serverAPI, connection, event, _params, _body) => {
+	return await serverAPI.getShowStyleBases(connection, event)
+})
+
+sofieAPIRequest<never, { showStyleBase: Omit<APIShowStyleBase, 'id'> }, string>(
+	'post',
+	'/showstyles',
+	async (serverAPI, connection, event, _params, body) => {
+		return await serverAPI.addShowStyleBase(connection, event, body.showStyleBase)
+	}
+)
+
+sofieAPIRequest<{ showStyleBaseId: ShowStyleBaseId }, never, APIShowStyleBase>(
+	'get',
+	'/showstyles/{showStyleBaseId}',
+	async (serverAPI, connection, event, params, _body) => {
+		return await serverAPI.getShowStyleBase(connection, event, params.showStyleBaseId)
+	}
+)
+
+sofieAPIRequest<{ showStyleBaseId: string }, { showStyleBase: Omit<APIShowStyleBase, 'id'> }, void>(
+	'put',
+	'/showstyles/{showStyleBaseId}',
+	async (serverAPI, connection, event, params, body) => {
+		const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleBaseId)
+
+		check(showStyleBaseId, String)
+		return await serverAPI.addOrUpdateShowStyleBase(connection, event, showStyleBaseId, body.showStyleBase)
+	}
+)
+
+sofieAPIRequest<{ showStyleBaseId: string }, never, void>(
+	'delete',
+	'/showstyles/{showStyleBaseId}',
+	async (serverAPI, connection, event, params, _body) => {
+		const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleBaseId)
+
+		check(showStyleBaseId, String)
+		return await serverAPI.deleteShowStyleBase(connection, event, showStyleBaseId)
+	}
+)
+
+sofieAPIRequest<{ showStyleBaseId: string }, never, string[]>(
+	'get',
+	'/showstyles/{showStyleBaseId}/variants',
+	async (serverAPI, connection, event, params, _body) => {
+		const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleBaseId)
+
+		check(showStyleBaseId, String)
+		return await serverAPI.getShowStyleVariants(connection, event, showStyleBaseId)
+	}
+)
+
+sofieAPIRequest<{ showStyleBaseId: string }, { showStyleVariant: Omit<APIShowStyleVariant, 'id'> }, string>(
+	'post',
+	'/showstyles/{showStyleBaseId}/variants',
+	async (serverAPI, connection, event, params, body) => {
+		const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleBaseId)
+
+		check(showStyleBaseId, String)
+		return await serverAPI.addShowStyleVariant(connection, event, showStyleBaseId, body.showStyleVariant)
+	}
+)
+
+sofieAPIRequest<{ showStyleBaseId: string; showStyleVariantId: string }, never, APIShowStyleVariant>(
+	'get',
+	'/showstyles/{showStyleBaseId}/variants/{showStyleVariantId}',
+	async (serverAPI, connection, event, params, _body) => {
+		const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleBaseId)
+		const showStyleVariantId = protectString<ShowStyleVariantId>(params.showStyleVariantId)
+
+		check(showStyleBaseId, String)
+		check(showStyleVariantId, String)
+		return await serverAPI.getShowStyleVariant(connection, event, showStyleBaseId, showStyleVariantId)
+	}
+)
+
+sofieAPIRequest<
+	{ showStyleBaseId: string; showStyleVariantId: string },
+	{ showStyleVariant: Omit<APIShowStyleVariant, 'id'> },
+	void
+>(
+	'put',
+	'/showstyles/{showStyleBaseId}/variants/{showStyleVariantId}',
+	async (serverAPI, connection, event, params, body) => {
+		const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleBaseId)
+		const showStyleVariantId = protectString<ShowStyleVariantId>(params.showStyleVariantId)
+
+		check(showStyleBaseId, String)
+		check(showStyleVariantId, String)
+		return await serverAPI.addOrUpdateShowStyleVariant(
+			connection,
+			event,
+			showStyleBaseId,
+			showStyleVariantId,
+			body.showStyleVariant
+		)
+	}
+)
+
+sofieAPIRequest<{ showStyleBaseId: string; showStyleVariantId: string }, never, void>(
+	'delete',
+	'/showstyles/{showStyleBaseId}/variants/{showStyleVariantId}',
+	async (serverAPI, connection, event, params, _body) => {
+		const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleBaseId)
+		const showStyleVariantId = protectString<ShowStyleVariantId>(params.showStyleVariantId)
+
+		check(showStyleBaseId, String)
+		check(showStyleVariantId, String)
+		return await serverAPI.deleteShowStyleVariant(connection, event, showStyleBaseId, showStyleVariantId)
+	}
+)
+
 const makeConnection = (
 	ctx: Koa.ParameterizedContext<
 		Koa.DefaultState,
@@ -1007,8 +1312,12 @@ const makeConnection = (
 ): Meteor.Connection => {
 	return {
 		id: getRandomString(),
-		close: () => {},
-		onClose: () => {},
+		close: () => {
+			/* no-op */
+		},
+		onClose: () => {
+			/* no-op */
+		},
 		clientAddress: ctx.req.headers.host || 'unknown',
 		httpHeaders: ctx.req.headers,
 	}

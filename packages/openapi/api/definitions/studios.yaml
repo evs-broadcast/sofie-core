@@ -73,7 +73,7 @@ resources:
                     items:
                       type: string
         404:
-          description: The specified studio does not exist.
+          $ref: '#/components/responses/studioNotFound'
         500:
           $ref: '#/components/responses/internalServerError'
     put:
@@ -113,6 +113,13 @@ resources:
                     example: 200
         404:
           description: Specified Studio or device does not exist.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
         412:
           description: The specified device is already attached to a different studio.
         500:
@@ -148,7 +155,7 @@ resources:
                     type: number
                     example: 200
         404:
-          description: Specified Studio does not exist.
+          $ref: '#/components/responses/studioNotFound'
         500:
           $ref: '#/components/responses/internalServerError'
 components:
