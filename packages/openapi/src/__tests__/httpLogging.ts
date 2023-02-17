@@ -1,5 +1,5 @@
 // eslint-disable-next-line node/no-missing-import
-import { Middleware, ResponseContext, ErrorContext, RequestContext, FetchParams } from '../client/ts'
+import { Middleware, ResponseContext, ErrorContext, RequestContext, FetchParams } from '../../client/ts'
 
 class TestError extends Error {
 	override name: 'TestError' = 'TestError' as const
