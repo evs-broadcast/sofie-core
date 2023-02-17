@@ -1,5 +1,6 @@
 // eslint-disable-next-line node/no-missing-import
 import { Configuration, BlueprintsApi } from '../../client/ts'
+import { checkServer } from '../checkServer'
 import Logging from '../httpLogging'
 
 const httpLogging = false
@@ -11,6 +12,8 @@ describe('Network client', () => {
 			basePath: process.env.ACTIONS_URL,
 			middleware: httpLogging ? [new Logging()] : [],
 		})
+
+		beforeAll(async () => await checkServer(config))
 
 		const blueprintsApi = new BlueprintsApi(config)
 		test('can request all blueprints available in Sofie', async () => {

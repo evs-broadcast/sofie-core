@@ -23,8 +23,8 @@
 		"gendocs": "rimraf docs && node install_swagger.js && java -jar ./jars/swagger-codegen-cli.jar generate -i ./api/actions.yaml -l html2 -o ./docs",
 		"genserver": "rimraf server && node install_swagger.js && java -jar ./jars/swagger-codegen-cli.jar generate -i ./api/actions.yaml -l nodejs-server -o server && cd server && npm install && cd ../",
 		"runserver": "yarn genserver && cd server && node index.js",
-		"test": "yarn lint && yarn ci",
-		"unit": "yarn genclient:ts && node --experimental-fetch ../node_modules/jest/bin/jest.js --detectOpenHandles --forceExit"
+		"test": "yarn lint && yarn genclient:ts && yarn ci",
+		"unit": "node --experimental-fetch ../node_modules/jest/bin/jest.js --detectOpenHandles --forceExit"
 	},
 	"prettier": "@sofie-automation/code-standard-preset/.prettierrc.json",
 	"engines": {

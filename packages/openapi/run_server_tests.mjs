@@ -40,26 +40,28 @@ async function startServer() {
 	})
 }
 
-const testServer = await startServer().catch((err) => {
-	console.error(err)
-	exit(1)
-})
+startServer()
+	.then((testServer) => {
+		setTimeout(() => {
+			console.log('Tests took too long...')
+			testServer.close()
+			exit(1)
+		}, testTimeout)
 
-console.log('\nRunning tests against test server.')
-exec('yarn unit', { timeout: testTimeout }, (error, stdout, stderr) => {
-	testServer.close()
-	if (error) {
-		console.error(`Test error: ${error}`)
+		console.log('\nRunning tests against test server.')
+		exec('yarn unit', { timeout: testTimeout }, (error, stdout, stderr) => {
+			testServer.close()
+			if (error) {
+				console.error(`Test error: ${error}`)
+				exit(1)
+			}
+			console.log(stdout)
+			console.log('Warning:', stderr)
+			console.log('Tests complete')
+			exit()
+		})
+	})
+	.catch((err) => {
+		console.error(err)
 		exit(1)
-	}
-	console.log(stdout)
-	console.log('Warning:', stderr)
-	console.log('Tests complete')
-	exit()
-})
-
-setTimeout(() => {
-	console.log('Tests took too long...')
-	testServer.close()
-	exit(1)
-}, testTimeout)
+	})
