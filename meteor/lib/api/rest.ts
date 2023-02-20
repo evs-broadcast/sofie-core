@@ -32,6 +32,7 @@ import {
 	wrapDefaultObject,
 } from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
 import { ShowStyleVariant } from '../collections/ShowStyleVariants'
+import { IStudioSettings, Studio } from '../collections/Studios'
 
 export interface RestAPI {
 	/**
@@ -136,7 +137,7 @@ export interface RestAPI {
 	/**
 	 * Resets a Playlist back to its pre-played state.
 	 *
-	 * Throws if the target Playlist is currently active unless reset while on-air is enabled in core settings.
+	 * Throws if the target Playlist is currently active unless reset while on-air is enabled in settings.
 	 * @param connection Connection data including client and header details
 	 * @param event User event string
 	 * @param rundownPlaylistId Playlist to reset.
@@ -502,6 +503,66 @@ export interface RestAPI {
 		showStyleBaseId: ShowStyleBaseId,
 		showStyleVariantId: ShowStyleVariantId
 	): Promise<ClientAPI.ClientResponse<void>>
+	/**
+	 * Gets the Ids of all Studios.
+	 *
+	 * @param connection Connection data including client and header details
+	 * @param event User event string
+	 */
+	getStudios(connection: Meteor.Connection, event: string): Promise<ClientAPI.ClientResponse<string[]>>
+	/**
+	 * Adds a new Studio, returns the Id of the newly created Studio.
+	 *
+	 * @param connection Connection data including client and header details
+	 * @param event User event string
+	 * @param studio Studio to add
+	 */
+	addStudio(
+		connection: Meteor.Connection,
+		event: string,
+		studio: Omit<APIStudio, 'id'>
+	): Promise<ClientAPI.ClientResponse<string>>
+	/**
+	 * Gets a Studio, if it exists.
+	 *
+	 * Throws if the specified Studio does not exist.
+	 * @param connection Connection data including client and header details
+	 * @param event User event string
+	 * @param studioId Id of the Studio to fetch
+	 */
+	getStudio(
+		connection: Meteor.Connection,
+		event: string,
+		studioId: StudioId
+	): Promise<ClientAPI.ClientResponse<APIStudio>>
+	/**
+	 * Adds a new Studio or updates an already existing one.
+	 *
+	 * Throws if the Studio already exists and is in use in an active Rundown.
+	 * @param connection Connection data including client and header details
+	 * @param event User event string
+	 * @param studioId Id of the Studio to add or update
+	 * @param studio Studio to add or update
+	 */
+	addOrUpdateStudio(
+		connection: Meteor.Connection,
+		event: string,
+		studioId: StudioId,
+		studio: Omit<APIStudio, 'id'>
+	): Promise<ClientAPI.ClientResponse<void>>
+	/**
+	 * Deletes a Studio.
+	 *
+	 * Throws if the specified Studio is in use in an active Rundown.
+	 * @param connection Connection data including client and header details
+	 * @param event User event string
+	 * @param studioId Id of the Studio to delete
+	 */
+	deleteStudio(
+		connection: Meteor.Connection,
+		event: string,
+		studioId: StudioId
+	): Promise<ClientAPI.ClientResponse<void>>
 }
 
 export enum RestAPIMethods {
@@ -825,5 +886,109 @@ export function APISourceLayerFrom(sourceLayer: ISourceLayer): APISourceLayer {
 		rank: sourceLayer._rank,
 		layerType,
 		exclusiveGroup: sourceLayer.exclusiveGroup,
+	}
+}
+
+export interface APIStudio {
+	id: string
+	name: string
+	blueprintId?: string
+	supportedShowStyleBase?: string[]
+	config: object
+	settings: APIStudioSettings
+}
+
+export function studioFrom(apiStudio: Omit<APIStudio, 'id'>, existingId?: StudioId): Studio | undefined {
+	let blueprint: Blueprint | undefined
+	if (apiStudio.blueprintId) {
+		blueprint = Blueprints.findOne(protectString(apiStudio.blueprintId))
+		if (!blueprint) return undefined
+		if (blueprint.blueprintType !== BlueprintManifestType.STUDIO) return undefined
+	}
+
+	const blueprintConfig = wrapDefaultObject({})
+	blueprintConfig.overrides = Object.entries(apiStudio.config).map(([key, value]) =>
+		literal<ObjectOverrideSetOp>({
+			op: 'set',
+			path: key,
+			value,
+		})
+	)
+
+	return {
+		_id: existingId ?? getRandomId(),
+		name: apiStudio.name,
+		blueprintId: blueprint?._id,
+		blueprintConfigWithOverrides: blueprintConfig,
+		settings: studioSettingsFrom(apiStudio.settings),
+		supportedShowStyleBase: apiStudio.supportedShowStyleBase?.map((id) => protectString<ShowStyleBaseId>(id)) ?? [],
+		organizationId: null,
+		mappingsWithOverrides: wrapDefaultObject({}),
+		routeSets: {},
+		_rundownVersionHash: '',
+		routeSetExclusivityGroups: {},
+		packageContainers: {},
+		previewContainerIds: [],
+		thumbnailContainerIds: [],
+		lastBlueprintConfig: undefined,
+	}
+}
+
+export function APIStudioFrom(studio: Studio): APIStudio {
+	const studioSettings = APIStudioSettingsFrom(studio.settings)
+
+	return {
+		id: unprotectString(studio._id),
+		name: studio.name,
+		blueprintId: unprotectString(studio.blueprintId),
+		config: studio.blueprintConfigWithOverrides.overrides,
+		settings: studioSettings,
+		supportedShowStyleBase: studio.supportedShowStyleBase.map((id) => unprotectString(id)),
+	}
+}
+
+export interface APIStudioSettings {
+	frameRate: number
+	mediaPreviewsUrl: string
+	slackEvaluationUrls?: string[]
+	supportedMediaFormats?: string[]
+	supportedAudioStreams?: string[]
+	enablePlayFromAnywhere?: boolean
+	forceMultiGatewayMode?: boolean
+	multiGatewayNowSafeLatency?: number
+	preserveUnsyncedPlayingSegmentContents?: boolean
+	allowRundownResetOnAir?: boolean
+	preserveOrphanedSegmentPositionInRundown?: boolean
+}
+
+export function studioSettingsFrom(apiStudioSettings: APIStudioSettings): IStudioSettings {
+	return {
+		frameRate: apiStudioSettings.frameRate,
+		mediaPreviewsUrl: apiStudioSettings.mediaPreviewsUrl,
+		slackEvaluationUrls: apiStudioSettings.slackEvaluationUrls?.join(','),
+		supportedMediaFormats: apiStudioSettings.supportedMediaFormats?.join(','),
+		supportedAudioStreams: apiStudioSettings.supportedAudioStreams?.join(','),
+		enablePlayFromAnywhere: apiStudioSettings.enablePlayFromAnywhere,
+		forceMultiGatewayMode: apiStudioSettings.forceMultiGatewayMode,
+		multiGatewayNowSafeLatency: apiStudioSettings.multiGatewayNowSafeLatency,
+		preserveUnsyncedPlayingSegmentContents: apiStudioSettings.preserveUnsyncedPlayingSegmentContents,
+		allowRundownResetOnAir: apiStudioSettings.allowRundownResetOnAir,
+		preserveOrphanedSegmentPositionInRundown: apiStudioSettings.preserveOrphanedSegmentPositionInRundown,
+	}
+}
+
+export function APIStudioSettingsFrom(settings: IStudioSettings): APIStudioSettings {
+	return {
+		frameRate: settings.frameRate,
+		mediaPreviewsUrl: settings.mediaPreviewsUrl,
+		slackEvaluationUrls: settings.slackEvaluationUrls?.split(','),
+		supportedMediaFormats: settings.supportedMediaFormats?.split(','),
+		supportedAudioStreams: settings.supportedAudioStreams?.split(','),
+		enablePlayFromAnywhere: settings.enablePlayFromAnywhere,
+		forceMultiGatewayMode: settings.forceMultiGatewayMode,
+		multiGatewayNowSafeLatency: settings.multiGatewayNowSafeLatency,
+		preserveUnsyncedPlayingSegmentContents: settings.preserveUnsyncedPlayingSegmentContents,
+		allowRundownResetOnAir: settings.allowRundownResetOnAir,
+		preserveOrphanedSegmentPositionInRundown: settings.preserveOrphanedSegmentPositionInRundown,
 	}
 }

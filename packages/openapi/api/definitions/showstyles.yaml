@@ -443,11 +443,22 @@ components:
         config:
           type: object
           description: Blueprint config.
-      required:
-        - name
-        - showStyleBaseId
-        - config
-      additionalProperties: false
+        required:
+          - name
+          - showStyleBaseId
+          - blueprintId
+          - config
+        additionalProperties: false
+    showStyleVariantWithId:
+      $allOf:
+        - $ref: '#/components/schemas/showStyleVariant'
+        - type: object
+          properties:
+            id:
+              type: string
+              description: ShowStyleVariant Id.
+          required:
+            - id
     outputLayer:
       type: object
       properties:

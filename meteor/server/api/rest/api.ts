@@ -21,6 +21,9 @@ import {
 	showStyleVariantFrom,
 	APIShowStyleBaseFrom,
 	APIShowStyleVariantFrom,
+	APIStudio,
+	studioFrom,
+	APIStudioFrom,
 } from '../../../lib/api/rest'
 import { RundownPlaylists } from '../../../lib/collections/RundownPlaylists'
 import { MeteorCall, MethodContextAPI } from '../../../lib/api/methods'
@@ -842,6 +845,93 @@ class ServerRestAPI implements RestAPI {
 		}
 
 		ShowStyleVariants.remove(showStyleVariantId)
+		return ClientAPI.responseSuccess(undefined, 200)
+	}
+
+	async getStudios(_connection: Meteor.Connection, _event: string): Promise<ClientAPI.ClientResponse<string[]>> {
+		return ClientAPI.responseSuccess(Studios.find().map((studio) => unprotectString(studio._id)))
+	}
+
+	async addStudio(
+		_connection: Meteor.Connection,
+		_event: string,
+		studio: Omit<APIStudio, 'id'>
+	): Promise<ClientAPI.ClientResponse<string>> {
+		const newStudio = studioFrom(studio)
+		if (!newStudio) throw new Meteor.Error(400, `Invalid Studio`)
+
+		const newStudioId = newStudio._id
+		Studios.insert(newStudio)
+
+		return ClientAPI.responseSuccess(unprotectString(newStudioId), 200)
+	}
+
+	async getStudio(
+		_connection: Meteor.Connection,
+		_event: string,
+		studioId: StudioId
+	): Promise<ClientAPI.ClientResponse<APIStudio>> {
+		const studio = Studios.findOne(studioId)
+		if (!studio) throw new Meteor.Error(404, `Studio ${studioId} not found`)
+
+		return ClientAPI.responseSuccess(APIStudioFrom(studio))
+	}
+
+	async addOrUpdateStudio(
+		_connection: Meteor.Connection,
+		_event: string,
+		studioId: StudioId,
+		studio: Omit<APIStudio, 'id'>
+	): Promise<ClientAPI.ClientResponse<void>> {
+		const newStudio = studioFrom(studio)
+		if (!newStudio) throw new Meteor.Error(400, `Invalid Studio`)
+
+		const existingStudio = Studios.findOne(studioId)
+		if (existingStudio) {
+			const playlists = RundownPlaylists.find({ studioId }).fetch()
+			if (playlists.some((p) => p.activationId !== undefined)) {
+				throw new Meteor.Error(412, `Studio ${studioId} cannot be updated, it is in use in an active Playlist`)
+			}
+		}
+
+		Studios.upsert(studioId, newStudio)
+		return ClientAPI.responseSuccess(undefined, 200)
+	}
+
+	async deleteStudio(
+		connection: Meteor.Connection,
+		event: string,
+		studioId: StudioId
+	): Promise<ClientAPI.ClientResponse<void>> {
+		const existingStudio = Studios.findOne(studioId)
+		if (existingStudio) {
+			const playlists = RundownPlaylists.find({ studioId }).fetch()
+			if (playlists.some((p) => p.activationId !== undefined)) {
+				throw new Meteor.Error(412, `Studio ${studioId} cannot be deleted, it is in use in an active Playlist`)
+			}
+		}
+
+		PeripheralDevices.update({ studioId }, { $unset: { studioId: 1 } })
+		const rundownPlaylists = RundownPlaylists.find({ studioId }).map((playlist) => playlist._id)
+		const promises = rundownPlaylists.map(async (rundownPlaylistId) =>
+			ServerClientAPI.runUserActionInLogForPlaylistOnWorker(
+				ServerRestAPI.getMethodContext(connection),
+				event,
+				getCurrentTime(),
+				rundownPlaylistId,
+				() => {
+					check(rundownPlaylistId, String)
+				},
+				StudioJobs.RemovePlaylist,
+				{
+					playlistId: rundownPlaylistId,
+				}
+			)
+		)
+
+		await Promise.all(promises)
+		Studios.remove(studioId)
+
 		return ClientAPI.responseSuccess(undefined, 200)
 	}
 }
