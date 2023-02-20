@@ -73,7 +73,7 @@ resources:
       parameters:
         - name: showStyleBaseId
           in: path
-          description: Id of SHowStyleBase to retrieve
+          description: Id of ShowStyleBase to retrieve
           required: true
           schema:
             type: string
@@ -86,6 +86,8 @@ resources:
                 $ref: '#/components/schemas/showStyleBaseWithId'
         404:
           $ref: '#/components/responses/showStyleBaseNotFound'
+        500:
+          $ref: '#/components/responses/internalServerError'
     put:
       operationId: addOrUpdateShowStyleBase
       tags:
@@ -265,6 +267,8 @@ resources:
                 properties:
                   message:
                     type: string
+        500:
+          $ref: '#/components/responses/internalServerError'
     put:
       operationId: addOrUpdateShowStyleVariant
       tags:

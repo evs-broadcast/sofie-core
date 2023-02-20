@@ -53,12 +53,16 @@ paths:
   /playlists/{playlistId}/sourceLayer/{sourceLayerId}:
     $ref: 'definitions/playlists.yaml#/resources/sourceLayer'
   # studio operations
+  /studios:
+    $ref: 'definitions/studios.yaml#/resources/studios'
+  /studios/{studioId}:
+    $ref: 'definitions/studios.yaml#/resources/studio'
   /studios/{studioId}/switchRouteSet:
     $ref: 'definitions/studios.yaml#/resources/switchRouteSet'
   /studios/{studioId}/devices:
     $ref: 'definitions/studios.yaml#/resources/devices'
   /studios/{studioId}/devices/{deviceId}:
-    $ref: 'definitions/studios.yaml#/resources/detachDevice'
+    $ref: 'definitions/studios.yaml#/resources/device'
   # showstyle operations
   /showstyles:
     $ref: 'definitions/showstyles.yaml#/resources/showStyleBases'
