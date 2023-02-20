@@ -4,7 +4,7 @@ import { checkServer } from '../checkServer'
 import Logging from '../httpLogging'
 
 const httpLogging = false
-const runTests = process.env.TEST_SERVER
+const runTests = process.env.SERVER_TYPE === 'TEST'
 
 describe('Network client', () => {
 	if (runTests) {
