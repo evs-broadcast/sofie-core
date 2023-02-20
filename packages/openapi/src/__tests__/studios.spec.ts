@@ -29,6 +29,7 @@ describe('Network client', () => {
 			const studio = await studiosApi.addStudio({
 				addStudioRequest: {
 					studio: {
+						name: '',
 						blueprintId: '',
 						config: {},
 						settings: {
@@ -53,6 +54,7 @@ describe('Network client', () => {
 				studioId: 'B0avqzSM41UJDpbyf3U28',
 				addStudioRequest: {
 					studio: {
+						name: '',
 						blueprintId: '',
 						config: {},
 						settings: {
