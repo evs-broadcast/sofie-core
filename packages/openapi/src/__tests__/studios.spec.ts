@@ -4,23 +4,27 @@ import { checkServer } from '../checkServer'
 import Logging from '../httpLogging'
 
 const httpLogging = false
-const runTests = process.env.SERVER_TYPE === 'TEST'
+const testServer = process.env.SERVER_TYPE === 'TEST'
 
 describe('Network client', () => {
-	if (runTests) {
-		const config = new Configuration({
-			basePath: process.env.ACTIONS_URL,
-			middleware: httpLogging ? [new Logging()] : [],
-		})
+	const config = new Configuration({
+		basePath: process.env.ACTIONS_URL,
+		middleware: httpLogging ? [new Logging()] : [],
+	})
 
-		beforeAll(async () => await checkServer(config))
+	beforeAll(async () => await checkServer(config))
 
-		const studiosApi = new StudiosApi(config)
+	const studiosApi = new StudiosApi(config)
+	if (testServer) {
 		test('can request all Studios', async () => {
 			const studios = await studiosApi.getStudios()
 			expect(studios.success).toBe(200)
 		})
+	} else {
+		test.todo('Yet to be implemented')
+	}
 
+	if (testServer) {
 		test('can add a new Studio', async () => {
 			const studio = await studiosApi.addStudio({
 				addStudioRequest: {

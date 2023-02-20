@@ -4,23 +4,23 @@ import { checkServer } from '../checkServer'
 import Logging from '../httpLogging'
 
 const httpLogging = false
-const runTests = process.env.SERVER_TYPE === 'TEST'
+const testServer = process.env.SERVER_TYPE === 'TEST'
 
 describe('Network client', () => {
-	if (runTests) {
-		const config = new Configuration({
-			basePath: process.env.ACTIONS_URL,
-			middleware: httpLogging ? [new Logging()] : [],
-		})
+	const config = new Configuration({
+		basePath: process.env.ACTIONS_URL,
+		middleware: httpLogging ? [new Logging()] : [],
+	})
 
-		beforeAll(async () => await checkServer(config))
+	beforeAll(async () => await checkServer(config))
 
-		const showStylesApi = new ShowstylesApi(config)
-		test('can request all ShowStyleBases', async () => {
-			const showStyles = await showStylesApi.getShowStyleBases()
-			expect(showStyles.success).toBe(200)
-		})
+	const showStylesApi = new ShowstylesApi(config)
+	test('can request all ShowStyleBases', async () => {
+		const showStyles = await showStylesApi.getShowStyleBases()
+		expect(showStyles.success).toBe(200)
+	})
 
+	if (testServer) {
 		test('can add a ShowStyleBase', async () => {
 			const showStyle = await showStylesApi.addShowStyleBase({
 				addShowStyleBaseRequest: {
@@ -65,15 +65,19 @@ describe('Network client', () => {
 			})
 			expect(showStyle.success).toBe(200)
 		})
+	} else {
+		test.todo('Setup mocks for ShowStyles')
+	}
 
-		test('can request all ShowStyleBase Variants', async () => {
+	if (testServer) {
+		test('can request all ShowStyleVariants', async () => {
 			const showStyleVariants = await showStylesApi.getShowStyleVariants({
 				showStyleBaseId: 'SSB0',
 			})
 			expect(showStyleVariants.success).toBe(200)
 		})
 
-		test('can add a ShowStyleBase Variant', async () => {
+		test('can add a ShowStyleVariant', async () => {
 			const showStyleVariant = await showStylesApi.addShowStyleVariant({
 				showStyleBaseId: 'SSB0',
 				addShowStyleVariantRequest: {
@@ -118,6 +122,6 @@ describe('Network client', () => {
 			expect(showStyle.success).toBe(200)
 		})
 	} else {
-		test.todo('Setup mocks for Sofie')
+		test.todo('Setup mocks for ShowStyleVariants')
 	}
 })

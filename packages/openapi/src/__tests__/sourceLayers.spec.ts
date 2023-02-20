@@ -4,10 +4,10 @@ import { checkServer } from '../checkServer'
 import Logging from '../httpLogging'
 
 const httpLogging = false
-const runTests = process.env.SERVER_TYPE === 'TEST'
+const testServer = process.env.SERVER_TYPE === 'TEST'
 
 describe('Network client', () => {
-	if (runTests) {
+	if (testServer) {
 		const config = new Configuration({
 			basePath: process.env.ACTIONS_URL,
 			middleware: httpLogging ? [new Logging()] : [],

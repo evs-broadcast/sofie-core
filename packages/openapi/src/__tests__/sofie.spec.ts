@@ -4,28 +4,28 @@ import { checkServer } from '../checkServer'
 import Logging from '../httpLogging'
 
 const httpLogging = false
-const runTests = process.env.SERVER_TYPE === 'TEST'
+const testServer = process.env.SERVER_TYPE === 'TEST'
 
 describe('Network client', () => {
-	if (runTests) {
-		const config = new Configuration({
-			basePath: process.env.ACTIONS_URL,
-			middleware: httpLogging ? [new Logging()] : [],
-		})
+	const config = new Configuration({
+		basePath: process.env.ACTIONS_URL,
+		middleware: httpLogging ? [new Logging()] : [],
+	})
 
-		beforeAll(async () => await checkServer(config))
+	beforeAll(async () => await checkServer(config))
 
-		const sofieApi = new SofieApi(config)
-		test('can request current version of Sofie application', async () => {
-			const sofieVersion = await sofieApi.index()
-			expect(sofieVersion.success).toBe(200)
-			expect(sofieVersion.result.version).toBe('1.44.0')
-		})
+	const sofieApi = new SofieApi(config)
+	test('can request current version of Sofie application', async () => {
+		const sofieVersion = await sofieApi.index()
+		expect(sofieVersion.success).toBe(200)
+		expect(sofieVersion.result.version).toMatch(/^(\d+\.)?(\d+\.)?(\d+)/)
+	})
 
-		test('fails to assign a system blueprint with null id', async () => {
-			await expect(sofieApi.assignSystemBlueprint({ assignSystemBlueprintRequest: null })).rejects.toThrow()
-		})
+	test('fails to assign a system blueprint with null id', async () => {
+		await expect(sofieApi.assignSystemBlueprint({ assignSystemBlueprintRequest: null })).rejects.toThrow()
+	})
 
+	if (testServer) {
 		test('can assign a blueprint for Sofie Core', async () => {
 			const sofieVersion = await sofieApi.assignSystemBlueprint({
 				assignSystemBlueprintRequest: { blueprintId: 'systemBlueprint' },

@@ -13,10 +13,10 @@ export async function checkServer(config: Configuration): Promise<void> {
 		try {
 			await sofieApi.index() // Throws an error if API is not available
 			return
-		} catch (err) {
-			console.error(err)
-		}
-
+		} catch (
+			err
+			// eslint-disable-next-line no-empty
+		) {}
 		await wait(1000)
 	}
 
