@@ -77,13 +77,23 @@ resources:
           required: true
           schema:
             type: string
-      result:
+      responses:
         200:
           description: Studio found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/studioWithId'
+                type: object
+                properties:
+                  success:
+                    type: number
+                    example: 200
+                  id:
+                    type: string
+                    description: Studio Id.
+                    example: 'Studio0'
+                  studio:
+                    $ref: '#/components/schemas/studio'
         404:
           $ref: '#/components/responses/studioNotFound'
         500:
@@ -111,20 +121,29 @@ resources:
               required:
                 - studio
               additionalProperties: false
-      result:
+      responses:
         200:
           description: Studio found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/studioWithId'
+                properties:
+                  success:
+                    type: number
+                    example: 200
+                  id:
+                    type: string
+                    description: Studio Id.
+                    example: 'Studio0'
+                  studio:
+                    $ref: '#/components/schemas/studio'
         500:
           $ref: '#/components/responses/internalServerError'
     delete:
       operationId: deleteStudio
       tags:
         - studios
-      sumamry: Deletes a specified Studio, cleaning up any resources in use (e.g. Playlists).
+      summary: Deletes a specified Studio, cleaning up any resources in use (e.g. Playlists).
       parameters:
         - name: studioId
           in: path
@@ -328,14 +347,6 @@ components:
         - config
         - settings
       additionalProperties: false
-    studioWithId:
-      $allOf:
-        - $ref: '#/components/schemas/studio'
-        - type: object
-          properties:
-            id:
-              type: string
-              description: Studio Id.
     studioSettings:
       type: object
       properties:

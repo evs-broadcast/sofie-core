@@ -16,6 +16,58 @@ describe('Network client', () => {
 		beforeAll(async () => await checkServer(config))
 
 		const studiosApi = new StudiosApi(config)
+		test('can request all Studios', async () => {
+			const studios = await studiosApi.getStudios()
+			expect(studios.success).toBe(200)
+		})
+
+		test('can add a new Studio', async () => {
+			const studio = await studiosApi.addStudio({
+				addStudioRequest: {
+					studio: {
+						blueprintId: '',
+						config: {},
+						settings: {
+							frameRate: 25,
+							mediaPreviewsUrl: 'http://127.0.0.1:8080',
+						},
+					},
+				},
+			})
+			expect(studio.success).toBe(200)
+		})
+
+		test('can request a Studio by id', async () => {
+			const studio = await studiosApi.getStudio({
+				studioId: 'B0avqzSM41UJDpbyf3U28',
+			})
+			expect(studio.success).toBe(200)
+		})
+
+		test('can update a studio', async () => {
+			const studio = await studiosApi.addOrUpdateStudio({
+				studioId: 'B0avqzSM41UJDpbyf3U28',
+				addStudioRequest: {
+					studio: {
+						blueprintId: '',
+						config: {},
+						settings: {
+							frameRate: 25,
+							mediaPreviewsUrl: 'http://127.0.0.1:8080',
+						},
+					},
+				},
+			})
+			expect(studio.success).toBe(200)
+		})
+
+		test('can remove a Studio by id', async () => {
+			const studio = await studiosApi.deleteStudio({
+				studioId: 'B0avqzSM41UJDpbyf3U28',
+			})
+			expect(studio.success).toBe(200)
+		})
+
 		test('can activate a route set in a studio', async () => {
 			const routeSet = await studiosApi.switchRouteSet({
 				studioId: 'B0avqzSM41UJDpbyf3U28',

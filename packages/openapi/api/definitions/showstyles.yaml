@@ -60,6 +60,10 @@ resources:
                     required:
                       - id
                     additionalProperties: false
+                required:
+                  - success
+                  - result
+                additionalProperties: false
         400:
           description: Invalid ShowStyleBase, blueprint Id is not a ShowStyle blueprint.
         500:
@@ -77,13 +81,23 @@ resources:
           required: true
           schema:
             type: string
-      result:
+      responses:
         200:
           description: ShowStyleBase found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/showStyleBaseWithId'
+                type: object
+                properties:
+                  success:
+                    type: number
+                    example: 200
+                  id:
+                    type: string
+                    description: ShowStyleBase Id.
+                    example: 'SSB0'
+                  showStyleBase:
+                    $ref: '#/components/schemas/showStyleBase'
         404:
           $ref: '#/components/responses/showStyleBaseNotFound'
         500:
@@ -132,7 +146,7 @@ resources:
       operationId: deleteShowStyleBase
       tags:
         - showstyles
-      sumamry: Deletes a specified ShowStyleBase.
+      summary: Deletes a specified ShowStyleBase.
       parameters:
         - name: showStyleBaseId
           in: path
@@ -251,13 +265,23 @@ resources:
           required: true
           schema:
             type: string
-      result:
+      responses:
         200:
-          description: ShowStyleBase found.
+          description: ShowStyle Variant found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/showStyleVariantWithId'
+                type: object
+                properties:
+                  success:
+                    type: number
+                    example: 200
+                  id:
+                    type: string
+                    description: ShowStyleBase Id.
+                    example: 'SSB0'
+                  showStyleVariant:
+                    $ref: '#/components/schemas/showStyleVariant'
         404:
           description: The specified ShowStyleBase or ShowStyleVariant does not exist.
           content:
@@ -321,7 +345,7 @@ resources:
       operationId: deleteShowStyleVariant
       tags:
         - showstyles
-      sumamry: Deletes a specified ShowStyleVariant.
+      summary: Deletes a specified ShowStyleVariant.
       parameters:
         - name: showStyleBaseId
           in: path
@@ -346,6 +370,9 @@ resources:
                   success:
                     type: number
                     example: 200
+                required:
+                  - success
+                additionalProperties: false
         412:
           description: The specified ShowStyleVariant is in use in an on-air Rundown.
         500:
@@ -361,6 +388,9 @@ components:
             properties:
               message:
                 type: string
+            required:
+              - message
+            additionalProperties: false
     showStyleBaseNotFound:
       description: The specified ShowStyleBase does not exist.
       content:
@@ -370,6 +400,9 @@ components:
             properties:
               message:
                 type: string
+            required:
+              - message
+            additionalProperties: false
   schemas:
     showStyleBase:
       type: object
@@ -391,21 +424,13 @@ components:
         config:
           type: object
           description: Blueprint config.
-        required:
-          - name
-          - blueprintId
-          - outputLayers
-          - sourceLayers
-          - config
-        additionalProperties: false
-    showStyleBaseWithId:
-      $allOf:
-        - $ref: '#/components/schemas/showStyleBase'
-        - type: object
-          properties:
-            id:
-              type: string
-              description: ShowStyleBase Id.
+      required:
+        - name
+        - blueprintId
+        - outputLayers
+        - sourceLayers
+        - config
+      additionalProperties: false
     showStyleVariant:
       type: object
       properties:
@@ -418,20 +443,11 @@ components:
         config:
           type: object
           description: Blueprint config.
-        required:
-          - name
-          - showStyleBaseId
-          - blueprintId
-          - config
-        additionalProperties: false
-    showStyleVariantWithId:
-      $allOf:
-        - $ref: '#/components/schemas/showStyleVariant'
-        - type: object
-          properties:
-            id:
-              type: string
-              description: ShowStyleVariant Id.
+      required:
+        - name
+        - showStyleBaseId
+        - config
+      additionalProperties: false
     outputLayer:
       type: object
       properties:
