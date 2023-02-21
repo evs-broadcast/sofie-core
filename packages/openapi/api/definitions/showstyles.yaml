@@ -449,16 +449,6 @@ components:
           - blueprintId
           - config
         additionalProperties: false
-    showStyleVariantWithId:
-      $allOf:
-        - $ref: '#/components/schemas/showStyleVariant'
-        - type: object
-          properties:
-            id:
-              type: string
-              description: ShowStyleVariant Id.
-          required:
-            - id
     outputLayer:
       type: object
       properties:

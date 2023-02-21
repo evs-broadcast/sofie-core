@@ -350,16 +350,6 @@ components:
         - config
         - settings
       additionalProperties: false
-    studioWithId:
-      $allOf:
-        - $ref: '#/components/schemas/studio'
-        - type: object
-          properties:
-            id:
-              type: string
-              description: Studio Id.
-          required:
-            - id
     studioSettings:
       type: object
       properties:
