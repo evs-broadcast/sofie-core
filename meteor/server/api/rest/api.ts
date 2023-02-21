@@ -687,7 +687,7 @@ class ServerRestAPI implements RestAPI {
 	async addShowStyleBase(
 		_connection: Meteor.Connection,
 		_event: string,
-		showStyleBase: Omit<APIShowStyleBase, 'id'>
+		showStyleBase: APIShowStyleBase
 	): Promise<ClientAPI.ClientResponse<string>> {
 		const showStyle = showStyleBaseFrom(showStyleBase)
 		if (!showStyle) throw new Meteor.Error(400, `Invalid ShowStyleBase`)
@@ -712,7 +712,7 @@ class ServerRestAPI implements RestAPI {
 		_connection: Meteor.Connection,
 		_event: string,
 		showStyleBaseId: ShowStyleBaseId,
-		showStyleBase: Omit<APIShowStyleBase, 'id'>
+		showStyleBase: APIShowStyleBase
 	): Promise<ClientAPI.ClientResponse<void>> {
 		const showStyle = showStyleBaseFrom(showStyleBase, showStyleBaseId)
 		if (!showStyle) throw new Meteor.Error(400, `Invalid ShowStyleBase`)
@@ -768,7 +768,7 @@ class ServerRestAPI implements RestAPI {
 		_connection: Meteor.Connection,
 		_event: string,
 		showStyleBaseId: ShowStyleBaseId,
-		showStyleVariant: Omit<APIShowStyleVariant, 'id'>
+		showStyleVariant: APIShowStyleVariant
 	): Promise<ClientAPI.ClientResponse<string>> {
 		const showStyleBase = ShowStyleBases.findOne(showStyleBaseId)
 		if (!showStyleBase) throw new Meteor.Error(404, `ShowStyleBase ${showStyleBaseId} not found`)
@@ -802,7 +802,7 @@ class ServerRestAPI implements RestAPI {
 		_event: string,
 		showStyleBaseId: ShowStyleBaseId,
 		showStyleVariantId: ShowStyleVariantId,
-		showStyleVariant: Omit<APIShowStyleVariant, 'id'>
+		showStyleVariant: APIShowStyleVariant
 	): Promise<ClientAPI.ClientResponse<void>> {
 		const showStyleBase = ShowStyleBases.findOne(showStyleBaseId)
 		if (!showStyleBase) throw new Meteor.Error(404, `ShowStyleBase ${showStyleBaseId} does not exist`)
@@ -855,7 +855,7 @@ class ServerRestAPI implements RestAPI {
 	async addStudio(
 		_connection: Meteor.Connection,
 		_event: string,
-		studio: Omit<APIStudio, 'id'>
+		studio: APIStudio
 	): Promise<ClientAPI.ClientResponse<string>> {
 		const newStudio = studioFrom(studio)
 		if (!newStudio) throw new Meteor.Error(400, `Invalid Studio`)
@@ -881,7 +881,7 @@ class ServerRestAPI implements RestAPI {
 		_connection: Meteor.Connection,
 		_event: string,
 		studioId: StudioId,
-		studio: Omit<APIStudio, 'id'>
+		studio: APIStudio
 	): Promise<ClientAPI.ClientResponse<void>> {
 		const newStudio = studioFrom(studio)
 		if (!newStudio) throw new Meteor.Error(400, `Invalid Studio`)
@@ -1284,7 +1284,7 @@ sofieAPIRequest<never, never, string[]>('get', '/showstyles', async (serverAPI, 
 	return await serverAPI.getShowStyleBases(connection, event)
 })
 
-sofieAPIRequest<never, { showStyleBase: Omit<APIShowStyleBase, 'id'> }, string>(
+sofieAPIRequest<never, { showStyleBase: APIShowStyleBase }, string>(
 	'post',
 	'/showstyles',
 	async (serverAPI, connection, event, _params, body) => {
@@ -1300,7 +1300,7 @@ sofieAPIRequest<{ showStyleBaseId: ShowStyleBaseId }, never, APIShowStyleBase>(
 	}
 )
 
-sofieAPIRequest<{ showStyleBaseId: string }, { showStyleBase: Omit<APIShowStyleBase, 'id'> }, void>(
+sofieAPIRequest<{ showStyleBaseId: string }, { showStyleBase: APIShowStyleBase }, void>(
 	'put',
 	'/showstyles/{showStyleBaseId}',
 	async (serverAPI, connection, event, params, body) => {
@@ -1333,7 +1333,7 @@ sofieAPIRequest<{ showStyleBaseId: string }, never, string[]>(
 	}
 )
 
-sofieAPIRequest<{ showStyleBaseId: string }, { showStyleVariant: Omit<APIShowStyleVariant, 'id'> }, string>(
+sofieAPIRequest<{ showStyleBaseId: string }, { showStyleVariant: APIShowStyleVariant }, string>(
 	'post',
 	'/showstyles/{showStyleBaseId}/variants',
 	async (serverAPI, connection, event, params, body) => {
@@ -1359,7 +1359,7 @@ sofieAPIRequest<{ showStyleBaseId: string; showStyleVariantId: string }, never, 
 
 sofieAPIRequest<
 	{ showStyleBaseId: string; showStyleVariantId: string },
-	{ showStyleVariant: Omit<APIShowStyleVariant, 'id'> },
+	{ showStyleVariant: APIShowStyleVariant },
 	void
 >(
 	'put',

@@ -384,7 +384,7 @@ export interface RestAPI {
 	addShowStyleBase(
 		connection: Meteor.Connection,
 		event: string,
-		showStyleBase: Omit<APIShowStyleBase, 'id'>
+		showStyleBase: APIShowStyleBase
 	): Promise<ClientAPI.ClientResponse<string>>
 	/**
 	 * Gets a ShowStyleBase.
@@ -412,7 +412,7 @@ export interface RestAPI {
 		connection: Meteor.Connection,
 		event: string,
 		showStyleBaseId: ShowStyleBaseId,
-		showStyleBase: Omit<APIShowStyleBase, 'id'>
+		showStyleBase: APIShowStyleBase
 	): Promise<ClientAPI.ClientResponse<void>>
 	/**
 	 * Removed a ShowStyleBase.
@@ -453,7 +453,7 @@ export interface RestAPI {
 		connection: Meteor.Connection,
 		event: string,
 		showStyleBaseId: ShowStyleBaseId,
-		showStyleVariant: Omit<APIShowStyleVariant, 'id'>
+		showStyleVariant: APIShowStyleVariant
 	): Promise<ClientAPI.ClientResponse<string>>
 	/**
 	 * Gets a ShowStyleVariant.
@@ -486,7 +486,7 @@ export interface RestAPI {
 		event: string,
 		showStyleBaseId: ShowStyleBaseId,
 		showStyleVariantId: ShowStyleVariantId,
-		showStyleVariant: Omit<APIShowStyleVariant, 'id'>
+		showStyleVariant: APIShowStyleVariant
 	): Promise<ClientAPI.ClientResponse<void>>
 	/**
 	 * Deletes a specified ShowStyleVariant.
@@ -520,7 +520,7 @@ export interface RestAPI {
 	addStudio(
 		connection: Meteor.Connection,
 		event: string,
-		studio: Omit<APIStudio, 'id'>
+		studio: APIStudio
 	): Promise<ClientAPI.ClientResponse<string>>
 	/**
 	 * Gets a Studio, if it exists.
@@ -548,7 +548,7 @@ export interface RestAPI {
 		connection: Meteor.Connection,
 		event: string,
 		studioId: StudioId,
-		studio: Omit<APIStudio, 'id'>
+		studio: APIStudio
 	): Promise<ClientAPI.ClientResponse<void>>
 	/**
 	 * Deletes a Studio.
@@ -693,7 +693,6 @@ export function APIBlueprintFrom(blueprint: Blueprint): APIBlueprint | undefined
 }
 
 export interface APIShowStyleBase {
-	id: string
 	name: string
 	blueprintId: string
 	outputLayers: APIOutputLayer[]
@@ -702,7 +701,7 @@ export interface APIShowStyleBase {
 }
 
 export function showStyleBaseFrom(
-	apiShowStyleBase: Omit<APIShowStyleBase, 'id'>,
+	apiShowStyleBase: APIShowStyleBase,
 	existingId?: ShowStyleBaseId
 ): ShowStyleBase | undefined {
 	const blueprint = Blueprints.findOne(protectString(apiShowStyleBase.blueprintId))
@@ -748,7 +747,6 @@ export function showStyleBaseFrom(
 
 export function APIShowStyleBaseFrom(showStyleBase: ShowStyleBase): APIShowStyleBase {
 	return {
-		id: unprotectString(showStyleBase._id),
 		name: showStyleBase.name,
 		blueprintId: unprotectString(showStyleBase.blueprintId),
 		outputLayers: Object.values(applyAndValidateOverrides(showStyleBase.outputLayersWithOverrides).obj).map(
@@ -762,14 +760,13 @@ export function APIShowStyleBaseFrom(showStyleBase: ShowStyleBase): APIShowStyle
 }
 
 export interface APIShowStyleVariant {
-	id: string
 	name: string
 	showStyleBaseId: string
 	config: object
 }
 
 export function showStyleVariantFrom(
-	apiShowStyleVariant: Omit<APIShowStyleVariant, 'id'>,
+	apiShowStyleVariant: APIShowStyleVariant,
 	existingId?: ShowStyleVariantId
 ): ShowStyleVariant | undefined {
 	const blueprintConfig = wrapDefaultObject({})
@@ -791,7 +788,6 @@ export function showStyleVariantFrom(
 
 export function APIShowStyleVariantFrom(showStyleVariant: ShowStyleVariant): APIShowStyleVariant {
 	return {
-		id: unprotectString(showStyleVariant._id),
 		name: showStyleVariant.name,
 		showStyleBaseId: unprotectString(showStyleVariant.showStyleBaseId),
 		config: applyAndValidateOverrides(showStyleVariant.blueprintConfigWithOverrides).obj,
@@ -890,7 +886,6 @@ export function APISourceLayerFrom(sourceLayer: ISourceLayer): APISourceLayer {
 }
 
 export interface APIStudio {
-	id: string
 	name: string
 	blueprintId?: string
 	supportedShowStyleBase?: string[]
@@ -898,7 +893,7 @@ export interface APIStudio {
 	settings: APIStudioSettings
 }
 
-export function studioFrom(apiStudio: Omit<APIStudio, 'id'>, existingId?: StudioId): Studio | undefined {
+export function studioFrom(apiStudio: APIStudio, existingId?: StudioId): Studio | undefined {
 	let blueprint: Blueprint | undefined
 	if (apiStudio.blueprintId) {
 		blueprint = Blueprints.findOne(protectString(apiStudio.blueprintId))
@@ -938,7 +933,6 @@ export function APIStudioFrom(studio: Studio): APIStudio {
 	const studioSettings = APIStudioSettingsFrom(studio.settings)
 
 	return {
-		id: unprotectString(studio._id),
 		name: studio.name,
 		blueprintId: unprotectString(studio.blueprintId),
 		config: studio.blueprintConfigWithOverrides.overrides,
