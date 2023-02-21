@@ -990,7 +990,7 @@ function sofieAPIRequest<Params, Body, Response>(
 			const errCode = extractErrorCode(e)
 			const errMsg = errCode === 500 ? 'Internal Server Error' : extractErrorMessage(e)
 
-			logger.error('POST activate failed - ' + errMsg)
+			logger.error(`${method.toUpperCase()} failed for route ${route}: ${errCode} - ${errMsg}`)
 			ctx.type = 'application/json'
 			ctx.body = JSON.stringify({ message: errMsg })
 			ctx.status = errCode
@@ -1163,7 +1163,7 @@ sofieAPIRequest<{ studioId: string }, { routeSetId: string; active: boolean }, v
 
 sofieAPIRequest<{ playlistId: string; sourceLayerId: string }, never, void>(
 	'delete',
-	'/playlists/{playlistId}/sourceLayer/{sourceLayerId}',
+	'/playlists/:playlistId/sourceLayer/:sourceLayerId',
 	async (serverAPI, connection, event, params, _) => {
 		const playlistId = protectString<RundownPlaylistId>(params.playlistId)
 		const sourceLayerId = params.sourceLayerId
@@ -1177,7 +1177,7 @@ sofieAPIRequest<{ playlistId: string; sourceLayerId: string }, never, void>(
 
 sofieAPIRequest<{ playlistId: string; sourceLayerId: string }, never, void>(
 	'post',
-	'/playlists/{playlistId}/sourceLayer/{sourceLayerId}/recallSticky',
+	'/playlists/:playlistId/sourceLayer/:sourceLayerId/recallSticky',
 	async (serverAPI, connection, event, params, _) => {
 		const playlistId = protectString<RundownPlaylistId>(params.playlistId)
 		const sourceLayerId = params.sourceLayerId
@@ -1196,7 +1196,7 @@ sofieAPIRequest<never, never, string[]>('post', '/devices', async (serverAPI, co
 
 sofieAPIRequest<{ deviceId: string }, never, APIPeripheralDevice>(
 	'get',
-	'/devices/{deviceId}',
+	'/devices/:deviceId',
 	async (serverAPI, connection, event, params, _) => {
 		const deviceId = protectString<PeripheralDeviceId>(params.deviceId)
 		logger.info(`koa GET: peripheral device ${deviceId}`)
@@ -1208,7 +1208,7 @@ sofieAPIRequest<{ deviceId: string }, never, APIPeripheralDevice>(
 
 sofieAPIRequest<{ studioId: string }, never, string[]>(
 	'get',
-	'/studios/{studioId}/devices',
+	'/studios/:studioId/devices',
 	async (serverAPI, connection, event, params, _) => {
 		const studioId = protectString<StudioId>(params.studioId)
 		logger.info(`koa GET: peripheral devices for studio ${studioId}`)
@@ -1223,11 +1223,11 @@ sofieAPIRequest<never, never, string[]>('get', '/blueprints', async (serverAPI, 
 	return await serverAPI.getAllBlueprints(connection, event)
 })
 
-sofieAPIRequest<{ blueprints: string }, never, APIBlueprint>(
+sofieAPIRequest<{ blueprintId: string }, never, APIBlueprint>(
 	'get',
-	'/blueprints/{blueprintId}',
+	'/blueprints/:blueprintId',
 	async (serverAPI, connection, event, params, _) => {
-		const blueprintId = protectString<BlueprintId>(params.blueprints)
+		const blueprintId = protectString<BlueprintId>(params.blueprintId)
 		logger.info(`koa GET: blueprint ${blueprintId}`)
 
 		check(blueprintId, String)
@@ -1258,7 +1258,7 @@ sofieAPIRequest<never, never, void>(
 
 sofieAPIRequest<{ studioId: string }, { deviceId: string }, void>(
 	'put',
-	'/studios/{studioId}/devices',
+	'/studios/:studioId/devices',
 	async (serverAPI, connection, events, params, body) => {
 		const studioId = protectString<StudioId>(params.studioId)
 		const deviceId = protectString<PeripheralDeviceId>(body.deviceId)
@@ -1270,7 +1270,7 @@ sofieAPIRequest<{ studioId: string }, { deviceId: string }, void>(
 
 sofieAPIRequest<{ studioId: string; deviceId: string }, never, void>(
 	'delete',
-	'/studios/{studioId}/devices/{deviceId}',
+	'/studios/:studioId/devices/:deviceId',
 	async (serverAPI, connection, events, params, _) => {
 		const studioId = protectString<StudioId>(params.studioId)
 		const deviceId = protectString<PeripheralDeviceId>(params.deviceId)
@@ -1294,7 +1294,7 @@ sofieAPIRequest<never, { showStyleBase: APIShowStyleBase }, string>(
 
 sofieAPIRequest<{ showStyleBaseId: ShowStyleBaseId }, never, APIShowStyleBase>(
 	'get',
-	'/showstyles/{showStyleBaseId}',
+	'/showstyles/:showStyleBaseId',
 	async (serverAPI, connection, event, params, _body) => {
 		return await serverAPI.getShowStyleBase(connection, event, params.showStyleBaseId)
 	}
@@ -1302,7 +1302,7 @@ sofieAPIRequest<{ showStyleBaseId: ShowStyleBaseId }, never, APIShowStyleBase>(
 
 sofieAPIRequest<{ showStyleBaseId: string }, { showStyleBase: APIShowStyleBase }, void>(
 	'put',
-	'/showstyles/{showStyleBaseId}',
+	'/showstyles/:showStyleBaseId',
 	async (serverAPI, connection, event, params, body) => {
 		const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleBaseId)
 
@@ -1313,7 +1313,7 @@ sofieAPIRequest<{ showStyleBaseId: string }, { showStyleBase: APIShowStyleBase }
 
 sofieAPIRequest<{ showStyleBaseId: string }, never, void>(
 	'delete',
-	'/showstyles/{showStyleBaseId}',
+	'/showstyles/:showStyleBaseId',
 	async (serverAPI, connection, event, params, _body) => {
 		const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleBaseId)
 
@@ -1324,7 +1324,7 @@ sofieAPIRequest<{ showStyleBaseId: string }, never, void>(
 
 sofieAPIRequest<{ showStyleBaseId: string }, never, string[]>(
 	'get',
-	'/showstyles/{showStyleBaseId}/variants',
+	'/showstyles/:showStyleBaseId/variants',
 	async (serverAPI, connection, event, params, _body) => {
 		const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleBaseId)
 
@@ -1335,7 +1335,7 @@ sofieAPIRequest<{ showStyleBaseId: string }, never, string[]>(
 
 sofieAPIRequest<{ showStyleBaseId: string }, { showStyleVariant: APIShowStyleVariant }, string>(
 	'post',
-	'/showstyles/{showStyleBaseId}/variants',
+	'/showstyles/:showStyleBaseId/variants',
 	async (serverAPI, connection, event, params, body) => {
 		const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleBaseId)
 
@@ -1346,7 +1346,7 @@ sofieAPIRequest<{ showStyleBaseId: string }, { showStyleVariant: APIShowStyleVar
 
 sofieAPIRequest<{ showStyleBaseId: string; showStyleVariantId: string }, never, APIShowStyleVariant>(
 	'get',
-	'/showstyles/{showStyleBaseId}/variants/{showStyleVariantId}',
+	'/showstyles/:showStyleBaseId/variants/:showStyleVariantId',
 	async (serverAPI, connection, event, params, _body) => {
 		const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleBaseId)
 		const showStyleVariantId = protectString<ShowStyleVariantId>(params.showStyleVariantId)
@@ -1363,7 +1363,7 @@ sofieAPIRequest<
 	void
 >(
 	'put',
-	'/showstyles/{showStyleBaseId}/variants/{showStyleVariantId}',
+	'/showstyles/:showStyleBaseId/variants/:showStyleVariantId',
 	async (serverAPI, connection, event, params, body) => {
 		const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleBaseId)
 		const showStyleVariantId = protectString<ShowStyleVariantId>(params.showStyleVariantId)
@@ -1382,7 +1382,7 @@ sofieAPIRequest<
 
 sofieAPIRequest<{ showStyleBaseId: string; showStyleVariantId: string }, never, void>(
 	'delete',
-	'/showstyles/{showStyleBaseId}/variants/{showStyleVariantId}',
+	'/showstyles/:showStyleBaseId/variants/:showStyleVariantId',
 	async (serverAPI, connection, event, params, _body) => {
 		const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleBaseId)
 		const showStyleVariantId = protectString<ShowStyleVariantId>(params.showStyleVariantId)
