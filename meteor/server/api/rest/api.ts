@@ -1,6 +1,7 @@
 import Koa from 'koa'
 import cors from '@koa/cors'
 import KoaRouter from '@koa/router'
+import bodyParser from 'koa-bodyparser'
 import { logger } from '../../logging'
 import { WebApp } from 'meteor/webapp'
 import { check, Match } from '../../../lib/check'
@@ -981,7 +982,7 @@ function sofieAPIRequest<Params, Body, Response>(
 				makeConnection(ctx),
 				restAPIUserEvent(ctx),
 				ctx.params as unknown as Params,
-				ctx.req.body as unknown as Body
+				ctx.request.body as unknown as Body
 			)
 			if (ClientAPI.isClientResponseError(response)) throw response
 			ctx.body = response
@@ -1189,7 +1190,7 @@ sofieAPIRequest<{ playlistId: string; sourceLayerId: string }, never, void>(
 	}
 )
 
-sofieAPIRequest<never, never, string[]>('post', '/devices', async (serverAPI, connection, event, _params, _body) => {
+sofieAPIRequest<never, never, string[]>('get', '/devices', async (serverAPI, connection, event, _params, _body) => {
 	logger.info(`koa GET: peripheral devices`)
 	return await serverAPI.getPeripheralDevices(connection, event)
 })
@@ -1203,6 +1204,18 @@ sofieAPIRequest<{ deviceId: string }, never, APIPeripheralDevice>(
 
 		check(deviceId, String)
 		return await serverAPI.getPeripheralDevice(connection, event, deviceId)
+	}
+)
+
+sofieAPIRequest<{ deviceId: string }, { action: PeripheralDeviceActionType }, void>(
+	'put',
+	'/devices/:deviceId/action',
+	async (serverAPI, connection, event, params, body) => {
+		const deviceId = protectString<PeripheralDeviceId>(params.deviceId)
+		logger.info(`koa PUT: peripheral device ${deviceId} action ${body.action}`)
+
+		check(deviceId, String)
+		return await serverAPI.peripheralDeviceAction(connection, event, deviceId, { type: body.action })
 	}
 )
 
@@ -1281,6 +1294,7 @@ sofieAPIRequest<{ studioId: string; deviceId: string }, never, void>(
 )
 
 sofieAPIRequest<never, never, string[]>('get', '/showstyles', async (serverAPI, connection, event, _params, _body) => {
+	logger.info(`koa GET: ShowStyleBases`)
 	return await serverAPI.getShowStyleBases(connection, event)
 })
 
@@ -1296,6 +1310,7 @@ sofieAPIRequest<{ showStyleBaseId: ShowStyleBaseId }, never, APIShowStyleBase>(
 	'get',
 	'/showstyles/:showStyleBaseId',
 	async (serverAPI, connection, event, params, _body) => {
+		logger.info(`koa GET: ShowStyleBase ${params.showStyleBaseId}`)
 		return await serverAPI.getShowStyleBase(connection, event, params.showStyleBaseId)
 	}
 )
@@ -1327,6 +1342,7 @@ sofieAPIRequest<{ showStyleBaseId: string }, never, string[]>(
 	'/showstyles/:showStyleBaseId/variants',
 	async (serverAPI, connection, event, params, _body) => {
 		const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleBaseId)
+		logger.info(`koa GET: ShowStyleVariants ${showStyleBaseId}`)
 
 		check(showStyleBaseId, String)
 		return await serverAPI.getShowStyleVariants(connection, event, showStyleBaseId)
@@ -1350,6 +1366,7 @@ sofieAPIRequest<{ showStyleBaseId: string; showStyleVariantId: string }, never, 
 	async (serverAPI, connection, event, params, _body) => {
 		const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleBaseId)
 		const showStyleVariantId = protectString<ShowStyleVariantId>(params.showStyleVariantId)
+		logger.info(`koa GET: ShowStyleVariant ${showStyleBaseId} ${showStyleVariantId}`)
 
 		check(showStyleBaseId, String)
 		check(showStyleVariantId, String)
@@ -1419,5 +1436,5 @@ Meteor.startup(() => {
 		WebApp.connectHandlers.use('/api2', Meteor.bindEnvironment(app.callback()))
 	}
 	app.use(cors())
-	app.use(koaRouter.routes()).use(koaRouter.allowedMethods())
+	app.use(bodyParser()).use(koaRouter.routes()).use(koaRouter.allowedMethods())
 })
