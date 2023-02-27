@@ -31,6 +31,7 @@ import {
 	RundownLayouts,
 } from '../../../lib/collections/RundownLayouts'
 import {
+	PartId,
 	RundownId,
 	RundownLayoutId,
 	RundownPlaylistId,
@@ -47,6 +48,7 @@ import { getPlaylistTimingDiff } from '../../lib/rundownTiming'
 import { UIShowStyleBase } from '../../../lib/api/showStyles'
 import { UIShowStyleBases, UIStudios } from '../Collections'
 import { UIStudio } from '../../../lib/api/studios'
+import { Piece } from '@sofie-automation/corelib/dist/dataModel/Piece'
 
 interface SegmentUi extends DBSegment {
 	items: Array<PartUi>
@@ -69,6 +71,7 @@ export interface RundownOverviewTrackedProps {
 	playlist?: RundownPlaylist
 	rundowns: Rundown[]
 	segments: Array<SegmentUi>
+	pieces: Map<PartId, Piece[]>
 	currentSegment: SegmentUi | undefined
 	currentPartInstance: PartUi | undefined
 	nextSegment: SegmentUi | undefined
@@ -91,6 +94,7 @@ function getShowStyleBaseIdSegmentPartUi(
 		segments: Segment[]
 		parts: Part[]
 	},
+	pieces: Map<PartId, Piece[]>,
 	rundownsToShowstyles: Map<RundownId, ShowStyleBaseId>,
 	currentPartInstance: PartInstance | undefined,
 	nextPartInstance: PartInstance | undefined
@@ -141,6 +145,7 @@ function getShowStyleBaseIdSegmentPartUi(
 				rundownOrder.slice(0, rundownIndex),
 				rundownsToShowstyles,
 				orderedSegmentsAndParts.parts.map((part) => part._id),
+				pieces,
 				currentPartInstance,
 				nextPartInstance,
 				true,
@@ -183,6 +188,7 @@ export const getPresenterScreenReactive = (props: RundownOverviewProps): Rundown
 			},
 		})
 	const segments: Array<SegmentUi> = []
+	let pieces: Map<PartId, Piece[]> = new Map()
 	let showStyleBaseIds: ShowStyleBaseId[] = []
 	let rundowns: Rundown[] = []
 	let rundownIds: RundownId[] = []
@@ -204,6 +210,7 @@ export const getPresenterScreenReactive = (props: RundownOverviewProps): Rundown
 	if (playlist) {
 		rundowns = RundownPlaylistCollectionUtil.getRundownsOrdered(playlist)
 		const orderedSegmentsAndParts = RundownPlaylistCollectionUtil.getSegmentsAndPartsSync(playlist)
+		pieces = RundownPlaylistCollectionUtil.getPiecesForParts(orderedSegmentsAndParts.parts.map((p) => p._id))
 		rundownIds = rundowns.map((rundown) => rundown._id)
 		const rundownsToShowstyles: Map<RundownId, ShowStyleBaseId> = new Map()
 		for (const rundown of rundowns) {
@@ -235,6 +242,7 @@ export const getPresenterScreenReactive = (props: RundownOverviewProps): Rundown
 					currentPartInstance,
 					playlist,
 					orderedSegmentsAndParts,
+					pieces,
 					rundownsToShowstyles,
 					currentPartInstance,
 					nextPartInstance
@@ -252,6 +260,7 @@ export const getPresenterScreenReactive = (props: RundownOverviewProps): Rundown
 					nextPartInstance,
 					playlist,
 					orderedSegmentsAndParts,
+					pieces,
 					rundownsToShowstyles,
 					currentPartInstance,
 					nextPartInstance
@@ -265,6 +274,7 @@ export const getPresenterScreenReactive = (props: RundownOverviewProps): Rundown
 	return {
 		studio,
 		segments,
+		pieces,
 		playlist,
 		rundowns,
 		showStyleBaseIds,
@@ -426,7 +436,7 @@ export class PresenterScreenBase extends MeteorReactComponent<
 	}
 
 	renderDefaultLayout() {
-		const { playlist, segments, currentShowStyleBaseId, nextShowStyleBaseId, playlistId } = this.props
+		const { playlist, segments, pieces, currentShowStyleBaseId, nextShowStyleBaseId, playlistId } = this.props
 
 		if (playlist && playlistId && segments) {
 			const currentPart = this.props.currentPartInstance
@@ -478,7 +488,10 @@ export class PresenterScreenBase extends MeteorReactComponent<
 										showStyleBaseId={currentShowStyleBaseId}
 										rundownIds={this.props.rundownIds}
 										partAutoNext={currentPart.instance.part.autoNext || false}
-										partExpectedDuration={calculatePartInstanceExpectedDurationWithPreroll(currentPart.instance)}
+										partExpectedDuration={calculatePartInstanceExpectedDurationWithPreroll(
+											currentPart.instance,
+											pieces.get(currentPart.partId) ?? []
+										)}
 										partStartedPlayback={currentPart.instance.timings?.plannedStartedPlayback}
 										playlistActivationId={this.props.playlist?.activationId}
 									/>

@@ -13,10 +13,11 @@ import { Parts, Part, DBPart } from './Parts'
 import { PartInstance, PartInstances } from './PartInstances'
 import { createMongoCollection, FindOptions } from './lib'
 import { registerIndex } from '../database'
-import { RundownId } from '@sofie-automation/corelib/dist/dataModel/Ids'
+import { PartId, RundownId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import { CollectionName } from '@sofie-automation/corelib/dist/dataModel/Collections'
 
 import { DBRundownPlaylist } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
+import { Piece, Pieces } from './Pieces'
 export { DBRundownPlaylist }
 
 /** Note: Use RundownPlaylist instead */
@@ -314,6 +315,18 @@ export class RundownPlaylistCollectionUtil {
 	): Record<string, PartInstance> {
 		const instances = RundownPlaylistCollectionUtil.getActivePartInstances(playlist, selector, options)
 		return normalizeArrayFunc(instances, (i) => unprotectString(i.part._id))
+	}
+	static getPiecesForParts(parts: Array<PartId>): Map<PartId, Piece[]> {
+		const allPieces = Pieces.find({ startPartId: { $in: parts } }).fetch()
+		const piecesMap = new Map<PartId, Piece[]>()
+
+		for (const piece of allPieces) {
+			const entry = piecesMap.get(piece.startPartId) ?? []
+			entry.push(piece)
+			piecesMap.set(piece.startPartId, entry)
+		}
+
+		return piecesMap
 	}
 
 	static _sortSegments<TSegment extends Pick<DBSegment, '_id' | 'rundownId' | '_rank'>>(

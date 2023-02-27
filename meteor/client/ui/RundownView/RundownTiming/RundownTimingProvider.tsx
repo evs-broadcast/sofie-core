@@ -12,6 +12,8 @@ import { Rundown } from '@sofie-automation/corelib/dist/dataModel/Rundown'
 import { DBSegment } from '@sofie-automation/corelib/dist/dataModel/Segment'
 import { RundownTimingCalculator, RundownTimingContext } from '../../../lib/rundownTiming'
 import { PartId } from '@sofie-automation/corelib/dist/dataModel/Ids'
+import { Piece } from '@sofie-automation/corelib/dist/dataModel/Piece'
+import { CalculateTimingsPiece } from '@sofie-automation/corelib/dist/playout/timings'
 
 const TIMING_DEFAULT_REFRESH_INTERVAL = 1000 / 60 // the interval for high-resolution events (timeupdateHR)
 const LOW_RESOLUTION_TIMING_DECIMATOR = 15
@@ -45,6 +47,7 @@ interface IRundownTimingProviderTrackedProps {
 	currentRundown: Rundown | undefined
 	parts: Array<Part>
 	partInstancesMap: Map<PartId, PartInstance>
+	pieces: Map<PartId, CalculateTimingsPiece[]>
 	segmentEntryPartInstances: PartInstance[]
 	segments: DBSegment[]
 }
@@ -64,6 +67,7 @@ export const RundownTimingProvider = withTracker<
 	let parts: Array<Part> = []
 	let segments: Array<DBSegment> = []
 	const partInstancesMap = new Map<PartId, PartInstance>()
+	let pieces: Map<PartId, Piece[]> = new Map()
 	let currentRundown: Rundown | undefined
 	const segmentEntryPartInstances: PartInstance[] = []
 	if (props.playlist) {
@@ -144,12 +148,15 @@ export const RundownTimingProvider = withTracker<
 				}
 			}
 		})
+
+		pieces = RundownPlaylistCollectionUtil.getPiecesForParts(parts.map((p) => p._id))
 	}
 	return {
 		rundowns,
 		currentRundown,
 		parts,
 		partInstancesMap,
+		pieces,
 		segmentEntryPartInstances,
 		segments,
 	}
@@ -283,8 +290,16 @@ export const RundownTimingProvider = withTracker<
 		}
 
 		updateDurations(now: number, isSynced: boolean) {
-			const { playlist, rundowns, currentRundown, parts, partInstancesMap, segments, segmentEntryPartInstances } =
-				this.props
+			const {
+				playlist,
+				rundowns,
+				currentRundown,
+				parts,
+				partInstancesMap,
+				pieces,
+				segments,
+				segmentEntryPartInstances,
+			} = this.props
 			const updatedDurations = this.timingCalculator.updateDurations(
 				now,
 				isSynced,
@@ -293,6 +308,7 @@ export const RundownTimingProvider = withTracker<
 				currentRundown,
 				parts,
 				partInstancesMap,
+				pieces,
 				segments,
 				this.props.defaultDuration,
 				segmentEntryPartInstances
