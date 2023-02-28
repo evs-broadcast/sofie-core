@@ -3,6 +3,7 @@ import { CoreConnection } from '@sofie-automation/server-core-integration'
 import { DBStudio } from '@sofie-automation/corelib/dist/dataModel/Studio'
 import { CoreHandler } from '../coreHandler'
 import { CollectionBase, Collection } from '../wsHandler'
+import { protectString, unprotectString } from '@sofie-automation/corelib/dist/protectedString'
 
 export class StudioHandler extends CollectionBase<DBStudio> implements Collection<DBStudio> {
 	_observerName: string
@@ -21,11 +22,12 @@ export class StudioHandler extends CollectionBase<DBStudio> implements Collectio
 		this._dbObserver = this._coreHandler.setupObserver(this._collection)
 
 		if (this._collection) {
-			const col = this._core.getCollection(this._collection)
+			const col = this._core.getCollection<DBStudio>(this._collection)
 			if (!col) throw new Error(`collection '${this._collection}' not found!`)
 			const studio = col.findOne(this._studioId)
 			if (!studio) throw new Error(`studio '${this._studioId}' not found!`)
-			this._collectionData = studio as unknown as DBStudio
+
+			this._collectionData = studio
 			this._dbObserver.added = (id: string) => void this.changed(id, 'added')
 			this._dbObserver.changed = (id: string) => void this.changed(id, 'changed')
 		}
@@ -33,12 +35,12 @@ export class StudioHandler extends CollectionBase<DBStudio> implements Collectio
 
 	async changed(id: string, changeType: string): Promise<void> {
 		this._logger.info(`${this._name} ${changeType} ${id}`)
-		if (!(id === this._studioId && this._collection)) return
-		const col = this._core.getCollection(this._collection)
+		if (!(id === unprotectString(this._studioId) && this._collection)) return
+		const col = this._core.getCollection<DBStudio>(this._collection)
 		if (!col) throw new Error(`collection '${this._collection}' not found!`)
-		const studio = col.findOne(id)
+		const studio = col.findOne(protectString(id))
 		if (!studio) throw new Error(`studio '${this._studioId}' not found on changed!`)
-		this._collectionData = studio as unknown as DBStudio
+		this._collectionData = studio
 		await this.notify(this._collectionData)
 	}
 }

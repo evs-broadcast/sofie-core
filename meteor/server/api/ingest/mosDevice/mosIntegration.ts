@@ -2,10 +2,10 @@ import { MOS } from '@sofie-automation/corelib'
 import { logger } from '../../../logging'
 import { checkAccessAndGetPeripheralDevice, fetchStudioIdFromDevice, runIngestOperation } from '../lib'
 import { parseMosString } from './lib'
-import { PeripheralDeviceId } from '../../../../lib/collections/PeripheralDevices'
 import { MethodContext } from '../../../../lib/api/methods'
 import { profiler } from '../../profiler'
 import { IngestJobs } from '@sofie-automation/corelib/dist/worker/ingest'
+import { PeripheralDeviceId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 
 const apmNamespace = 'mosIntegration'
 
@@ -29,7 +29,7 @@ export namespace MosIntegration {
 		await runIngestOperation(studioId, IngestJobs.MosRundown, {
 			rundownExternalId: rundownExternalId,
 			peripheralDeviceId: peripheralDevice._id,
-			isCreateAction: true,
+			isUpdateOperation: false,
 			mosRunningOrder: rundown,
 		})
 		transaction?.end()
@@ -49,13 +49,12 @@ export namespace MosIntegration {
 		const rundownExternalId = parseMosString(rundown.ID)
 
 		logger.info(`mosRoReplace "${rundown.ID}"`)
-		// @ts-ignore
 		logger.debug(rundown)
 
 		await runIngestOperation(studioId, IngestJobs.MosRundown, {
 			rundownExternalId: rundownExternalId,
 			peripheralDeviceId: peripheralDevice._id,
-			isCreateAction: true,
+			isUpdateOperation: false,
 			mosRunningOrder: rundown,
 		})
 
@@ -66,7 +65,7 @@ export namespace MosIntegration {
 		context: MethodContext,
 		id: PeripheralDeviceId,
 		token: string,
-		rundownId: MOS.MosString128
+		rundownId: MOS.IMOSString128
 	): Promise<void> {
 		const transaction = profiler.startTransaction('mosRoDelete', apmNamespace)
 
@@ -177,7 +176,6 @@ export namespace MosIntegration {
 		const rundownExternalId = parseMosString(Action.RunningOrderID)
 
 		logger.info(`mosRoStoryInsert after "${Action.StoryID}" Stories: ${Stories.map((s) => s.ID)}`)
-		// @ts-ignore
 		logger.debug(Action, Stories)
 
 		await runIngestOperation(studioId, IngestJobs.MosInsertStory, {
@@ -205,7 +203,6 @@ export namespace MosIntegration {
 		const rundownExternalId = parseMosString(Action.RunningOrderID)
 
 		logger.info(`mosRoStoryReplace "${Action.StoryID}" Stories: ${Stories.map((s) => s.ID)}`)
-		// @ts-ignore
 		logger.debug(Action, Stories)
 
 		await runIngestOperation(studioId, IngestJobs.MosInsertStory, {
@@ -223,7 +220,7 @@ export namespace MosIntegration {
 		id: PeripheralDeviceId,
 		token: string,
 		Action: MOS.IMOSStoryAction,
-		Stories: Array<MOS.MosString128>
+		Stories: Array<MOS.IMOSString128>
 	): Promise<void> {
 		const transaction = profiler.startTransaction('mosRoStoryMove', apmNamespace)
 
@@ -249,7 +246,7 @@ export namespace MosIntegration {
 		id: PeripheralDeviceId,
 		token: string,
 		Action: MOS.IMOSROAction,
-		Stories: Array<MOS.MosString128>
+		Stories: Array<MOS.IMOSString128>
 	): Promise<void> {
 		const transaction = profiler.startTransaction('mosRoStoryDelete', apmNamespace)
 
@@ -274,8 +271,8 @@ export namespace MosIntegration {
 		id: PeripheralDeviceId,
 		token: string,
 		Action: MOS.IMOSROAction,
-		StoryID0: MOS.MosString128,
-		StoryID1: MOS.MosString128
+		StoryID0: MOS.IMOSString128,
+		StoryID1: MOS.IMOSString128
 	): Promise<void> {
 		const transaction = profiler.startTransaction('mosRoStorySwap', apmNamespace)
 
@@ -352,14 +349,13 @@ export namespace MosIntegration {
 		id: PeripheralDeviceId,
 		token: string,
 		Action: MOS.IMOSStoryAction,
-		Items: Array<MOS.MosString128>
+		Items: Array<MOS.IMOSString128>
 	): Promise<void> {
 		const transaction = profiler.startTransaction('mosRoItemDelete', apmNamespace)
 
 		await checkAccessAndGetPeripheralDevice(id, token, context)
 
 		logger.warn(`mosRoItemDelete NOT SUPPORTED "${Action.StoryID}"`)
-		// @ts-ignore
 		logger.debug(Action, Items)
 
 		transaction?.end()
@@ -376,7 +372,6 @@ export namespace MosIntegration {
 		await checkAccessAndGetPeripheralDevice(id, token, context)
 
 		logger.warn(`mosRoItemStatus NOT SUPPORTED "${status.ID}"`)
-		// @ts-ignore
 		logger.debug(status)
 
 		transaction?.end()
@@ -394,7 +389,6 @@ export namespace MosIntegration {
 		await checkAccessAndGetPeripheralDevice(id, token, context)
 
 		logger.warn(`mosRoItemInsert NOT SUPPORTED "${Action.ItemID}"`)
-		// @ts-ignore
 		logger.debug(Action, Items)
 
 		transaction?.end()
@@ -412,7 +406,6 @@ export namespace MosIntegration {
 		await checkAccessAndGetPeripheralDevice(id, token, context)
 
 		logger.warn(`mosRoItemReplace NOT SUPPORTED "${Action.ItemID}"`)
-		// @ts-ignore
 		logger.debug(Action, Items)
 
 		transaction?.end()
@@ -423,14 +416,13 @@ export namespace MosIntegration {
 		id: PeripheralDeviceId,
 		token: string,
 		Action: MOS.IMOSItemAction,
-		Items: Array<MOS.MosString128>
+		Items: Array<MOS.IMOSString128>
 	): Promise<void> {
 		const transaction = profiler.startTransaction('mosRoItemMove', apmNamespace)
 
 		await checkAccessAndGetPeripheralDevice(id, token, context)
 
 		logger.warn(`mosRoItemMove NOT SUPPORTED "${Action.ItemID}"`)
-		// @ts-ignore
 		logger.debug(Action, Items)
 
 		transaction?.end()
@@ -441,15 +433,14 @@ export namespace MosIntegration {
 		id: PeripheralDeviceId,
 		token: string,
 		Action: MOS.IMOSStoryAction,
-		ItemID0: MOS.MosString128,
-		ItemID1: MOS.MosString128
+		ItemID0: MOS.IMOSString128,
+		ItemID1: MOS.IMOSString128
 	): Promise<void> {
 		const transaction = profiler.startTransaction('mosRoItemSwap', apmNamespace)
 
 		await checkAccessAndGetPeripheralDevice(id, token, context)
 
 		logger.warn(`mosRoItemSwap NOT SUPPORTED "${ItemID0}", "${ItemID1}"`)
-		// @ts-ignore
 		logger.debug(Action, ItemID0, ItemID1)
 
 		transaction?.end()

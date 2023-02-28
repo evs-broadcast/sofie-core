@@ -6,7 +6,6 @@ import { faTrash, faPencilAlt, faCheck, faPlus } from '@fortawesome/free-solid-s
 import { withTranslation } from 'react-i18next'
 import {
 	PeripheralDevices,
-	PeripheralDeviceId,
 	PeripheralDevice,
 	PeripheralDeviceType,
 } from '../../../../lib/collections/PeripheralDevices'
@@ -20,10 +19,11 @@ import {
 	ConfigManifestEntryType,
 	TableConfigManifestEntry,
 	TableEntryConfigManifestEntry,
-} from '../../../../lib/api/deviceConfig'
+} from '@sofie-automation/corelib/dist/deviceConfig'
 import { ConfigManifestEntryComponent } from './ConfigManifestEntryComponent'
 import { ConfigManifestOAuthFlowComponent } from './ConfigManifestOAuthFlow'
 import { protectString, unprotectString } from '../../../../lib/lib'
+import { PeripheralDeviceId } from '@sofie-automation/shared-lib/dist/core/model/Ids'
 import { MeteorCall } from '../../../../lib/api/methods'
 
 type EditId = PeripheralDeviceId | string
@@ -243,8 +243,7 @@ export const GenericDeviceSettingsComponent = withTranslation()(
 				</th>
 			)
 
-			_.each(configSummaryFields, (config, field) => {
-				// @ts-ignore underscore typings are incorrect
+			_.each(configSummaryFields, (_config, field) => {
 				const fn = _.property(field.split('.'))
 				let val = fn(obj)
 
@@ -297,7 +296,6 @@ export const GenericDeviceSettingsComponent = withTranslation()(
 		renderDevices(configManifest: TableConfigManifestEntry, obj?: any, prefix?: string) {
 			const { t } = this.props
 			const deviceTypes = Object.keys(configManifest.config)
-			// @ts-ignore underscore typings are incorrect
 			const devices = _.property((prefix + configManifest.id).split('.'))(obj)
 
 			if (deviceTypes.length === 1) {
@@ -463,6 +461,7 @@ export const GenericDeviceSettingsComponent = withTranslation()(
 		}
 
 		getConfigSummaryFields(configManifest: TableConfigManifestEntry) {
+			const { t } = this.props
 			const fieldNames: { [field: string]: TableEntryConfigManifestEntry } = {}
 
 			_.each(configManifest.config, (c) => {
@@ -476,8 +475,8 @@ export const GenericDeviceSettingsComponent = withTranslation()(
 			if (configManifest.config && Object.keys(configManifest.config).length > 1) {
 				fieldNames[configManifest.typeField || 'type'] = {
 					id: 'type',
-					name: 'Type',
-					columnName: 'Type',
+					name: t('Type'),
+					columnName: t('Type'),
 					type: ConfigManifestEntryType.STRING,
 				}
 			}
@@ -495,7 +494,6 @@ export const GenericDeviceSettingsComponent = withTranslation()(
 			const configSummaryFields = this.getConfigSummaryFields(configManifest)
 
 			_.each(configSummaryFields, (_config, field) => {
-				// @ts-ignore underscore typings are incorrect
 				const fn = _.property(field.split('.'))
 				const val = fn(obj)
 
@@ -538,7 +536,6 @@ export const GenericDeviceSettingsComponent = withTranslation()(
 		 */
 		renderConfigTable(configField: TableConfigManifestEntry, obj: object, prefix: string) {
 			const { t } = this.props
-			// @ts-ignore
 			const tableContent = _.property(prefix.substr(0, prefix.length - 1).split('.'))(obj)
 			const configTypes = Object.keys(configField.config)
 

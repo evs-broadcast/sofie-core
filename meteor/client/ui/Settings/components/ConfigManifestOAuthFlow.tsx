@@ -3,7 +3,7 @@ import { withTranslation } from 'react-i18next'
 import { PeripheralDevice } from '../../../../lib/collections/PeripheralDevices'
 import { Translated } from '../../../lib/ReactMeteorData/react-meteor-data'
 import { IngestDeviceSettings } from '@sofie-automation/corelib/dist/dataModel/PeripheralDeviceSettings/ingestDevice'
-import { NotificationCenter, Notification, NoticeLevel } from '../../../lib/notifications/notifications'
+import { NotificationCenter, Notification, NoticeLevel } from '../../../../lib/notifications/notifications'
 import { fetchFrom } from '../../../lib/lib'
 
 interface IConfigManifestOAuthFlowComponentState {}
@@ -96,7 +96,7 @@ export const ConfigManifestOAuthFlowComponent = withTranslation()(
 				})
 		}
 
-		resetAuthentication() {
+		resetAuth() {
 			const { t } = this.props
 
 			fetchFrom(`/devices/${this.props.device._id}/resetAuth`, {
@@ -139,7 +139,7 @@ export const ConfigManifestOAuthFlowComponent = withTranslation()(
 								{t('Reset App Credentials')}
 							</button>
 
-							<button className="btn btn-secondary btn-tight" onClick={() => this.resetAuthentication()}>
+							<button className="btn btn-secondary btn-tight" onClick={() => this.resetAuth()}>
 								{t('Reset User Credentials')}
 							</button>
 						</div>

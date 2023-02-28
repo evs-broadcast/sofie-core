@@ -1,8 +1,12 @@
 import { BlueprintManifestType, SomeBlueprintManifest } from '@sofie-automation/blueprints-integration'
-import { literal, protectString } from '../../../../lib/lib'
+import { getRandomId, literal, protectString } from '../../../../lib/lib'
 import { Blueprint } from '../../../../lib/collections/Blueprints'
 
-export function generateFakeBlueprint(id: string, type?: BlueprintManifestType, codeFcn?: () => SomeBlueprintManifest) {
+export function generateFakeBlueprint(
+	id: string,
+	type?: BlueprintManifestType,
+	codeFcn?: () => SomeBlueprintManifest
+): Blueprint {
 	const codeFcnString = codeFcn
 		? codeFcn.toString()
 		: `\
@@ -30,8 +34,9 @@ export function generateFakeBlueprint(id: string, type?: BlueprintManifestType, 
 		created: 0,
 		modified: 0,
 
-		blueprintId: protectString(''),
+		blueprintId: '',
 		blueprintType: type,
+		blueprintHash: getRandomId(),
 
 		studioConfigManifest: [],
 		showStyleConfigManifest: [],

@@ -9,7 +9,7 @@ import { ClientAPI } from '../../../lib/api/client'
 import { getCurrentTime, getRandomString, protectString } from '../../../lib/lib'
 import { RestAPI, RestAPIMethods } from '../../../lib/api/rest'
 import { registerClassToMeteorMethods, ReplaceOptionalWithNullInMethodArguments } from '../../methods'
-import { RundownPlaylists, RundownPlaylistId } from '../../../lib/collections/RundownPlaylists'
+import { RundownPlaylists } from '../../../lib/collections/RundownPlaylists'
 import { MeteorCall, MethodContextAPI } from '../../../lib/api/methods'
 import { ServerClientAPI } from '../client'
 import { ServerRundownAPI } from '../rundown'
@@ -22,6 +22,7 @@ import {
 	PartId,
 	PieceId,
 	RundownBaselineAdLibActionId,
+	RundownPlaylistId,
 	SegmentId,
 	StudioId,
 } from '@sofie-automation/corelib/dist/dataModel/Ids'
@@ -643,8 +644,12 @@ const makeConnection = (
 ): Meteor.Connection => {
 	return {
 		id: getRandomString(),
-		close: () => {},
-		onClose: () => {},
+		close: () => {
+			// No-op
+		},
+		onClose: () => {
+			// No-op
+		},
 		clientAddress: ctx.req.headers.host || 'unknown',
 		httpHeaders: ctx.req.headers,
 	}

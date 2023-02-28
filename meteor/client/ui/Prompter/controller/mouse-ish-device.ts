@@ -1,6 +1,6 @@
 import { ControllerAbstract, LONGPRESS_TIME } from './lib'
 import { PrompterViewInner, PrompterConfigMode } from '../PrompterView'
-import { NotificationCenter, Notification, NoticeLevel } from '../../../lib/notifications/notifications'
+import { NotificationCenter, Notification, NoticeLevel } from '../../../../lib/notifications/notifications'
 
 const LOCALSTORAGE_MODE = 'prompter-controller-mouseish'
 /**
@@ -45,7 +45,7 @@ export class MouseIshController extends ControllerAbstract {
 	private _lastWheelTime: number = 0
 
 	constructor(view: PrompterViewInner) {
-		super(view)
+		super()
 
 		this._prompterView = view
 

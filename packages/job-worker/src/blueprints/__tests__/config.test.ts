@@ -7,6 +7,7 @@ import {
 	preprocessStudioConfig,
 	retrieveBlueprintConfigRefs,
 } from '../config'
+import { wrapDefaultObject } from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
 
 describe('Test blueprint config', () => {
 	test('compileStudioConfig', () => {
@@ -14,11 +15,10 @@ describe('Test blueprint config', () => {
 		jobContext.setStudio({
 			...jobContext.studio,
 			settings: {
-				sofieUrl: 'host url',
 				mediaPreviewsUrl: '',
 				frameRate: 25,
 			},
-			blueprintConfig: { sdfsdf: 'one', another: 5 },
+			blueprintConfigWithOverrides: wrapDefaultObject({ sdfsdf: 'one', another: 5 }),
 		})
 		jobContext.updateStudioBlueprint({
 			studioConfigManifest: undefined,
@@ -26,9 +26,41 @@ describe('Test blueprint config', () => {
 
 		const res = preprocessStudioConfig(jobContext.studio, jobContext.studioBlueprint.blueprint)
 		expect(res).toEqual({
-			SofieHostURL: 'host url',
+			// SofieHostURL: 'host url',
 			sdfsdf: 'one',
 			another: 5,
+		})
+	})
+
+	test('compileStudioConfig with function', () => {
+		const jobContext = setupDefaultJobEnvironment()
+		jobContext.setStudio({
+			...jobContext.studio,
+			settings: {
+				mediaPreviewsUrl: '',
+				frameRate: 25,
+			},
+			blueprintConfigWithOverrides: wrapDefaultObject({ sdfsdf: 'one', another: 5 }),
+		})
+		jobContext.updateStudioBlueprint({
+			studioConfigManifest: undefined,
+			preprocessConfig: (_context, config, coreConfig) => {
+				return {
+					studio: config,
+					core: coreConfig,
+				}
+			},
+		})
+
+		const res = preprocessStudioConfig(jobContext.studio, jobContext.studioBlueprint.blueprint)
+		expect(res).toEqual({
+			core: {
+				hostUrl: 'https://sofie-in-jest:3000',
+			},
+			studio: {
+				sdfsdf: 'one',
+				another: 5,
+			},
 		})
 	})
 
@@ -76,10 +108,10 @@ describe('Test blueprint config', () => {
 
 			await expect(
 				retrieveBlueprintConfigRefs(jobContext, '${studio.one.two}_extra', modifier, true)
-			).rejects.toThrowError(`Ref "\${studio.one.two}": Studio "one" not valid`)
+			).rejects.toThrow(`Ref "\${studio.one.two}": Studio "one" not valid`)
 			await expect(
 				retrieveBlueprintConfigRefs(jobContext, '${showStyle.one.two}_extra', modifier, true)
-			).rejects.toThrowError(`Ref "\${showStyle.one.two}": Showstyle variant "one" not found`)
+			).rejects.toThrow(`Ref "\${showStyle.one.two}": Showstyle variant "one" not found`)
 
 			expect(modifier).toHaveBeenCalledTimes(0)
 		})
@@ -104,7 +136,12 @@ describe('Test blueprint config', () => {
 			const studioId = jobContext.studioId
 			jobContext.setStudio({
 				...jobContext.studio,
-				blueprintConfig: { two: 'abc', number: 99, bool: true, obj: [{ _id: '0', a: 1 }] },
+				blueprintConfigWithOverrides: wrapDefaultObject({
+					two: 'abc',
+					number: 99,
+					bool: true,
+					obj: [{ _id: '0', a: 1 }],
+				}),
 			})
 			jobContext.updateStudioBlueprint({
 				// Bypass running through configManifest
@@ -132,12 +169,16 @@ describe('Test blueprint config', () => {
 
 			await jobContext.directCollections.ShowStyleBases.update(showStyle._id, {
 				$set: {
-					blueprintConfig: { number: 56, bool: true },
+					blueprintConfigWithOverrides: wrapDefaultObject({ number: 56, bool: true }),
 				},
 			})
 			await jobContext.directCollections.ShowStyleVariants.update(showStyle.showStyleVariantId, {
 				$set: {
-					blueprintConfig: { two: 'abc', number: 88, obj: [{ _id: '0', a: 1 }] },
+					blueprintConfigWithOverrides: wrapDefaultObject({
+						two: 'abc',
+						number: 88,
+						obj: [{ _id: '0', a: 1 }],
+					}),
 				},
 			})
 			jobContext.setStudio({

@@ -1,6 +1,6 @@
 {
 	"name": "playout-gateway",
-	"version": "1.45.25",
+	"version": "1.48.0",
 	"private": true,
 	"description": "Connect to Core, play stuff",
 	"license": "MIT",
@@ -40,7 +40,7 @@
 		"evs-rename:dependency": "node rename-deps.mjs"
 	},
 	"engines": {
-		"node": "^14.18 || ^16.14 || ^18.5"
+		"node": "^14.19 || ^16.14 || ^18.12"
 	},
 	"keywords": [
 		"broadcast",
@@ -60,12 +60,11 @@
 		"@sofie-automation/server-core-integration": "link:../server-core-integration",
 		"@sofie-automation/shared-lib": "link:../shared-lib",
 		"debug": "^4.3.2",
-		"fast-clone": "^1.5.13",
 		"influx": "^5.9.2",
-		"timeline-state-resolver": "npm:@evs/timeline-state-resolver@7.4.19",
+		"timeline-state-resolver": "npm:@evs/timeline-state-resolver@8.0.0",
 		"tslib": "^2.4.0",
 		"underscore": "^1.13.4",
-		"winston": "^3.8.1"
+		"winston": "^3.8.2"
 	},
 	"lint-staged": {
 		"*.{css,json,md,scss}": [

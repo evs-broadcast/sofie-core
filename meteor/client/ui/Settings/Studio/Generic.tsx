@@ -7,10 +7,10 @@ import { withTranslation } from 'react-i18next'
 import { protectString, unprotectString } from '../../../../lib/lib'
 import { EditAttribute } from '../../../lib/EditAttribute'
 import { SettingsNavigation } from '../../../lib/SettingsNavigation'
-import { BlueprintId, Blueprints } from '../../../../lib/collections/Blueprints'
+import { Blueprints } from '../../../../lib/collections/Blueprints'
 import { BlueprintManifestType } from '@sofie-automation/blueprints-integration'
 import { StudioBaselineStatus } from './Baseline'
-import { ShowStyleBaseId } from '@sofie-automation/corelib/dist/dataModel/Ids'
+import { BlueprintId, ShowStyleBaseId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import { ShowStyleBase } from '../../../../lib/collections/ShowStyleBases'
 
 interface IStudioGenericPropertiesProps {
@@ -51,6 +51,28 @@ export const StudioGenericProperties = withTranslation()(
 						}
 					})
 			)
+
+			return options
+		}
+
+		getBlueprintConfigPresetOptions() {
+			const options: { name: string; value: string | null }[] = []
+
+			if (this.props.studio.blueprintId) {
+				const blueprint = Blueprints.findOne({
+					blueprintType: BlueprintManifestType.STUDIO,
+					_id: this.props.studio.blueprintId,
+				})
+
+				if (blueprint && blueprint.studioConfigPresets) {
+					for (const [id, preset] of Object.entries(blueprint.studioConfigPresets)) {
+						options.push({
+							value: id,
+							name: preset.name,
+						})
+					}
+				}
+			}
 
 			return options
 		}
@@ -124,6 +146,33 @@ export const StudioGenericProperties = withTranslation()(
 							<span className="mdfx"></span>
 						</div>
 					</label>
+					<label className="field">
+						{t('Blueprint config preset')}
+						{!this.props.studio.blueprintConfigPresetId && (
+							<div className="error-notice inline">
+								{t('Blueprint config preset not set')} <FontAwesomeIcon icon={faExclamationTriangle} />
+							</div>
+						)}
+						{this.props.studio.blueprintConfigPresetIdUnlinked && this.props.studio.blueprintConfigPresetId && (
+							<div className="error-notice inline">
+								{t('Blueprint config preset is missing')} <FontAwesomeIcon icon={faExclamationTriangle} />
+							</div>
+						)}
+						<div className="mdi">
+							<EditAttribute
+								modifiedClassName="bghl"
+								attribute="blueprintConfigPresetId"
+								obj={this.props.studio}
+								type="dropdown"
+								options={this.getBlueprintConfigPresetOptions()}
+								mutateDisplayValue={(v) => v || ''}
+								mutateUpdateValue={(v) => (v === '' ? undefined : v)}
+								collection={Studios}
+								className="mdinput"
+							/>
+							<span className="mdfx"></span>
+						</div>
+					</label>
 					<div className="field">
 						{t('Select Compatible Show Styles')}
 						{!this.props.studio.supportedShowStyleBase.length ? (
@@ -185,20 +234,6 @@ export const StudioGenericProperties = withTranslation()(
 						</div>
 					</label>
 					<label className="field">
-						{t('Sofie Host URL')}
-						<div className="mdi">
-							<EditAttribute
-								modifiedClassName="bghl"
-								attribute="settings.sofieUrl"
-								obj={this.props.studio}
-								type="text"
-								collection={Studios}
-								className="mdinput"
-							/>
-							<span className="mdfx"></span>
-						</div>
-					</label>
-					<label className="field">
 						{t('Slack Webhook URLs')}
 						<div className="mdi">
 							<EditAttribute
@@ -244,7 +279,7 @@ export const StudioGenericProperties = withTranslation()(
 						<label className="field">
 							<EditAttribute
 								modifiedClassName="bghl"
-								attribute="settings.forceSettingNowTime"
+								attribute="settings.forceMultiGatewayMode"
 								obj={this.props.studio}
 								type="checkbox"
 								collection={Studios}
@@ -257,7 +292,7 @@ export const StudioGenericProperties = withTranslation()(
 						<label className="field">
 							<EditAttribute
 								modifiedClassName="bghl"
-								attribute="settings.nowSafeLatency"
+								attribute="settings.multiGatewayNowSafeLatency"
 								obj={this.props.studio}
 								type="int"
 								collection={Studios}

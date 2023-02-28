@@ -84,6 +84,7 @@ const $ = {
 }
 
 let mockIsClient = false
+const publications: Record<string, Function> = {}
 export class MeteorMock {
 	static get isClient(): boolean {
 		return mockIsClient
@@ -175,7 +176,7 @@ export namespace MeteorMock {
 		if (lastArg && typeof lastArg === 'function') {
 			const callback = args.pop()
 
-			this.defer(() => {
+			defer(() => {
 				try {
 					Promise.resolve(fcn.call(getMethodContext(), ...args))
 						.then((result) => {
@@ -254,6 +255,10 @@ export namespace MeteorMock {
 		}
 	}
 
+	export function publish(publicationName: string, handler: Function): any {
+		publications[publicationName] = handler
+	}
+
 	export function bindEnvironment(fcn: Function): any {
 		{
 			// the outer bindEnvironment must be called from a fiber
@@ -294,6 +299,9 @@ export namespace MeteorMock {
 	}
 	export function mockSetServerEnvironment() {
 		mockIsClient = false
+	}
+	export function mockGetPublications() {
+		return publications
 	}
 
 	// locally defined function here, so there are no import to the rest of the code

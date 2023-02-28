@@ -1,27 +1,20 @@
 import * as _ from 'underscore'
-import {
-	mongoWhere,
-	literal,
-	ProtectedString,
-	unprotectString,
-	protectString,
-	mongoModify,
-	mongoFindOptions,
-	sleep,
-} from '../lib/lib'
+import { literal, ProtectedString, unprotectString, protectString, sleep, getRandomString } from '../lib/lib'
 import { RandomMock } from './random'
-import { FindOptions, FindOneOptions } from '../lib/typings/meteor'
 import { MeteorMock } from './meteor'
 import { Random } from 'meteor/random'
 import { Meteor } from 'meteor/meteor'
 import type { AnyBulkWriteOperation } from 'mongodb'
 import {
 	AsyncMongoCollection,
+	FindOneOptions,
+	FindOptions,
 	ObserveCallbacks,
 	ObserveChangesCallbacks,
 	UpdateOptions,
 	UpsertOptions,
 } from '../lib/collections/lib'
+import { mongoWhere, mongoFindOptions, mongoModify } from '@sofie-automation/corelib/dist/mongo'
 const clone = require('fast-clone')
 
 export namespace MongoMock {
@@ -47,15 +40,15 @@ export namespace MongoMock {
 	export class Collection<T extends CollectionObject> implements MongoCollection {
 		public _name: string
 		private _options: any = {}
-		// @ts-ignore used in test to check that it's a mock
-		private _isMock: true = true
-		private observers: ObserverEntry<T>[] = []
+		// @ts-expect-error used in test to check that it's a mock
+		private _isMock = true as const
+		public observers: ObserverEntry<T>[] = []
 
 		public asyncBulkWriteDelay = 100
 
-		constructor(name: string, options?: any) {
+		constructor(name: string | null, options?: any) {
 			this._options = options || {}
-			this._name = name
+			this._name = name || getRandomString() // If `null`, then its an in memory unique collection
 
 			if (this._options.transform) throw new Error('document transform is no longer supported')
 		}
@@ -64,7 +57,10 @@ export namespace MongoMock {
 			if (_.isString(query)) query = { _id: query }
 			query = query || {}
 
-			const unimplementedUsedOptions = _.without(_.keys(options), 'sort', 'limit', 'fields')
+			const unimplementedUsedOptions = _.without(_.keys(options), 'sort', 'limit', 'fields', 'projection')
+			if (options && 'fields' in options && 'projection' in options) {
+				throw new Error(`Only one of 'fields' and 'projection' can be specified`)
+			}
 			if (unimplementedUsedOptions.length > 0) {
 				throw new Error(`find being performed using unimplemented options: ${unimplementedUsedOptions}`)
 			}
@@ -249,9 +245,6 @@ export namespace MongoMock {
 		}
 		rawCollection() {
 			return {
-				// indexes: () => {}
-				// stats: () => {}
-				// drop: () => {}
 				bulkWrite: async (updates: AnyBulkWriteOperation<any>[], _options) => {
 					await sleep(this.asyncBulkWriteDelay)
 
@@ -285,9 +278,6 @@ export namespace MongoMock {
 				collectionName: this._name,
 			}
 		}
-		// observe () {
-		// 	// todo
-		// }
 		private get documents(): MockCollection<T> {
 			if (!mockCollections[this._name]) mockCollections[this._name] = {}
 			return mockCollections[this._name]

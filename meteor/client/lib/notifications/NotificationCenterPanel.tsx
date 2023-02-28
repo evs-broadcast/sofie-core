@@ -4,15 +4,19 @@ import ClassNames from 'classnames'
 import * as VelocityReact from 'velocity-react'
 import { translateWithTracker, Translated, withTracker } from '../ReactMeteorData/ReactMeteorData'
 import { MeteorReactComponent } from '../MeteorReactComponent'
-import { NotificationCenter, Notification, NoticeLevel, NotificationAction } from './notifications'
+import {
+	NotificationCenter,
+	Notification,
+	NoticeLevel,
+	NotificationAction,
+} from '../../../lib/notifications/notifications'
 import { ContextMenuTrigger, ContextMenu, MenuItem } from '@jstarpl/react-contextmenu'
 import * as _ from 'underscore'
-import { RundownId } from '../../../lib/collections/Rundowns'
-import { SegmentId } from '../../../lib/collections/Segments'
 import { translateMessage, isTranslatableMessage } from '@sofie-automation/corelib/dist/TranslatableMessage'
 import { CriticalIcon, WarningIcon, CollapseChevrons, InformationIcon } from '../ui/icons/notifications'
 import update from 'immutability-helper'
 import { i18nTranslator } from '../../ui/i18n'
+import { RundownId, SegmentId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 
 interface IPopUpProps {
 	id?: string

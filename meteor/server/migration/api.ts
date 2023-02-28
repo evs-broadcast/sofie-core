@@ -1,61 +1,93 @@
 import { check, Match } from '../../lib/check'
 import { registerClassToMeteorMethods } from '../methods'
-import { MigrationChunk, NewMigrationAPI, RunMigrationResult, MigrationAPIMethods } from '../../lib/api/migration'
+import { MigrationChunk, NewMigrationAPI, MigrationAPIMethods, GetUpgradeStatusResult } from '../../lib/api/migration'
 import * as Migrations from './databaseMigration'
 import { MigrationStepInputResult } from '@sofie-automation/blueprints-integration'
-import { makePromise, waitForPromise } from '../../lib/lib'
-import { MethodContextAPI, MethodContext } from '../../lib/api/methods'
+import { MethodContextAPI } from '../../lib/api/methods'
 import { SystemWriteAccess } from '../security/system'
-
-function getMigrationStatus(context: MethodContext) {
-	waitForPromise(SystemWriteAccess.migrations(context))
-	return Migrations.getMigrationStatus()
-}
-function runMigration(
-	context: MethodContext,
-	chunks: Array<MigrationChunk>,
-	hash: string,
-	inputResults: Array<MigrationStepInputResult>,
-	isFirstOfPartialMigrations?: boolean | null
-): RunMigrationResult {
-	check(chunks, Array)
-	check(hash, String)
-	check(inputResults, Array)
-	check(isFirstOfPartialMigrations, Match.Maybe(Boolean))
-
-	waitForPromise(SystemWriteAccess.migrations(context))
-
-	return Migrations.runMigration(chunks, hash, inputResults, isFirstOfPartialMigrations || false)
-}
-function forceMigration(context: MethodContext, chunks: Array<MigrationChunk>) {
-	check(chunks, Array)
-	waitForPromise(SystemWriteAccess.migrations(context))
-
-	return Migrations.forceMigration(chunks)
-}
-function resetDatabaseVersions(context: MethodContext) {
-	waitForPromise(SystemWriteAccess.migrations(context))
-
-	return Migrations.resetDatabaseVersions()
-}
+import {
+	getUpgradeStatus,
+	runUpgradeForShowStyleBase,
+	runUpgradeForStudio,
+	validateConfigForShowStyleBase,
+	validateConfigForStudio,
+} from './upgrades'
+import { ShowStyleBaseId, StudioId } from '@sofie-automation/corelib/dist/dataModel/Ids'
+import { BlueprintValidateConfigForStudioResult } from '@sofie-automation/corelib/dist/worker/studio'
 
 class ServerMigrationAPI extends MethodContextAPI implements NewMigrationAPI {
 	async getMigrationStatus() {
-		return makePromise(() => getMigrationStatus(this))
+		await SystemWriteAccess.migrations(this)
+		return Migrations.getMigrationStatus()
 	}
+
 	async runMigration(
 		chunks: Array<MigrationChunk>,
 		hash: string,
 		inputResults: Array<MigrationStepInputResult>,
 		isFirstOfPartialMigrations?: boolean | null
 	) {
-		return makePromise(() => runMigration(this, chunks, hash, inputResults, isFirstOfPartialMigrations))
+		check(chunks, Array)
+		check(hash, String)
+		check(inputResults, Array)
+		check(isFirstOfPartialMigrations, Match.Maybe(Boolean))
+
+		await SystemWriteAccess.migrations(this)
+
+		return Migrations.runMigration(chunks, hash, inputResults, isFirstOfPartialMigrations || false)
 	}
+
 	async forceMigration(chunks: Array<MigrationChunk>) {
-		return makePromise(() => forceMigration(this, chunks))
+		check(chunks, Array)
+		await SystemWriteAccess.migrations(this)
+
+		return Migrations.forceMigration(chunks)
 	}
+
 	async resetDatabaseVersions() {
-		return makePromise(() => resetDatabaseVersions(this))
+		await SystemWriteAccess.migrations(this)
+
+		return Migrations.resetDatabaseVersions()
+	}
+
+	async getUpgradeStatus(): Promise<GetUpgradeStatusResult> {
+		await SystemWriteAccess.migrations(this)
+
+		return getUpgradeStatus()
+	}
+
+	async validateConfigForStudio(studioId: StudioId): Promise<BlueprintValidateConfigForStudioResult> {
+		check(studioId, String)
+
+		await SystemWriteAccess.migrations(this)
+
+		return validateConfigForStudio(studioId)
+	}
+
+	async runUpgradeForStudio(studioId: StudioId): Promise<void> {
+		check(studioId, String)
+
+		await SystemWriteAccess.migrations(this)
+
+		return runUpgradeForStudio(studioId)
+	}
+
+	async validateConfigForShowStyleBase(
+		showStyleBaseId: ShowStyleBaseId
+	): Promise<BlueprintValidateConfigForStudioResult> {
+		check(showStyleBaseId, String)
+
+		await SystemWriteAccess.migrations(this)
+
+		return validateConfigForShowStyleBase(showStyleBaseId)
+	}
+
+	async runUpgradeForShowStyleBase(showStyleBaseId: ShowStyleBaseId): Promise<void> {
+		check(showStyleBaseId, String)
+
+		await SystemWriteAccess.migrations(this)
+
+		return runUpgradeForShowStyleBase(showStyleBaseId)
 	}
 }
 registerClassToMeteorMethods(MigrationAPIMethods, ServerMigrationAPI, false)

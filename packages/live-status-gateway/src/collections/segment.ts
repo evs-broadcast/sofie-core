@@ -4,8 +4,8 @@ import { CollectionBase, Collection, CollectionObserver } from '../wsHandler'
 import { CoreConnection } from '@sofie-automation/server-core-integration'
 import { DBSegment } from '@sofie-automation/corelib/dist/dataModel/Segment'
 import { DBPartInstance } from '@sofie-automation/corelib/dist/dataModel/PartInstance'
-import { unprotectString } from '@sofie-automation/shared-lib/dist/lib/protectedString'
 import { PartInstanceName } from './partInstances'
+import { RundownId, SegmentId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 
 export class SegmentHandler
 	extends CollectionBase<DBSegment>
@@ -13,8 +13,8 @@ export class SegmentHandler
 {
 	_observerName: string
 	_core: CoreConnection
-	_curRundownId: string | undefined
-	_curSegmentId: string | undefined
+	_curRundownId: RundownId | undefined
+	_curSegmentId: SegmentId | undefined
 
 	constructor(logger: Logger, coreHandler: CoreHandler) {
 		super('SegmentHandler', 'segments', logger, coreHandler)
@@ -25,9 +25,13 @@ export class SegmentHandler
 	async changed(id: string, changeType: string): Promise<void> {
 		this._logger.info(`${this._name} ${changeType} ${id}`)
 		if (!this._collection) return
-		const col = this._core.getCollection(this._collection)
+		const col = this._core.getCollection<DBSegment>(this._collection)
 		if (!col) throw new Error(`collection '${this._collection}' not found!`)
-		this._collectionData = col.findOne(this._curSegmentId) as unknown as DBSegment
+		if (this._curSegmentId) {
+			this._collectionData = col.findOne(this._curSegmentId)
+		} else {
+			this._collectionData = undefined
+		}
 		await this.notify(this._collectionData)
 	}
 
@@ -35,8 +39,8 @@ export class SegmentHandler
 		this._logger.info(`${this._name} received partInstances update from ${source}`)
 		const prevRundownId = this._curRundownId
 		const prevSegmentId = this._curSegmentId
-		this._curRundownId = data ? unprotectString(data.get(PartInstanceName.cur)?.rundownId) : undefined
-		this._curSegmentId = data ? unprotectString(data.get(PartInstanceName.cur)?.segmentId) : undefined
+		this._curRundownId = data ? data.get(PartInstanceName.cur)?.rundownId : undefined
+		this._curSegmentId = data ? data.get(PartInstanceName.cur)?.segmentId : undefined
 
 		if (!this._collection) return
 		if (prevRundownId !== this._curRundownId) {
@@ -53,9 +57,13 @@ export class SegmentHandler
 		}
 
 		if (prevSegmentId !== this._curSegmentId) {
-			const col = this._core.getCollection(this._collection)
+			const col = this._core.getCollection<DBSegment>(this._collection)
 			if (!col) throw new Error(`collection '${this._collection}' not found!`)
-			this._collectionData = col.findOne(this._curSegmentId) as unknown as DBSegment
+			if (this._curSegmentId) {
+				this._collectionData = col.findOne(this._curSegmentId)
+			} else {
+				this._collectionData = undefined
+			}
 			await this.notify(this._collectionData)
 		}
 	}

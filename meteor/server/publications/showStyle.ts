@@ -5,7 +5,7 @@ import { ShowStyleVariants, ShowStyleVariant } from '../../lib/collections/ShowS
 import { RundownLayouts, RundownLayoutBase } from '../../lib/collections/RundownLayouts'
 import { ShowStyleReadAccess } from '../security/showStyle'
 import { OrganizationReadAccess } from '../security/organization'
-import { FindOptions } from '../../lib/typings/meteor'
+import { FindOptions } from '../../lib/collections/lib'
 import { NoSecurityReadAccess } from '../security/noSecurity'
 import { TriggeredActions } from '../../lib/collections/TriggeredActions'
 
@@ -25,6 +25,7 @@ meteorPublish(PubSub.showStyleBases, async function (selector0, token) {
 	}
 	return null
 })
+
 meteorPublish(PubSub.showStyleVariants, async function (selector0, token) {
 	const { cred, selector } = await AutoFillSelector.showStyleBaseId(this.userId, selector0, token)
 

@@ -2,14 +2,15 @@ import * as React from 'react'
 
 import { DashboardLayoutActionButton, ActionButtonType } from '../../../lib/collections/RundownLayouts'
 import { DashboardActionButton } from './DashboardActionButton'
-import { doUserAction, UserAction } from '../../lib/userAction'
+import { doUserAction, UserAction } from '../../../lib/clientUserAction'
 import { withTranslation } from 'react-i18next'
 import { Translated } from '../../lib/ReactMeteorData/react-meteor-data'
-import { RundownPlaylist, RundownPlaylistId } from '../../../lib/collections/RundownPlaylists'
+import { RundownPlaylist } from '../../../lib/collections/RundownPlaylists'
 import { MeteorCall } from '../../../lib/api/methods'
-import { RundownHoldState } from '../../../lib/collections/Rundowns'
 import { doModalDialog } from '../../lib/ModalDialog'
-import { NoticeLevel, Notification, NotificationCenter } from '../../lib/notifications/notifications'
+import { NoticeLevel, Notification, NotificationCenter } from '../../../lib/notifications/notifications'
+import { RundownPlaylistId } from '@sofie-automation/corelib/dist/dataModel/Ids'
+import { RundownHoldState } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
 
 export interface IDashboardButtonGroupProps {
 	buttons: DashboardLayoutActionButton[]

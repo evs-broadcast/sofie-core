@@ -4,7 +4,6 @@ import { NewBlueprintAPI, BlueprintAPIMethods } from './blueprint'
 import { NewClientAPI, ClientAPIMethods } from './client'
 import { NewExternalMessageQueueAPI, ExternalMessageQueueAPIMethods } from './ExternalMessageQueue'
 import { NewMigrationAPI, MigrationAPIMethods } from './migration'
-import { NewPeripheralDeviceAPI, PeripheralDeviceAPIMethods } from './peripheralDevice'
 import { NewPlayoutAPI, PlayoutAPIMethods } from './playout'
 import { NewRundownAPI, RundownAPIMethods } from './rundown'
 import { NewRundownLayoutsAPI, RundownLayoutsAPIMethods } from './rundownLayouts'
@@ -16,11 +15,14 @@ import { StudiosAPIMethods, NewStudiosAPI } from './studios'
 import { NewOrganizationAPI, OrganizationAPIMethods } from './organization'
 import { NewUserAPI, UserAPIMethods } from './user'
 import { SystemAPIMethods, SystemAPI } from './system'
-import { UserId } from '../typings/meteor'
-import { RundownNotificationsAPI, RundownNotificationsAPIMethods } from './rundownNotifications'
 import { Meteor } from 'meteor/meteor'
 import { NewTriggeredActionsAPI, TriggeredActionsAPIMethods } from './triggeredActions'
 import { RestAPI, RestAPIMethods } from './rest'
+import { UserId } from '@sofie-automation/corelib/dist/dataModel/Ids'
+import {
+	NewPeripheralDeviceAPI,
+	PeripheralDeviceAPIMethods,
+} from '@sofie-automation/shared-lib/dist/peripheralDevice/methodsAPI'
 
 /** All methods typings are defined here, the actual implementation is defined in other places */
 export type MethodsBase = {
@@ -44,7 +46,6 @@ interface IMeteorCall {
 	user: NewUserAPI
 	userAction: NewUserActionAPI
 	organization: NewOrganizationAPI
-	rundownNotifications: RundownNotificationsAPI
 	system: SystemAPI
 }
 export const MeteorCall: IMeteorCall = {
@@ -65,7 +66,6 @@ export const MeteorCall: IMeteorCall = {
 	user: makeMethods(UserAPIMethods),
 	userAction: makeMethods(UserActionAPIMethods),
 	organization: makeMethods(OrganizationAPIMethods),
-	rundownNotifications: makeMethods(RundownNotificationsAPIMethods),
 	system: makeMethods(SystemAPIMethods),
 }
 function makeMethods(methods: object): any {
@@ -96,10 +96,4 @@ export abstract class MethodContextAPI implements MethodContext {
 		)
 	}
 	public connection: Meteor.Connection | null
-}
-/** Convenience-method to call a userAction method old-Meteor.call-style */
-export function CallUserActionAPIMethod(method: UserActionAPIMethods, ...args: any[]) {
-	const m: string = method
-	const fcn = MeteorCall[m.replace(/^userAction\./, '')]
-	return fcn(...args)
 }

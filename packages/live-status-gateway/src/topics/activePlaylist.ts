@@ -14,6 +14,7 @@ import {
 import { literal } from '@sofie-automation/shared-lib/dist/lib/lib'
 import { WsTopicBase, WsTopic, CollectionObserver } from '../wsHandler'
 import { PartInstanceName } from '../collections/partInstances'
+import { applyAndValidateOverrides } from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
 
 interface PartStatus {
 	id: string
@@ -170,7 +171,7 @@ export class ActivePlaylistTopic
 			| undefined
 	): Promise<void> {
 		const rundownPlaylist = data ? (data as DBRundownPlaylist) : undefined
-		const sourceLayers = data ? (data as DBShowStyleBase).sourceLayers : []
+		const sourceLayers = data ? applyAndValidateOverrides((data as DBShowStyleBase).sourceLayersWithOverrides) : []
 		const partInstances = data as Map<PartInstanceName, DBPartInstance | undefined>
 		const adLibActions = data ? (data as AdLibAction[]) : []
 		const globalAdLibActions = data ? (data as RundownBaselineAdLibAction[]) : []
@@ -183,10 +184,15 @@ export class ActivePlaylistTopic
 				break
 			case 'ShowStyleBaseHandler':
 				this._logger.info(
-					`${this._name} received showStyleBase update with sourceLayers [${sourceLayers.map((s) => s.name)}]`
+					`${this._name} received showStyleBase update with sourceLayers [${Object.values(sourceLayers).map(
+						(s) => s.name
+					)}]`
 				)
 				this._sourceLayersMap.clear()
-				sourceLayers.forEach((s) => this._sourceLayersMap.set(s._id, s.name))
+				for (const [layerId, sourceLayer] of Object.entries(sourceLayers)) {
+					if (sourceLayer === undefined || sourceLayer === null) continue
+					this._sourceLayersMap.set(layerId, sourceLayer.name)
+				}
 				break
 			case 'PartInstancesHandler':
 				this._logger.info(`${this._name} received partInstances update from ${source}`)

@@ -4,20 +4,21 @@ import { Translated, translateWithTracker } from '../../lib/ReactMeteorData/reac
 import { Spinner } from '../../lib/Spinner'
 import { doModalDialog } from '../../lib/ModalDialog'
 import { MeteorReactComponent } from '../../lib/MeteorReactComponent'
-import { Blueprint, Blueprints, BlueprintId } from '../../../lib/collections/Blueprints'
+import { Blueprint, Blueprints } from '../../../lib/collections/Blueprints'
 import Moment from 'react-moment'
 import { Link } from 'react-router-dom'
 import { Studio, Studios } from '../../../lib/collections/Studios'
 import { ShowStyleBases, ShowStyleBase } from '../../../lib/collections/ShowStyleBases'
 import { ICoreSystem, CoreSystem } from '../../../lib/collections/CoreSystem'
 import { BlueprintManifestType } from '@sofie-automation/blueprints-integration'
-import { NotificationCenter, Notification, NoticeLevel } from '../../lib/notifications/notifications'
+import { NotificationCenter, Notification, NoticeLevel } from '../../../lib/notifications/notifications'
 import { fetchFrom } from '../../lib/lib'
 import { UploadButton } from '../../lib/uploadButton'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faUpload, faExclamationTriangle } from '@fortawesome/free-solid-svg-icons'
 import { unprotectString } from '../../../lib/lib'
 import { MeteorCall } from '../../../lib/api/methods'
+import { BlueprintId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 
 interface IProps {
 	match: {

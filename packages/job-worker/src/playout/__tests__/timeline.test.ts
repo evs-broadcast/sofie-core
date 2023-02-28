@@ -12,18 +12,14 @@ import {
 import { MockJobContext, setupDefaultJobEnvironment } from '../../__mocks__/context'
 import { DBRundown, Rundown } from '@sofie-automation/corelib/dist/dataModel/Rundown'
 import { DBRundownPlaylist } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
-import {
-	activateHold,
-	activateRundownPlaylist,
-	deactivateRundownPlaylist,
-	handleTimelineTriggerTime,
-	takeNextPart,
-} from '../playout'
+import { handleTakeNextPart } from '../take'
+import { handleActivateHold } from '../holdJobs'
+import { handleActivateRundownPlaylist, handleDeactivateRundownPlaylist } from '../activePlaylistJobs'
 import { fixSnapshot } from '../../__mocks__/helpers/snapshot'
 import { runJobWithPlayoutCache } from '../lock'
 import { updateTimeline } from '../timeline/generate'
 import { getSelectedPartInstances, getSortedPartsForRundown } from './lib'
-import { PieceLifespan, IBlueprintPieceType } from '@sofie-automation/blueprints-integration'
+import { PieceLifespan, IBlueprintPieceType, Time } from '@sofie-automation/blueprints-integration'
 import { AdLibPiece } from '@sofie-automation/corelib/dist/dataModel/AdLibPiece'
 import { RundownPlaylistId, RundownId, PartId, PartInstanceId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import {
@@ -34,7 +30,6 @@ import {
 import { normalizeArrayToMap, literal, getRandomId } from '@sofie-automation/corelib/dist/lib'
 import { getPartGroupId, getPieceControlObjectId, getPieceGroupId } from '@sofie-automation/corelib/dist/playout/ids'
 import { unprotectString, protectString } from '@sofie-automation/corelib/dist/protectedString'
-import { Time } from 'superfly-timeline'
 import { DBPartInstance } from '@sofie-automation/corelib/dist/dataModel/PartInstance'
 import { DBPart } from '@sofie-automation/corelib/dist/dataModel/Part'
 import {
@@ -55,12 +50,13 @@ import {
 	setupRundownBase,
 } from './helpers/rundowns'
 import { defaultRundownPlaylist } from '../../__mocks__/defaultCollectionObjects'
-import { ShowStyleCompound } from '@sofie-automation/corelib/dist/dataModel/ShowStyleCompound'
 import { ReadonlyDeep } from 'type-fest'
-import { innerStartOrQueueAdLibPiece } from '../adlib'
+import { innerStartOrQueueAdLibPiece } from '../adlibUtils'
 import { EmptyPieceTimelineObjectsBlob, PieceStatusCode } from '@sofie-automation/corelib/dist/dataModel/Piece'
 import { adjustFakeTime, useFakeCurrentTime, useRealCurrentTime } from '../../__mocks__/time'
 import { restartRandomId } from '../../__mocks__/nanoid'
+import { ProcessedShowStyleCompound } from '../../jobs'
+import { handleTimelineTriggerTime } from '../timings'
 
 interface PartTimelineTimings {
 	previousPart: TimelineEnableExt | null
@@ -248,7 +244,7 @@ async function doTakePart(
 		const playlist = (await context.directCollections.RundownPlaylists.findOne(playlistId)) as DBRundownPlaylist
 		expect(playlist).toBeTruthy()
 
-		await takeNextPart(context, {
+		await handleTakeNextPart(context, {
 			playlistId: playlistId,
 			fromPartInstanceId: playlist.currentPartInstanceId,
 		})
@@ -290,7 +286,7 @@ async function doTakePart(
 async function doActivatePlaylist(context: MockJobContext, playlistId: RundownPlaylistId, nextPartId: PartId) {
 	adjustFakeTime(1000)
 
-	await activateRundownPlaylist(context, {
+	await handleActivateRundownPlaylist(context, {
 		playlistId: playlistId,
 		rehearsal: false,
 	})
@@ -314,7 +310,7 @@ async function doActivatePlaylist(context: MockJobContext, playlistId: RundownPl
 async function doDeactivatePlaylist(context: MockJobContext, playlistId: RundownPlaylistId) {
 	adjustFakeTime(1000)
 
-	await deactivateRundownPlaylist(context, {
+	await handleDeactivateRundownPlaylist(context, {
 		playlistId: playlistId,
 	})
 
@@ -353,7 +349,7 @@ interface SelectedPartInstances {
 
 describe('Timeline', () => {
 	let context: MockJobContext
-	let showStyle: ReadonlyDeep<ShowStyleCompound>
+	let showStyle: ReadonlyDeep<ProcessedShowStyleCompound>
 	beforeEach(async () => {
 		restartRandomId()
 
@@ -404,7 +400,7 @@ describe('Timeline', () => {
 
 		{
 			// Prepare and activate in rehersal:
-			await activateRundownPlaylist(context, { playlistId: playlistId0, rehearsal: false })
+			await handleActivateRundownPlaylist(context, { playlistId: playlistId0, rehearsal: false })
 			const { currentPartInstance, nextPartInstance } = await getSelectedPartInstances(
 				context,
 				await getPlaylist0()
@@ -422,7 +418,7 @@ describe('Timeline', () => {
 
 		{
 			// Take the first Part:
-			await takeNextPart(context, { playlistId: playlistId0, fromPartInstanceId: null })
+			await handleTakeNextPart(context, { playlistId: playlistId0, fromPartInstanceId: null })
 			const { currentPartInstance, nextPartInstance } = await getSelectedPartInstances(
 				context,
 				await getPlaylist0()
@@ -443,16 +439,9 @@ describe('Timeline', () => {
 
 		expect(fixSnapshot(await context.directCollections.Timelines.findFetch())).toMatchSnapshot()
 
-		await runJobWithPlayoutCache(context, { playlistId: playlistId0 }, null, async (cache) => {
-			const currentTime = 100 * 1000
-			await updateTimeline(context, cache, currentTime)
-		})
-
-		expect(fixSnapshot(await context.directCollections.Timelines.findFetch())).toMatchSnapshot()
-
 		{
 			// Deactivate rundown:
-			await deactivateRundownPlaylist(context, { playlistId: playlistId0 })
+			await handleDeactivateRundownPlaylist(context, { playlistId: playlistId0 })
 			await expect(getPlaylist0()).resolves.toMatchObject({
 				activationId: undefined,
 				currentPartInstanceId: null,
@@ -469,7 +458,7 @@ describe('Timeline', () => {
 			context: MockJobContext,
 			playlistId: RundownPlaylistId,
 			rundownId: RundownId,
-			showStyle: ReadonlyDeep<ShowStyleCompound>
+			showStyle: ReadonlyDeep<ProcessedShowStyleCompound>
 		) => Promise<RundownId>,
 		checkFcn: (
 			rundownId: RundownId,
@@ -513,7 +502,7 @@ describe('Timeline', () => {
 			context: MockJobContext,
 			playlistId: RundownPlaylistId,
 			rundownId: RundownId,
-			showStyle: ReadonlyDeep<ShowStyleCompound>
+			showStyle: ReadonlyDeep<ProcessedShowStyleCompound>
 		) => Promise<RundownId>,
 		fcn: (
 			playlistId: RundownPlaylistId,
@@ -788,7 +777,7 @@ describe('Timeline', () => {
 					await doTakePart(context, playlistId, null, parts[0]._id, parts[1]._id)
 
 					// activate hold mode
-					await activateHold(context, { playlistId: playlistId })
+					await handleActivateHold(context, { playlistId: playlistId })
 
 					await doTakePart(context, playlistId, parts[0]._id, parts[1]._id, null)
 
@@ -949,7 +938,7 @@ describe('Timeline', () => {
 					await doTakePart(context, playlistId, null, parts[0]._id, parts[1]._id)
 
 					// activate hold mode
-					await activateHold(context, { playlistId: playlistId })
+					await handleActivateHold(context, { playlistId: playlistId })
 
 					await doTakePart(context, playlistId, parts[0]._id, parts[1]._id, null)
 
@@ -1015,8 +1004,10 @@ describe('Timeline', () => {
 					context: MockJobContext,
 					playlistId: RundownPlaylistId,
 					rundownId: RundownId,
-					showStyle: ReadonlyDeep<ShowStyleCompound>
+					showStyle: ReadonlyDeep<ProcessedShowStyleCompound>
 				): Promise<RundownId> => {
+					const sourceLayerIds = Object.keys(showStyle.sourceLayers)
+
 					await setupRundownBase(
 						context,
 						playlistId,
@@ -1025,13 +1016,16 @@ describe('Timeline', () => {
 						{},
 						{
 							piece0: { prerollDuration: 500 },
-							piece1: { prerollDuration: 50, sourceLayerId: showStyle.sourceLayers[3]._id },
+							piece1: { prerollDuration: 50, sourceLayerId: sourceLayerIds[3] },
 						}
 					)
 
 					return rundownId
 				},
 				async (playlistId, _rundownId, parts, getPartInstances, checkTimings) => {
+					const outputLayerIds = Object.keys(showStyle.outputLayers)
+					const sourceLayerIds = Object.keys(showStyle.sourceLayers)
+
 					// Take the only Part:
 					await doTakePart(context, playlistId, null, parts[0]._id, null)
 
@@ -1066,8 +1060,8 @@ describe('Timeline', () => {
 							externalId: 'fake',
 							name: 'Adlibbed piece',
 							lifespan: PieceLifespan.WithinPart,
-							sourceLayerId: showStyle.sourceLayers[0]._id,
-							outputLayerId: showStyle.outputLayers[0]._id,
+							sourceLayerId: sourceLayerIds[0],
+							outputLayerId: outputLayerIds[0],
 							content: {},
 							timelineObjectsString: EmptyPieceTimelineObjectsBlob,
 							_rank: 0,
@@ -1164,8 +1158,10 @@ describe('Timeline', () => {
 					context: MockJobContext,
 					playlistId: RundownPlaylistId,
 					rundownId: RundownId,
-					showStyle: ReadonlyDeep<ShowStyleCompound>
+					showStyle: ReadonlyDeep<ProcessedShowStyleCompound>
 				): Promise<RundownId> => {
+					const sourceLayerIds = Object.keys(showStyle.sourceLayers)
+
 					await setupRundownBase(
 						context,
 						playlistId,
@@ -1174,13 +1170,16 @@ describe('Timeline', () => {
 						{},
 						{
 							piece0: { prerollDuration: 500 },
-							piece1: { prerollDuration: 50, sourceLayerId: showStyle.sourceLayers[3]._id },
+							piece1: { prerollDuration: 50, sourceLayerId: sourceLayerIds[3] },
 						}
 					)
 
 					return rundownId
 				},
 				async (playlistId, _rundownId, parts, getPartInstances, checkTimings) => {
+					const outputLayerIds = Object.keys(showStyle.outputLayers)
+					const sourceLayerIds = Object.keys(showStyle.sourceLayers)
+
 					// Take the only Part:
 					await doTakePart(context, playlistId, null, parts[0]._id, null)
 
@@ -1226,8 +1225,8 @@ describe('Timeline', () => {
 							externalId: 'fake',
 							name: 'Adlibbed piece',
 							lifespan: PieceLifespan.WithinPart,
-							sourceLayerId: showStyle.sourceLayers[0]._id,
-							outputLayerId: showStyle.outputLayers[0]._id,
+							sourceLayerId: sourceLayerIds[0],
+							outputLayerId: outputLayerIds[0],
 							content: {},
 							timelineObjectsString: EmptyPieceTimelineObjectsBlob,
 							_rank: 0,

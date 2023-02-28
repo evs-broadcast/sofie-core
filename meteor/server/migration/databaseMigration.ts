@@ -35,7 +35,7 @@ import {
 } from '../../lib/api/migration'
 import { logger } from '../../lib/logging'
 import { internalStoreSystemSnapshot } from '../api/snapshot'
-import { ShowStyleBaseId, ShowStyleBases } from '../../lib/collections/ShowStyleBases'
+import { ShowStyleBases } from '../../lib/collections/ShowStyleBases'
 import { Blueprints } from '../../lib/collections/Blueprints'
 import {
 	CoreSystem,
@@ -45,8 +45,7 @@ import {
 	setCoreSystemVersion,
 	Version,
 } from '../../lib/collections/CoreSystem'
-import { SnapshotId } from '../../lib/collections/Snapshots'
-import { StudioId, Studios } from '../../lib/collections/Studios'
+import { Studios } from '../../lib/collections/Studios'
 import { getHash, protectString, stringifyError, unprotectString, waitForPromise } from '../../lib/lib'
 import { evalBlueprint } from '../api/blueprints/cache'
 import {
@@ -55,6 +54,8 @@ import {
 	MigrationContextSystem,
 } from '../api/blueprints/migrationContext'
 import { CURRENT_SYSTEM_VERSION } from './currentSystemVersion'
+import { SnapshotId, ShowStyleBaseId, StudioId } from '@sofie-automation/corelib/dist/dataModel/Ids'
+import { getSystemStorePath } from '../coreSystem'
 
 /**
  * These versions are not supported anymore (breaking changes occurred after these versions)
@@ -68,7 +69,7 @@ export const UNSUPPORTED_VERSIONS = [
 	'<=0.24',
 ]
 
-export function isVersionSupported(version: Version) {
+export function isVersionSupported(version: Version): boolean {
 	let isSupported: boolean = true
 	_.each(UNSUPPORTED_VERSIONS, (uv) => {
 		if (semver.satisfies(version, uv)) {
@@ -91,7 +92,7 @@ const coreMigrationSteps: Array<MigrationStep> = []
  * Add new system Migration step
  * @param step
  */
-export function addMigrationStep(step: MigrationStep) {
+export function addMigrationStep(step: MigrationStep): void {
 	coreMigrationSteps.push(step)
 }
 /**
@@ -100,7 +101,7 @@ export function addMigrationStep(step: MigrationStep) {
  * @param steps
  */
 export function addMigrationSteps(version: string, steps: Array<MigrationStepBase>) {
-	return () => {
+	return (): void => {
 		_.each(steps, (step) => {
 			addMigrationStep(
 				_.extend(step, {
@@ -111,7 +112,7 @@ export function addMigrationSteps(version: string, steps: Array<MigrationStepBas
 	}
 }
 /** Removes all migration steps (used in tests) */
-export function clearMigrationSteps() {
+export function clearMigrationSteps(): void {
 	coreMigrationSteps.splice(0, 99999)
 }
 
@@ -175,14 +176,17 @@ export function prepareMigration(returnAllChunks?: boolean): PreparedMigration {
 		if (blueprint.code) {
 			const blueprintManifest = evalBlueprint(blueprint)
 
-			// @ts-ignore
-			if (!blueprint.databaseVersion || _.isString(blueprint.databaseVersion)) blueprint.databaseVersion = {}
+			if (!blueprint.databaseVersion || _.isString(blueprint.databaseVersion))
+				blueprint.databaseVersion = { showStyle: {}, studio: {}, system: undefined }
 			if (!blueprint.databaseVersion.showStyle) blueprint.databaseVersion.showStyle = {}
 			if (!blueprint.databaseVersion.studio) blueprint.databaseVersion.studio = {}
 			if (!blueprint.databaseVersion.system) blueprint.databaseVersion.system = undefined
 
 			if (blueprint.blueprintType === BlueprintManifestType.SHOWSTYLE) {
 				const bp = blueprintManifest as ShowStyleBlueprintManifest
+
+				// If blueprint uses the new flow, don't attempt migrations
+				if (typeof bp.applyConfig === 'function') return
 
 				// Find all showStyles that uses this blueprint:
 				ShowStyleBases.find({
@@ -222,6 +226,10 @@ export function prepareMigration(returnAllChunks?: boolean): PreparedMigration {
 				})
 			} else if (blueprint.blueprintType === BlueprintManifestType.STUDIO) {
 				const bp = blueprintManifest as StudioBlueprintManifest
+
+				// If blueprint uses the new flow, don't attempt migrations
+				if (typeof bp.applyConfig === 'function') return
+
 				// Find all studios that use this blueprint
 				Studios.find({
 					blueprintId: blueprint._id,
@@ -569,8 +577,8 @@ export function runMigration(
 	let snapshotId: SnapshotId = protectString('')
 	if (isFirstOfPartialMigrations) {
 		// First, take a system snapshot:
-		const system = getCoreSystem()
-		if (system && system.storePath) {
+		const storePath = getSystemStorePath()
+		if (storePath) {
 			try {
 				snapshotId = waitForPromise(
 					internalStoreSystemSnapshot(null, null, `Automatic, taken before migration`)
@@ -732,12 +740,12 @@ function completeMigration(chunks: Array<MigrationChunk>) {
 		} else throw new Meteor.Error(500, `Unknown chunk.sourcetype: "${chunk.sourceType}"`)
 	})
 }
-export function updateDatabaseVersion(targetVersionStr: string) {
+export function updateDatabaseVersion(targetVersionStr: string): void {
 	const targetVersion = parseVersion(targetVersionStr)
 	setCoreSystemVersion(targetVersion)
 }
 
-export function updateDatabaseVersionToSystem() {
+export function updateDatabaseVersionToSystem(): void {
 	updateDatabaseVersion(CURRENT_SYSTEM_VERSION)
 }
 
@@ -764,7 +772,7 @@ export function getMigrationStatus(): GetMigrationStatusResult {
 		},
 	}
 }
-export function forceMigration(chunks: Array<MigrationChunk>) {
+export function forceMigration(chunks: Array<MigrationChunk>): void {
 	logger.info(`Force migration`)
 
 	_.each(chunks, (chunk) => {
@@ -775,7 +783,7 @@ export function forceMigration(chunks: Array<MigrationChunk>) {
 
 	return completeMigration(chunks)
 }
-export function resetDatabaseVersions() {
+export function resetDatabaseVersions(): void {
 	updateDatabaseVersion(GENESIS_SYSTEM_VERSION)
 
 	Blueprints.find().forEach((blueprint) => {

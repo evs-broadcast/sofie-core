@@ -53,7 +53,8 @@ export const LinePart: React.FC<IProps> = function LinePart({
 	onPieceClick,
 	onPieceDoubleClick,
 }) {
-	const isFinished = (part.instance.timings?.stoppedPlayback ?? part.instance.timings?.takeOut) !== undefined
+	const isFinished =
+		(part.instance.timings?.reportedStoppedPlayback ?? part.instance.timings?.plannedStoppedPlayback) !== undefined
 	const [highlight] = useState(false)
 
 	const getPartContext = useCallback(() => {
@@ -114,7 +115,7 @@ export const LinePart: React.FC<IProps> = function LinePart({
 					'segment-opl__part--invalid': part.instance.part.invalid,
 					'segment-opl__part--timing-sibling': isPreceededByTimingGroupSibling,
 				}),
-				//@ts-ignore A Data attribue is perfectly fine
+				//@ts-expect-error A Data attribue is perfectly fine
 				'data-part-instance-id': part.instance._id,
 				id: SegmentTimelinePartElementId + part.instance._id,
 				role: 'region',

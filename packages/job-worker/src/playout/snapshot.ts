@@ -27,7 +27,11 @@ import { saveIntoDb } from '../db/changes'
 import { getPartId, getSegmentId } from '../ingest/lib'
 import { assertNever, getRandomId, literal } from '@sofie-automation/corelib/dist/lib'
 import { logger } from '../logging'
+import { JSONBlobParse, JSONBlobStringify } from '@sofie-automation/shared-lib/dist/lib/JSONBlob'
 
+/**
+ * Generate the Playlist owned portions of a Playlist snapshot
+ */
 export async function handleGeneratePlaylistSnapshot(
 	context: JobContext,
 	props: GeneratePlaylistSnapshotProps
@@ -65,7 +69,10 @@ export async function handleGeneratePlaylistSnapshot(
 				? { rundownId: { $in: rundownIds } }
 				: {
 						rundownId: { $in: rundownIds },
-						$or: [{ 'timings.takeOut': { $gte: validTime }, reset: true }, { reset: { $ne: true } }],
+						$or: [
+							{ 'timings.plannedStoppedPlayback': { $gte: validTime }, reset: true },
+							{ reset: { $ne: true } },
+						],
 				  }
 		)
 		const pieces = await context.directCollections.Pieces.findFetch({ startRundownId: { $in: rundownIds } })
@@ -123,16 +130,19 @@ export async function handleGeneratePlaylistSnapshot(
 	})
 
 	return {
-		snapshotJson: JSON.stringify(snapshot, undefined, 2),
+		snapshotJson: JSONBlobStringify(snapshot),
 	}
 }
 
+/**
+ * Restore the Playlist owned portions of a Playlist snapshot
+ */
 export async function handleRestorePlaylistSnapshot(
 	context: JobContext,
 	props: RestorePlaylistSnapshotProps
 ): Promise<RestorePlaylistSnapshotResult> {
 	// Future: we should validate this against a schema or something
-	const snapshot: CoreRundownPlaylistSnapshot = JSON.parse(props.snapshotJson)
+	const snapshot: CoreRundownPlaylistSnapshot = JSONBlobParse(props.snapshotJson)
 
 	const oldPlaylistId = snapshot.playlistId
 

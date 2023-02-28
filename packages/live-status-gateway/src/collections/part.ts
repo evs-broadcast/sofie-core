@@ -26,9 +26,13 @@ export class PartHandler
 	async changed(id: string, changeType: string): Promise<void> {
 		this._logger.info(`${this._name} ${changeType} ${id}`)
 		if (!this._collection) return
-		const col = this._core.getCollection(this._collection)
+		const col = this._core.getCollection<DBPart>(this._collection)
 		if (!col) throw new Error(`collection '${this._collection}' not found!`)
-		this._collectionData = col.findOne(this._collectionData?._id) as unknown as DBPart
+		if (this._collectionData?._id) {
+			this._collectionData = col.findOne(this._collectionData?._id)
+		} else {
+			this._collectionData = undefined
+		}
 		await this.notify(this._collectionData)
 	}
 
@@ -75,9 +79,13 @@ export class PartHandler
 			this._logger.info(
 				`${this._name} found updated partInstances with current part ${this._activePlaylist?.currentPartInstanceId}`
 			)
-			const col = this._core.getCollection(this._collection)
+			const col = this._core.getCollection<DBPart>(this._collection)
 			if (!col) throw new Error(`collection '${this._collection}' not found!`)
-			this._collectionData = col.findOne(unprotectString(this._curPartInstance?.part._id)) as unknown as DBPart
+			if (this._curPartInstance?.part._id) {
+				this._collectionData = col.findOne(this._curPartInstance.part._id)
+			} else {
+				this._collectionData = undefined
+			}
 			await this.notify(this._collectionData)
 		}
 	}
