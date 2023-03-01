@@ -9617,13 +9617,6 @@ timecode@0.0.4:
   dependencies:
     tslib "^2.4.1"
 
-"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.0-release48.0-CER-2572-R48.217":
-  version "8.0.0-release48.0-CER-2572-R48.217"
-  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver-types/-/@evs/timeline-state-resolver-types-8.0.0-release48.0-CER-2572-R48.217.tgz#ae67a11f20371d2ad39a42a367b121da9c6b9ab7"
-  integrity sha512-bfrYEl4MANissH/rRc0RrncJdYYApb8eDVg6YM7fpg36lZZnLaTKtU+Fb9YcgB6l8K/MWDeQRl8sHMMPruixDg==
-  dependencies:
-    tslib "^2.4.1"
-
 timers-browserify@^2.0.12:
   version "2.0.12"
   resolved "https://registry.yarnpkg.com/timers-browserify/-/timers-browserify-2.0.12.tgz#44a45c11fbf407f34f97bccd1577c652361b00ee"

@@ -4523,7 +4523,7 @@
   version "1.49.0"
   dependencies:
     "@mos-connection/model" "^3.0.1"
-    timeline-state-resolver-types "npm:@evs/timeline-state-resolver-types@8.0.0-release48.0-CER-2572-R48.217"
+    timeline-state-resolver-types "npm:@evs/timeline-state-resolver-types@8.0.0"
     tslib "^2.4.0"
     type-fest "^3.5.3"
 
@@ -16393,13 +16393,6 @@ timeline-state-resolver-types@8.0.0-nightly-release49-20230110-165023-914016e7b.
   version "8.0.0"
   resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver-types/-/@evs/timeline-state-resolver-types-8.0.0.tgz#77373dd8d1f02a92212a42222e049eb8ef4203ee"
   integrity sha512-/4mY5rHKAot3I18k5c5PT6DU+zDZMrGljTe5vzUgRrTgdHHhB7cv5wLpf6eRS+fXTGb4h0S9gjM2ZjTAsv/iig==
-  dependencies:
-    tslib "^2.4.1"
-
-"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.0-release48.0-CER-2572-R48.217":
-  version "8.0.0-release48.0-CER-2572-R48.217"
-  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver-types/-/@evs/timeline-state-resolver-types-8.0.0-release48.0-CER-2572-R48.217.tgz#ae67a11f20371d2ad39a42a367b121da9c6b9ab7"
-  integrity sha512-bfrYEl4MANissH/rRc0RrncJdYYApb8eDVg6YM7fpg36lZZnLaTKtU+Fb9YcgB6l8K/MWDeQRl8sHMMPruixDg==
   dependencies:
     tslib "^2.4.1"
 
