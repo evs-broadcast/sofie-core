@@ -4,7 +4,7 @@ import { Logger } from 'winston'
 import { WebSocket } from 'ws'
 import { CoreHandler } from './coreHandler'
 
-export abstract class WsTopicBase {
+export abstract class WebSocketTopicBase {
 	protected _name: string
 	protected _logger: Logger
 	protected _subscribers: Set<WebSocket> = new Set()
@@ -40,7 +40,7 @@ export abstract class WsTopicBase {
 	}
 }
 
-export interface WsTopic {
+export interface WebSocketTopic {
 	addSubscriber(ws: WebSocket): void
 	hasSubscriber(ws: WebSocket): boolean
 	removeSubscriber(ws: WebSocket): void
@@ -80,30 +80,32 @@ export abstract class CollectionBase<T> {
 	}
 
 	async subscribe(observer: CollectionObserver<T>): Promise<void> {
-		this._logger.info(`${observer._observerName}' added observer for '${this._name}'`)
+		this._logger.info(`${observer.observerName}' added observer for '${this._name}'`)
 		if (this._collectionData) await observer.update(this._name, this._collectionData)
 		this._observers.add(observer)
 	}
 
-	unsubscribe(observer: CollectionObserver<T>): void {
-		this._logger.info(`${observer._observerName}' removed observer for '${this._name}'`)
+	async unsubscribe(observer: CollectionObserver<T>): Promise<void> {
+		this._logger.info(`${observer.observerName}' removed observer for '${this._name}'`)
 		this._observers.delete(observer)
 	}
 
 	async notify(data: T | undefined): Promise<void> {
-		for (const o of this._observers) await o.update(this._name, data)
+		for (const observer of this._observers) {
+			await observer.update(this._name, data)
+		}
 	}
 }
 
 export interface Collection<T> {
 	init(): Promise<void>
 	close(): void
-	subscribe(observer: CollectionObserver<T>): void
-	unsubscribe(observer: CollectionObserver<T>): void
-	notify(data: T | undefined): void
+	subscribe(observer: CollectionObserver<T>): Promise<void>
+	unsubscribe(observer: CollectionObserver<T>): Promise<void>
+	notify(data: T | undefined): Promise<void>
 }
 
 export interface CollectionObserver<T> {
-	_observerName: string
+	observerName: string
 	update(source: string, data: T | undefined): Promise<void>
 }

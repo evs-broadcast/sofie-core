@@ -10,14 +10,14 @@ export class ShowStyleBaseHandler
 	extends CollectionBase<DBShowStyleBase>
 	implements Collection<DBShowStyleBase>, CollectionObserver<DBRundown>
 {
-	_observerName: string
-	_core: CoreConnection
-	_showStyleBaseId: ShowStyleBaseId | undefined
+	public observerName: string
+	private _core: CoreConnection
+	private _showStyleBaseId: ShowStyleBaseId | undefined
 
 	constructor(logger: Logger, coreHandler: CoreHandler) {
 		super('ShowStyleBaseHandler', 'showStyleBases', logger, coreHandler)
 		this._core = coreHandler.coreConnection
-		this._observerName = this._name
+		this.observerName = this._name
 	}
 
 	async changed(id: string, changeType: string): Promise<void> {
@@ -27,10 +27,8 @@ export class ShowStyleBaseHandler
 		if (!col) throw new Error(`collection '${this._collection}' not found!`)
 		if (this._showStyleBaseId) {
 			this._collectionData = col.findOne(this._showStyleBaseId)
-		} else {
-			this._collectionData = undefined
+			await this.notify(this._collectionData)
 		}
-		await this.notify(this._collectionData)
 	}
 
 	async update(source: string, data: DBRundown | undefined): Promise<void> {
@@ -40,6 +38,7 @@ export class ShowStyleBaseHandler
 		const prevShowStyleBaseId = this._showStyleBaseId
 		this._showStyleBaseId = data?.showStyleBaseId
 
+		await new Promise(process.nextTick.bind(this))
 		if (!this._collection) return
 		if (prevShowStyleBaseId !== this._showStyleBaseId) {
 			if (this._subscriptionId) this._coreHandler.unsubscribe(this._subscriptionId)
@@ -49,16 +48,16 @@ export class ShowStyleBaseHandler
 					_id: this._showStyleBaseId,
 				})
 				this._dbObserver = this._coreHandler.setupObserver(this._collection)
-				this._dbObserver.added = (id: string) => void this.changed(id, 'added')
-				this._dbObserver.changed = (id: string) => void this.changed(id, 'changed')
+				this._dbObserver.added = (id: string) => {
+					void this.changed(id, 'added').catch(this._logger.error)
+				}
+				this._dbObserver.changed = (id: string) => {
+					void this.changed(id, 'changed').catch(this._logger.error)
+				}
 
 				const col = this._core.getCollection<DBShowStyleBase>(this._collection)
 				if (!col) throw new Error(`collection '${this._collection}' not found!`)
-				if (this._showStyleBaseId) {
-					this._collectionData = col.findOne(this._showStyleBaseId)
-				} else {
-					this._collectionData = undefined
-				}
+				this._collectionData = col.findOne(this._showStyleBaseId)
 				await this.notify(this._collectionData)
 			}
 		}

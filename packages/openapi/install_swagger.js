@@ -1,8 +1,7 @@
-const util = require('util')
-const fs = require('fs')
+const fs = require('fs/promises')
+const fs_constants = require('fs').constants
 // eslint-disable-next-line node/no-unpublished-require
 const wget = require('wget-improved')
-const [mkdir, access] = [fs.mkdir, fs.access].map(util.promisify)
 
 async function get(url, path) {
 	let totalBytes = 0
@@ -32,7 +31,7 @@ async function get(url, path) {
 
 async function checkInstall() {
 	console.log('Checking/Installing swagger codegen.')
-	await mkdir('jars').catch((e) => {
+	await fs.mkdir('jars').catch((e) => {
 		if (e.code === 'EEXIST') return
 		else throw e
 	})
@@ -40,9 +39,9 @@ async function checkInstall() {
 	const srcPath =
 		'https://repo1.maven.org/maven2/io/swagger/codegen/v3/swagger-codegen-cli/3.0.34/swagger-codegen-cli-3.0.34.jar'
 	const swaggerFilename = 'swagger-codegen-cli.jar'
-	await access(`jars/${swaggerFilename}`, fs.constants.R_OK).catch(async () =>
-		get(srcPath, `jars/${swaggerFilename}`)
-	)
+	await fs
+		.access(`jars/${swaggerFilename}`, fs_constants.R_OK)
+		.catch(async () => get(srcPath, `jars/${swaggerFilename}`))
 }
 
 checkInstall()

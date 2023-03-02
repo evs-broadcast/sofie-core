@@ -12,15 +12,15 @@ export class PartHandler
 	extends CollectionBase<DBPart>
 	implements Collection<DBPart>, CollectionObserver<Map<PartInstanceName, DBPartInstance | undefined>>
 {
-	_observerName: string
-	_core: CoreConnection
-	_activePlaylist: DBRundownPlaylist | undefined
-	_curPartInstance: DBPartInstance | undefined
+	public observerName: string
+	private _core: CoreConnection
+	private _activePlaylist: DBRundownPlaylist | undefined
+	private _curPartInstance: DBPartInstance | undefined
 
 	constructor(logger: Logger, coreHandler: CoreHandler) {
 		super('PartHandler', 'parts', logger, coreHandler)
 		this._core = coreHandler.coreConnection
-		this._observerName = this._name
+		this.observerName = this._name
 	}
 
 	async changed(id: string, changeType: string): Promise<void> {
@@ -28,12 +28,10 @@ export class PartHandler
 		if (!this._collection) return
 		const col = this._core.getCollection<DBPart>(this._collection)
 		if (!col) throw new Error(`collection '${this._collection}' not found!`)
-		if (this._collectionData?._id) {
-			this._collectionData = col.findOne(this._collectionData?._id)
-		} else {
-			this._collectionData = undefined
+		if (this._collectionData) {
+			this._collectionData = col.findOne(this._collectionData._id)
+			await this.notify(this._collectionData)
 		}
-		await this.notify(this._collectionData)
 	}
 
 	async update(
@@ -52,12 +50,13 @@ export class PartHandler
 				break
 			case 'PartInstancesHandler':
 				this._logger.info(`${this._name} received partInstances update from ${source}`)
-				this._curPartInstance = partInstances.get(PartInstanceName.cur)
+				this._curPartInstance = partInstances.get(PartInstanceName.current)
 				break
 			default:
 				throw new Error(`${this._name} received unsupported update from ${source}}`)
 		}
 
+		await new Promise(process.nextTick.bind(this))
 		if (!this._collection) return
 		if (prevPlaylist?.rundownIdsInOrder !== this._activePlaylist?.rundownIdsInOrder) {
 			if (this._subscriptionId) this._coreHandler.unsubscribe(this._subscriptionId)
@@ -70,8 +69,12 @@ export class PartHandler
 					undefined
 				)
 				this._dbObserver = this._coreHandler.setupObserver(this._collection)
-				this._dbObserver.added = (id: string) => void this.changed(id, 'added')
-				this._dbObserver.changed = (id: string) => void this.changed(id, 'changed')
+				this._dbObserver.added = (id: string) => {
+					void this.changed(id, 'added').catch(this._logger.error)
+				}
+				this._dbObserver.changed = (id: string) => {
+					void this.changed(id, 'changed').catch(this._logger.error)
+				}
 			}
 		}
 
@@ -81,12 +84,10 @@ export class PartHandler
 			)
 			const col = this._core.getCollection<DBPart>(this._collection)
 			if (!col) throw new Error(`collection '${this._collection}' not found!`)
-			if (this._curPartInstance?.part._id) {
+			if (this._curPartInstance) {
 				this._collectionData = col.findOne(this._curPartInstance.part._id)
-			} else {
-				this._collectionData = undefined
+				await this.notify(this._collectionData)
 			}
-			await this.notify(this._collectionData)
 		}
 	}
 }

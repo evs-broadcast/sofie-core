@@ -13,6 +13,8 @@ import { GlobalAdLibActionsHandler } from './collections/globalAdLibActions'
 import { RootChannel } from './topics/root'
 import { StudioTopic } from './topics/studio'
 import { ActivePlaylistTopic } from './topics/activePlaylist'
+import { AdLibsHandler } from './collections/adLibs'
+import { GlobalAdLibsHandler } from './collections/globalAdLibs'
 
 export class LiveStatusServer {
 	_logger: Logger
@@ -51,17 +53,21 @@ export class LiveStatusServer {
 		await partInstancesHandler.init()
 		const adLibActionsHandler = new AdLibActionsHandler(this._logger, this._coreHandler)
 		await adLibActionsHandler.init()
+		const adLibsHandler = new AdLibsHandler(this._logger, this._coreHandler)
+		await adLibsHandler.init()
 		const globalAdLibActionsHandler = new GlobalAdLibActionsHandler(this._logger, this._coreHandler)
 		await globalAdLibActionsHandler.init()
+		const globalAdLibsHandler = new GlobalAdLibsHandler(this._logger, this._coreHandler)
+		await globalAdLibsHandler.init()
 
 		// add observers for collection subscription updates
 		await playlistHandler.subscribe(rundownHandler)
-		// await playlistHandler.subscribe(partHandler)
+		// playlistHandler.subscribe(partHandler)
 		await playlistHandler.subscribe(partInstancesHandler)
 		await rundownHandler.subscribe(showStyleBaseHandler)
 		await partInstancesHandler.subscribe(rundownHandler)
-		// await partInstancesHandler.subscribe(segmentHandler)
-		// await partInstancesHandler.subscribe(partHandler)
+		// partInstancesHandler.subscribe(segmentHandler)
+		// partInstancesHandler.subscribe(partHandler)
 		await partInstancesHandler.subscribe(adLibActionsHandler)
 		await partInstancesHandler.subscribe(globalAdLibActionsHandler)
 
@@ -72,7 +78,9 @@ export class LiveStatusServer {
 		await showStyleBaseHandler.subscribe(activePlaylistTopic)
 		await partInstancesHandler.subscribe(activePlaylistTopic)
 		await adLibActionsHandler.subscribe(activePlaylistTopic)
+		await adLibsHandler.subscribe(activePlaylistTopic)
 		await globalAdLibActionsHandler.subscribe(activePlaylistTopic)
+		await globalAdLibsHandler.subscribe(activePlaylistTopic)
 
 		const wss = new WebSocketServer({ port: 8080 })
 		wss.on('connection', (ws, request) => {

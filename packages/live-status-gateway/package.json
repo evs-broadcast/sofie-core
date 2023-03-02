@@ -1,6 +1,6 @@
 {
 	"name": "live-status-gateway",
-	"version": "1.45.25",
+	"version": "1.49.0",
 	"private": true,
 	"description": "Provides state from Sofie over sockets",
 	"license": "MIT",
@@ -33,8 +33,7 @@
 		"start": "node --experimental-fetch dist/index.js",
 		"validate:dependencies": "yarn audit --groups dependencies && yarn license-validate",
 		"validate:dev-dependencies": "yarn audit --groups devDependencies",
-		"license-validate": "yarn sofie-licensecheck",
-		"evs-rename:dependency": "node rename-deps.mjs"
+		"license-validate": "yarn sofie-licensecheck"
 	},
 	"engines": {
 		"node": "^14.18 || ^16.14 || ^18.5"
@@ -53,10 +52,10 @@
 		"production"
 	],
 	"dependencies": {
-		"@sofie-automation/blueprints-integration": "link:../blueprints-integration",
-		"@sofie-automation/server-core-integration": "link:../server-core-integration",
-		"@sofie-automation/corelib": "link:../corelib",
-		"@sofie-automation/shared-lib": "link:../shared-lib",
+		"@sofie-automation/blueprints-integration": "1.49.0",
+		"@sofie-automation/server-core-integration": "1.49.0",
+		"@sofie-automation/corelib": "1.49.0",
+		"@sofie-automation/shared-lib": "1.49.0",
 		"debug": "^4.3.2",
 		"fast-clone": "^1.5.13",
 		"influx": "^5.9.2",

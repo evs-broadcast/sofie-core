@@ -9,5 +9,6 @@
 		{ "path": "openapi" },
 		{ "path": "live-status-gateway" },
 		{ "path": "job-worker" },
+		{ "path": "corelib" },
 	]
 }

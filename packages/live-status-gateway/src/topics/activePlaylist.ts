@@ -2,19 +2,17 @@ import { Logger } from 'winston'
 import { WebSocket } from 'ws'
 import { unprotectString } from '@sofie-automation/shared-lib/dist/lib/protectedString'
 import { DBRundownPlaylist } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
-import { DBShowStyleBase } from '@sofie-automation/corelib/dist/dataModel/ShowStyleBase'
+import { DBShowStyleBase, OutputLayers, SourceLayers } from '@sofie-automation/corelib/dist/dataModel/ShowStyleBase'
 import { DBPartInstance } from '@sofie-automation/corelib/dist/dataModel/PartInstance'
 import { AdLibAction } from '@sofie-automation/corelib/dist/dataModel/AdlibAction'
 import { RundownBaselineAdLibAction } from '@sofie-automation/corelib/dist/dataModel/RundownBaselineAdLibAction'
-import {
-	IBlueprintActionManifestDisplayContent,
-	VTContent,
-	CameraContent,
-} from '@sofie-automation/blueprints-integration'
+import { RundownBaselineAdLibItem } from '@sofie-automation/corelib/dist/dataModel/RundownBaselineAdLibPiece'
+import { IBlueprintActionManifestDisplayContent } from '@sofie-automation/blueprints-integration'
 import { literal } from '@sofie-automation/shared-lib/dist/lib/lib'
-import { WsTopicBase, WsTopic, CollectionObserver } from '../wsHandler'
+import { WebSocketTopicBase, WebSocketTopic, CollectionObserver } from '../wsHandler'
 import { PartInstanceName } from '../collections/partInstances'
 import { applyAndValidateOverrides } from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
+import { AdLibPiece } from '@sofie-automation/corelib/dist/dataModel/AdLibPiece'
 
 interface PartStatus {
 	id: string
@@ -27,11 +25,11 @@ interface AdLibActionType {
 	label: string
 }
 
-interface AdLibActionStatus {
+interface AdLibStatus {
 	id: string
 	name: string
-	resourceId: string | undefined
 	sourceLayer: string
+	outputLayer: string
 	actionType: AdLibActionType[]
 }
 
@@ -42,26 +40,29 @@ interface ActivePlaylistStatus {
 	rundownIds: string[]
 	currentPart: PartStatus | null
 	nextPart: PartStatus | null
-	adlibActions: AdLibActionStatus[]
-	globalAdlibActions: AdLibActionStatus[]
+	adLibs: AdLibStatus[]
+	globalAdLibs: AdLibStatus[]
 }
 
 export class ActivePlaylistTopic
-	extends WsTopicBase
+	extends WebSocketTopicBase
 	implements
-		WsTopic,
+		WebSocketTopic,
 		CollectionObserver<DBRundownPlaylist>,
 		CollectionObserver<Map<PartInstanceName, DBPartInstance | undefined>>,
 		CollectionObserver<AdLibAction[]>,
 		CollectionObserver<RundownBaselineAdLibAction[]>
 {
-	_observerName = 'ActivePlaylistTopic'
-	_sourceLayersMap: Map<string, string> = new Map()
-	_activePlaylist: DBRundownPlaylist | undefined
-	_currentPartInstance: DBPartInstance | undefined
-	_nextPartInstance: DBPartInstance | undefined
-	_adLibActions: AdLibAction[] | undefined
-	_globalAdLibActions: RundownBaselineAdLibAction[] | undefined
+	public observerName = 'ActivePlaylistTopic'
+	private _sourceLayersMap: Map<string, string> = new Map()
+	private _outputLayersMap: Map<string, string> = new Map()
+	private _activePlaylist: DBRundownPlaylist | undefined
+	private _currentPartInstance: DBPartInstance | undefined
+	private _nextPartInstance: DBPartInstance | undefined
+	private _adLibActions: AdLibAction[] | undefined
+	private _abLibs: AdLibPiece[] | undefined
+	private _globalAdLibActions: RundownBaselineAdLibAction[] | undefined
+	private _globalAdLibs: RundownBaselineAdLibItem[] | undefined
 
 	constructor(logger: Logger) {
 		super('ActivePlaylistTopic', logger)
@@ -75,6 +76,97 @@ export class ActivePlaylistTopic
 	sendStatus(subscribers: Set<WebSocket>): void {
 		const currentPart = this._currentPartInstance ? this._currentPartInstance.part : null
 		const nextPart = this._nextPartInstance ? this._nextPartInstance.part : null
+		const adLibs: AdLibStatus[] = []
+		const globalAdLibs: AdLibStatus[] = []
+
+		if (this._adLibActions) {
+			adLibs.push(
+				...this._adLibActions.map((action) => {
+					const sourceLayerName = this._sourceLayersMap.get(
+						(action.display as IBlueprintActionManifestDisplayContent).sourceLayerId
+					)
+					const outputLayerName = this._outputLayersMap.get(
+						(action.display as IBlueprintActionManifestDisplayContent).outputLayerId
+					)
+					const triggerModes = action.triggerModes
+						? action.triggerModes.map((t) =>
+								literal<AdLibActionType>({
+									name: t.data,
+									label: t.display.label.key,
+								})
+						  )
+						: []
+					return literal<AdLibStatus>({
+						id: unprotectString(action._id),
+						name: action.display.label.key,
+						sourceLayer: sourceLayerName ? sourceLayerName : 'invalid',
+						outputLayer: outputLayerName ? outputLayerName : 'invalid',
+						actionType: triggerModes,
+					})
+				})
+			)
+		}
+
+		if (this._abLibs) {
+			adLibs.push(
+				...this._abLibs.map((adLib) => {
+					const sourceLayerName = this._sourceLayersMap.get(adLib.sourceLayerId)
+					const outputLayerName = this._outputLayersMap.get(adLib.outputLayerId)
+					return literal<AdLibStatus>({
+						id: unprotectString(adLib._id),
+						name: adLib.name,
+						sourceLayer: sourceLayerName ? sourceLayerName : 'invalid',
+						outputLayer: outputLayerName ? outputLayerName : 'invalid',
+						actionType: [],
+					})
+				})
+			)
+		}
+
+		if (this._globalAdLibActions) {
+			globalAdLibs.push(
+				...this._globalAdLibActions.map((action) => {
+					const sourceLayerName = this._sourceLayersMap.get(
+						(action.display as IBlueprintActionManifestDisplayContent).sourceLayerId
+					)
+					const outputLayerName = this._outputLayersMap.get(
+						(action.display as IBlueprintActionManifestDisplayContent).outputLayerId
+					)
+					const triggerModes = action.triggerModes
+						? action.triggerModes.map((t) =>
+								literal<AdLibActionType>({
+									name: t.data,
+									label: t.display.label.key,
+								})
+						  )
+						: []
+					return literal<AdLibStatus>({
+						id: unprotectString(action._id),
+						name: action.display.label.key,
+						sourceLayer: sourceLayerName ? sourceLayerName : 'invalid',
+						outputLayer: outputLayerName ? outputLayerName : 'invalid',
+						actionType: triggerModes,
+					})
+				})
+			)
+		}
+
+		if (this._globalAdLibs) {
+			globalAdLibs.push(
+				...this._globalAdLibs.map((adLibs) => {
+					const sourceLayerName = this._sourceLayersMap.get(adLibs.sourceLayerId)
+					const outputLayerName = this._outputLayersMap.get(adLibs.outputLayerId)
+					return literal<AdLibStatus>({
+						id: unprotectString(adLibs._id),
+						name: adLibs.name,
+						sourceLayer: sourceLayerName ? sourceLayerName : 'invalid',
+						outputLayer: outputLayerName ? outputLayerName : 'invalid',
+						actionType: [],
+					})
+				})
+			)
+		}
+
 		subscribers.forEach((ws) => {
 			this.sendMessage(
 				ws,
@@ -98,53 +190,8 @@ export class ActivePlaylistTopic
 										autoNext: nextPart.autoNext,
 								  })
 								: null,
-							adlibActions: this._adLibActions
-								? this._adLibActions.map((action) => {
-										const displayContent = action.display as IBlueprintActionManifestDisplayContent
-										const vtContent = displayContent.content as Partial<VTContent>
-										const sourceLayerName = this._sourceLayersMap.get(displayContent.sourceLayerId)
-										const triggerModes = action.triggerModes
-											? action.triggerModes.map((t) =>
-													literal<AdLibActionType>({
-														name: t.data,
-														label: t.display.label.key,
-													})
-											  )
-											: []
-										return literal<AdLibActionStatus>({
-											id: unprotectString(action._id),
-											name: action.display.label.key,
-											resourceId: vtContent && vtContent.path ? vtContent.path : undefined,
-											sourceLayer: sourceLayerName ? sourceLayerName : 'invalid',
-											actionType: triggerModes,
-										})
-								  })
-								: [],
-							globalAdlibActions: this._globalAdLibActions
-								? this._globalAdLibActions.map((action) => {
-										const displayContent = action.display as IBlueprintActionManifestDisplayContent
-										const cameraContent = displayContent.content as Partial<CameraContent>
-										const sourceLayerName = this._sourceLayersMap.get(displayContent.sourceLayerId)
-										const triggerModes = action.triggerModes
-											? action.triggerModes.map((t) =>
-													literal<AdLibActionType>({
-														name: t.data,
-														label: t.display.label.key,
-													})
-											  )
-											: []
-										return literal<AdLibActionStatus>({
-											id: unprotectString(action._id),
-											name: action.display.label.key,
-											resourceId:
-												cameraContent && cameraContent.switcherInput
-													? String(cameraContent.switcherInput)
-													: undefined,
-											sourceLayer: sourceLayerName ? sourceLayerName : 'invalid',
-											actionType: triggerModes,
-										})
-								  })
-								: [],
+							adLibs,
+							globalAdLibs,
 					  })
 					: literal<ActivePlaylistStatus>({
 							event: 'activePlaylist',
@@ -153,8 +200,8 @@ export class ActivePlaylistTopic
 							rundownIds: [],
 							currentPart: null,
 							nextPart: null,
-							adlibActions: [],
-							globalAdlibActions: [],
+							adLibs: [],
+							globalAdLibs: [],
 					  })
 			)
 		})
@@ -168,45 +215,69 @@ export class ActivePlaylistTopic
 			| Map<PartInstanceName, DBPartInstance | undefined>
 			| AdLibAction[]
 			| RundownBaselineAdLibAction[]
+			| AdLibPiece[]
+			| RundownBaselineAdLibItem[]
 			| undefined
 	): Promise<void> {
-		const rundownPlaylist = data ? (data as DBRundownPlaylist) : undefined
-		const sourceLayers = data ? applyAndValidateOverrides((data as DBShowStyleBase).sourceLayersWithOverrides) : []
-		const partInstances = data as Map<PartInstanceName, DBPartInstance | undefined>
-		const adLibActions = data ? (data as AdLibAction[]) : []
-		const globalAdLibActions = data ? (data as RundownBaselineAdLibAction[]) : []
 		switch (source) {
-			case 'PlaylistHandler':
+			case 'PlaylistHandler': {
+				const rundownPlaylist = data ? (data as DBRundownPlaylist) : undefined
 				this._logger.info(
 					`${this._name} received playlist update ${rundownPlaylist?._id}, activationId ${rundownPlaylist?.activationId}`
 				)
 				this._activePlaylist = unprotectString(rundownPlaylist?.activationId) ? rundownPlaylist : undefined
 				break
-			case 'ShowStyleBaseHandler':
+			}
+			case 'ShowStyleBaseHandler': {
+				const sourceLayers: SourceLayers = data
+					? applyAndValidateOverrides((data as DBShowStyleBase).sourceLayersWithOverrides).obj
+					: {}
+				const outputLayers: OutputLayers = data
+					? applyAndValidateOverrides((data as DBShowStyleBase).outputLayersWithOverrides).obj
+					: {}
 				this._logger.info(
 					`${this._name} received showStyleBase update with sourceLayers [${Object.values(sourceLayers).map(
-						(s) => s.name
+						// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+						(s) => s!.name
+					)}]`
+				)
+				this._logger.info(
+					`${this._name} received showStyleBase update with outputLayers [${Object.values(outputLayers).map(
+						// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+						(s) => s!.name
 					)}]`
 				)
 				this._sourceLayersMap.clear()
+				this._outputLayersMap.clear()
 				for (const [layerId, sourceLayer] of Object.entries(sourceLayers)) {
 					if (sourceLayer === undefined || sourceLayer === null) continue
 					this._sourceLayersMap.set(layerId, sourceLayer.name)
 				}
+				for (const [layerId, outputLayer] of Object.entries(outputLayers)) {
+					if (outputLayer === undefined || outputLayer === null) continue
+					this._outputLayersMap.set(layerId, outputLayer.name)
+				}
 				break
-			case 'PartInstancesHandler':
+			}
+			case 'PartInstancesHandler': {
+				const partInstances = data as Map<PartInstanceName, DBPartInstance | undefined>
 				this._logger.info(`${this._name} received partInstances update from ${source}`)
-				this._currentPartInstance = partInstances.get(PartInstanceName.cur)
+				this._currentPartInstance = partInstances.get(PartInstanceName.current)
 				this._nextPartInstance = partInstances.get(PartInstanceName.next)
 				break
-			case 'AdLibActionHandler':
+			}
+			case 'AdLibActionHandler': {
+				const adLibActions = data ? (data as AdLibAction[]) : []
 				this._logger.info(`${this._name} received adLibActions update from ${source}`)
 				this._adLibActions = adLibActions
 				break
-			case 'GlobalAdLibActionHandler':
+			}
+			case 'GlobalAdLibActionHandler': {
+				const globalAdLibActions = data ? (data as RundownBaselineAdLibAction[]) : []
 				this._logger.info(`${this._name} received globalAdLibActions update from ${source}`)
 				this._globalAdLibActions = globalAdLibActions
 				break
+			}
 			default:
 				throw new Error(`${this._name} received unsupported update from ${source}}`)
 		}

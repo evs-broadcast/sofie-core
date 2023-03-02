@@ -5,7 +5,7 @@ import { CoreConnection } from '@sofie-automation/server-core-integration'
 import { DBRundownPlaylist } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
 import { DBPartInstance } from '@sofie-automation/corelib/dist/dataModel/PartInstance'
 import { DBRundown } from '@sofie-automation/corelib/dist/dataModel/Rundown'
-import { protectString, unprotectString } from '@sofie-automation/shared-lib/dist/lib/protectedString'
+import { protectString } from '@sofie-automation/shared-lib/dist/lib/protectedString'
 import { PartInstanceName } from './partInstances'
 import { RundownId, RundownPlaylistId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 
@@ -16,33 +16,25 @@ export class RundownHandler
 		CollectionObserver<DBRundownPlaylist>,
 		CollectionObserver<Map<PartInstanceName, DBPartInstance | undefined>>
 {
-	_observerName: string
-	_core: CoreConnection
-	_curPlaylistId: RundownPlaylistId | undefined
-	_curRundownId: RundownId | undefined
+	public observerName: string
+	private _core: CoreConnection
+	private _curPlaylistId: RundownPlaylistId | undefined
+	private _curRundownId: RundownId | undefined
 
 	constructor(logger: Logger, coreHandler: CoreHandler) {
 		super('RundownHandler', 'rundowns', logger, coreHandler)
 		this._core = coreHandler.coreConnection
-		this._observerName = this._name
+		this.observerName = this._name
 	}
 
 	async changed(id: string, changeType: string): Promise<void> {
 		this._logger.info(`${this._name} ${changeType} ${id}`)
+		if (protectString(id) !== this._curRundownId)
+			throw new Error(`${this._name} received change with unexpected id ${id} !== ${this._curRundownId}`)
 		if (!this._collection) return
 		const col = this._core.getCollection<DBRundown>(this._collection)
 		if (!col) throw new Error(`collection '${this._collection}' not found!`)
-		if (id !== unprotectString(this._curRundownId)) {
-			this._logger.info(`${this._name} updating curRundownId to ${id} from ${this._curRundownId}`)
-			this._curRundownId = protectString(id)
-		}
-		if (this._curRundownId) {
-			const rundown = col.findOne(this._curRundownId)
-			if (!rundown) this._logger.error(`${this._name} update with rundown '${this._curRundownId}' not found!`)
-			this._collectionData = rundown
-		} else {
-			this._collectionData = undefined
-		}
+		if (this._collectionData) this._collectionData = col.findOne(this._collectionData._id)
 		await this.notify(this._collectionData)
 	}
 
@@ -61,12 +53,13 @@ export class RundownHandler
 				break
 			case 'PartInstancesHandler':
 				this._logger.info(`${this._name} received partInstances update from ${source}`)
-				this._curRundownId = partInstances.get(PartInstanceName.cur)?.rundownId
+				this._curRundownId = partInstances.get(PartInstanceName.current)?.rundownId
 				break
 			default:
 				throw new Error(`${this._name} received unsupported update from ${source}}`)
 		}
 
+		await new Promise(process.nextTick.bind(this))
 		if (!this._collection) return
 		if (prevPlaylistId !== this._curPlaylistId) {
 			if (this._subscriptionId) this._coreHandler.unsubscribe(this._subscriptionId)
@@ -78,10 +71,15 @@ export class RundownHandler
 					undefined
 				)
 				this._dbObserver = this._coreHandler.setupObserver(this._collection)
-				this._dbObserver.added = (id: string) => void this.changed(id, 'added')
-				this._dbObserver.changed = (id: string) => void this.changed(id, 'changed')
+				this._dbObserver.added = (id: string) => {
+					void this.changed(id, 'added').catch(this._logger.error)
+				}
+				this._dbObserver.changed = (id: string) => {
+					void this.changed(id, 'changed').catch(this._logger.error)
+				}
 			}
 		}
+
 		if (prevCurRundownId !== this._curRundownId) {
 			if (this._curRundownId) {
 				const col = this._core.getCollection<DBRundown>(this._collection)

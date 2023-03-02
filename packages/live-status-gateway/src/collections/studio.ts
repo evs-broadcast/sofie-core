@@ -3,16 +3,16 @@ import { CoreConnection } from '@sofie-automation/server-core-integration'
 import { DBStudio } from '@sofie-automation/corelib/dist/dataModel/Studio'
 import { CoreHandler } from '../coreHandler'
 import { CollectionBase, Collection } from '../wsHandler'
-import { protectString, unprotectString } from '@sofie-automation/corelib/dist/protectedString'
+import { protectString, unprotectString } from '@sofie-automation/shared-lib/dist/lib/protectedString'
 
 export class StudioHandler extends CollectionBase<DBStudio> implements Collection<DBStudio> {
-	_observerName: string
-	_core: CoreConnection
+	public observerName: string
+	private _core: CoreConnection
 
 	constructor(logger: Logger, coreHandler: CoreHandler) {
 		super('StudioHandler', 'studios', logger, coreHandler)
 		this._core = coreHandler.coreConnection
-		this._observerName = this._name
+		this.observerName = this._name
 	}
 
 	async init(): Promise<void> {
@@ -26,10 +26,13 @@ export class StudioHandler extends CollectionBase<DBStudio> implements Collectio
 			if (!col) throw new Error(`collection '${this._collection}' not found!`)
 			const studio = col.findOne(this._studioId)
 			if (!studio) throw new Error(`studio '${this._studioId}' not found!`)
-
 			this._collectionData = studio
-			this._dbObserver.added = (id: string) => void this.changed(id, 'added')
-			this._dbObserver.changed = (id: string) => void this.changed(id, 'changed')
+			this._dbObserver.added = (id: string) => {
+				void this.changed(id, 'added').catch(this._logger.error)
+			}
+			this._dbObserver.changed = (id: string) => {
+				void this.changed(id, 'changed').catch(this._logger.error)
+			}
 		}
 	}
 

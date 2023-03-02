@@ -2,23 +2,21 @@ import { Logger } from 'winston'
 import { CoreHandler } from '../coreHandler'
 import { CollectionBase, Collection, CollectionObserver } from '../wsHandler'
 import { CoreConnection } from '@sofie-automation/server-core-integration'
-import { RundownBaselineAdLibAction } from '@sofie-automation/corelib/dist/dataModel/RundownBaselineAdLibAction'
+import { AdLibPiece } from '@sofie-automation/corelib/dist/dataModel/AdLibPiece'
 import { DBPartInstance } from '@sofie-automation/corelib/dist/dataModel/PartInstance'
 import { unprotectString } from '@sofie-automation/shared-lib/dist/lib/protectedString'
 import { PartInstanceName } from './partInstances'
 
-export class GlobalAdLibActionsHandler
-	extends CollectionBase<RundownBaselineAdLibAction[]>
-	implements
-		Collection<RundownBaselineAdLibAction[]>,
-		CollectionObserver<Map<PartInstanceName, DBPartInstance | undefined>>
+export class AdLibsHandler
+	extends CollectionBase<AdLibPiece[]>
+	implements Collection<AdLibPiece[]>, CollectionObserver<Map<PartInstanceName, DBPartInstance | undefined>>
 {
 	public observerName: string
 	private _core: CoreConnection
 	private _curRundownId: string | undefined
 
 	constructor(logger: Logger, coreHandler: CoreHandler) {
-		super('GlobalAdLibActionHandler', 'rundownBaselineAdLibActions', logger, coreHandler)
+		super('AdLibHandler', 'adLibs', logger, coreHandler)
 		this._core = coreHandler.coreConnection
 		this.observerName = this._name
 	}
@@ -26,14 +24,14 @@ export class GlobalAdLibActionsHandler
 	async changed(id: string, changeType: string): Promise<void> {
 		this._logger.info(`${this._name} ${changeType} ${id}`)
 		if (!this._collection) return
-		const col = this._core.getCollection<RundownBaselineAdLibAction>(this._collection)
+		const col = this._core.getCollection<AdLibPiece>(this._collection)
 		if (!col) throw new Error(`collection '${this._collection}' not found!`)
 		this._collectionData = col.find({ rundownId: this._curRundownId })
 		await this.notify(this._collectionData)
 	}
 
 	async update(source: string, data: Map<PartInstanceName, DBPartInstance | undefined> | undefined): Promise<void> {
-		this._logger.info(`${this._name} received partInstances update from ${source}`)
+		this._logger.info(`${this._name} received adLibs update from ${source}`)
 		const prevRundownId = this._curRundownId
 		this._curRundownId = data ? unprotectString(data.get(PartInstanceName.current)?.rundownId) : undefined
 
@@ -54,7 +52,7 @@ export class GlobalAdLibActionsHandler
 					void this.changed(id, 'changed').catch(this._logger.error)
 				}
 
-				const col = this._core.getCollection<RundownBaselineAdLibAction>(this._collection)
+				const col = this._core.getCollection<AdLibPiece>(this._collection)
 				if (!col) throw new Error(`collection '${this._collection}' not found!`)
 				this._collectionData = col.find({ rundownId: this._curRundownId })
 				await this.notify(this._collectionData)
@@ -63,8 +61,8 @@ export class GlobalAdLibActionsHandler
 	}
 
 	// override notify to implement empty array handling
-	async notify(data: RundownBaselineAdLibAction[] | undefined): Promise<void> {
-		this._logger.info(`${this._name} notifying update with ${data?.length} globalAdLibActions`)
+	async notify(data: AdLibPiece[] | undefined): Promise<void> {
+		this._logger.info(`${this._name} notifying update with ${data?.length} adLibs`)
 		if (data !== undefined) {
 			for (const observer of this._observers) {
 				await observer.update(this._name, data)

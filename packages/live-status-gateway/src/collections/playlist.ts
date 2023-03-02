@@ -5,12 +5,12 @@ import { CoreConnection } from '@sofie-automation/server-core-integration'
 import { DBRundownPlaylist } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
 
 export class PlaylistsHandler extends CollectionBase<DBRundownPlaylist[]> implements Collection<DBRundownPlaylist[]> {
-	_observerName: string
+	public observerName: string
 
 	constructor(logger: Logger, coreHandler: CoreHandler) {
 		super('PlaylistsHandler', undefined, logger, coreHandler)
 		this._collection = this._name
-		this._observerName = this._name
+		this.observerName = this._name
 	}
 
 	async setPlaylists(playlists: DBRundownPlaylist[]): Promise<void> {
@@ -22,23 +22,25 @@ export class PlaylistsHandler extends CollectionBase<DBRundownPlaylist[]> implem
 	// override notify to implement empty array handling
 	async notify(data: DBRundownPlaylist[] | undefined): Promise<void> {
 		this._logger.info(
-			`${this._collection} notifying all observers of an update with ${
-				this._collectionData ? this._collectionData.length : 0
-			} playlists`
+			`${this._collection} notifying all observers of an update with ${this._collectionData?.length} playlists`
 		)
-		for (const o of this._observers) await o.update(this._name, data ? data : [])
+		if (data !== undefined) {
+			for (const observer of this._observers) {
+				await observer.update(this._name, data)
+			}
+		}
 	}
 }
 
 export class PlaylistHandler extends CollectionBase<DBRundownPlaylist> implements Collection<DBRundownPlaylist> {
-	_observerName: string
-	_core: CoreConnection
-	_playlistsHandler: PlaylistsHandler
+	public observerName: string
+	private _core: CoreConnection
+	private _playlistsHandler: PlaylistsHandler
 
 	constructor(logger: Logger, coreHandler: CoreHandler) {
 		super('PlaylistHandler', 'rundownPlaylists', logger, coreHandler)
 		this._core = coreHandler.coreConnection
-		this._observerName = this._name
+		this.observerName = this._name
 		this._playlistsHandler = new PlaylistsHandler(this._logger, this._coreHandler)
 	}
 
@@ -53,8 +55,12 @@ export class PlaylistHandler extends CollectionBase<DBRundownPlaylist> implement
 			const playlists = col.find(undefined)
 			this._collectionData = playlists.find((p) => p.activationId)
 			await this._playlistsHandler.setPlaylists(playlists)
-			this._dbObserver.added = (id: string) => void this.changed(id, 'added')
-			this._dbObserver.changed = (id: string) => void this.changed(id, 'changed')
+			this._dbObserver.added = (id: string) => {
+				void this.changed(id, 'added').catch(this._logger.error)
+			}
+			this._dbObserver.changed = (id: string) => {
+				void this.changed(id, 'changed').catch(this._logger.error)
+			}
 		}
 	}
 
