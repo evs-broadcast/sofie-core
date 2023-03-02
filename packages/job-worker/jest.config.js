@@ -1,25 +1,24 @@
 const path = require('path')
 
 module.exports = {
-	globals: {},
+	globals: {
+		'ts-jest': {
+			tsconfig: 'tsconfig.json',
+			babelConfig: {
+				plugins: ['@babel/plugin-transform-modules-commonjs'],
+			},
+			diagnostics: {
+				// ignoreCodes: ['TS151001'],
+				ignoreCodes: [
+					6133, // Declared but not used
+					6192, // All imports are unused
+				],
+			},
+		},
+	},
 	moduleFileExtensions: ['js', 'ts', 'json'],
 	transform: {
-		'^.+\\.(ts|tsx)$': [
-			'ts-jest',
-			{
-				tsconfig: 'tsconfig.json',
-				babelConfig: {
-					plugins: ['@babel/plugin-transform-modules-commonjs'],
-				},
-				diagnostics: {
-					// ignoreCodes: ['TS151001'],
-					ignoreCodes: [
-						6133, // Declared but not used
-						6192, // All imports are unused
-					],
-				},
-			},
-		],
+		'^.+\\.(ts|tsx)$': 'ts-jest',
 		'^.+\\.(js|jsx|mjs)$': path.resolve('./scripts/babel-jest.mjs'),
 	},
 	transformIgnorePatterns: ['node_modules/(?!(debounce-fn|p-queue|p-timeout)/)', '\\.pnp\\.[^\\/]+$'],
