@@ -4962,7 +4962,7 @@
   version "1.49.0"
   dependencies:
     "@sofie-automation/shared-lib" "link:shared-lib"
-    timeline-state-resolver-types "npm:@evs/timeline-state-resolver-types@8.0.0"
+    timeline-state-resolver-types "npm:@evs/timeline-state-resolver-types@8.0.0-master.223"
     tslib "^2.4.0"
     type-fest "^2.19.0"
 
@@ -5007,7 +5007,7 @@
   version "1.49.0"
   dependencies:
     "@mos-connection/model" "^3.0.1"
-    timeline-state-resolver-types "npm:@evs/timeline-state-resolver-types@8.0.0"
+    timeline-state-resolver-types "npm:@evs/timeline-state-resolver-types@8.0.0-master.223"
     tslib "^2.4.0"
     type-fest "^2.19.0"
 
@@ -5274,10 +5274,9 @@
   resolved "https://registry.yarnpkg.com/@tsconfig/node16/-/node16-1.0.3.tgz#472eaab5f15c1ffdd7f8628bd4c4f753995ec79e"
   integrity sha512-yOlFc+7UtL/89t2ZhjPvvB/DeAr3r+Dq58IgzsFkOAvVC6NMJXmCGjbptdXdR9qsX7pKcTL+s87FtYREi2dEEQ==
 
-"@tv2media/v-connection@^6.0.3":
-  version "6.1.0"
-  resolved "https://registry.yarnpkg.com/@tv2media/v-connection/-/v-connection-6.1.0.tgz#c1b97967a49703b5b0d464c81c144cffb544b891"
-  integrity sha512-Tubfcb9PWyQ2P2tjwEWTDxM+oYM66rlle7d0R8xmeeQOdG3MU/EoSqbs1VFQnX25DD75zDYxzZQBE0g1jWj1BQ==
+"@tv2media/v-connection@git+https://github.com/nrkno/v-connection.git#5386986d87ea6d1b5164d206ea42c975654b36cd":
+  version "7.2.1"
+  resolved "git+https://github.com/nrkno/v-connection.git#5386986d87ea6d1b5164d206ea42c975654b36cd"
   dependencies:
     request "^2.88.2"
     request-promise-native "^1.0.9"
@@ -16961,20 +16960,20 @@ timecode@0.0.4:
   resolved "https://registry.yarnpkg.com/timecode/-/timecode-0.0.4.tgz#cdea9d2352009700e50da657cb7fb7c1720f5704"
   integrity sha512-xFVZlWnqls5eVphtUJo0UuXeJa0grBmxESSn5QPQB7CMsaVgTnLdP9PTZqb4KyFmLdrE+PUu3eEt42zHsMxCtw==
 
-"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.0":
-  version "8.0.0"
-  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver-types/-/@evs/timeline-state-resolver-types-8.0.0.tgz#77373dd8d1f02a92212a42222e049eb8ef4203ee"
-  integrity sha512-/4mY5rHKAot3I18k5c5PT6DU+zDZMrGljTe5vzUgRrTgdHHhB7cv5wLpf6eRS+fXTGb4h0S9gjM2ZjTAsv/iig==
+"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.0-master.223":
+  version "8.0.0-master.223"
+  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver-types/-/@evs/timeline-state-resolver-types-8.0.0-master.223.tgz#e2efa0bfa81b1f6b64d8e1dfed5fad36c9c07728"
+  integrity sha512-x0U3hOLmZ+9hwqWZEc55Aga3fL8bL5s3AFlCBKycXBVVdVZOe3ItLYPvckblM/03NxhKboAE8qR8Y2Y3/aagzg==
   dependencies:
     tslib "^2.4.1"
 
-"timeline-state-resolver@npm:@evs/timeline-state-resolver@8.0.0":
-  version "8.0.0"
-  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver/-/@evs/timeline-state-resolver-8.0.0.tgz#a8b122e8689c6176f05bb128171f911b4765e554"
-  integrity sha512-XJ4daJQyOdtFkV0ZAP3+mtygG8OlYiayIIjQMGJ0Fjy17eG19D7+CO5lMOgy3LK95J53daIBH75aWOsVN1pAuA==
+"timeline-state-resolver@npm:@evs/timeline-state-resolver@8.0.0-master.223":
+  version "8.0.0-master.223"
+  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver/-/@evs/timeline-state-resolver-8.0.0-master.223.tgz#8227fd6b4f3bc7c63ca8de88375595fa70007975"
+  integrity sha512-Mt1elNtJ+46pVDe+LwPHPQbMrKqHDxKrRv/7ZhfuH0+jNJoXeQqMyoH47KwnwHS79unDvt6w08uPGTPypD/d2g==
   dependencies:
     "@evs/dsom-connection" "0.1.21"
-    "@tv2media/v-connection" "^6.0.3"
+    "@tv2media/v-connection" "git+https://github.com/nrkno/v-connection.git#5386986d87ea6d1b5164d206ea42c975654b36cd"
     atem-connection "2.4.0"
     atem-state "^0.12.2"
     casparcg-connection "^6.0.0"
@@ -16994,7 +16993,7 @@ timecode@0.0.4:
     sprintf-js "^1.1.2"
     superfly-timeline "^8.3.1"
     threadedclass "^1.2.0"
-    timeline-state-resolver-types "npm:@evs/timeline-state-resolver-types@8.0.0"
+    timeline-state-resolver-types "npm:@evs/timeline-state-resolver-types@8.0.0-master.223"
     tslib "^2.4.1"
     tv-automation-quantel-gateway-client "^3.0.2"
     underscore "^1.13.4"
