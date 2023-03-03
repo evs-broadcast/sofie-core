@@ -603,6 +603,7 @@ export interface APIPeripheralDevice {
 		| 'media_manager'
 		| 'package_manager'
 		| 'live_status'
+		| 'input'
 	connected: boolean
 }
 
@@ -653,6 +654,9 @@ export function APIPeripheralDeviceFrom(device: PeripheralDevice): APIPeripheral
 			break
 		case PeripheralDeviceType.SPREADSHEET:
 			deviceType = 'spreadsheet'
+			break
+		case PeripheralDeviceType.INPUT:
+			deviceType = 'input'
 			break
 		default:
 			assertNever(device.type)
@@ -770,6 +774,7 @@ export interface APIShowStyleVariant {
 	name: string
 	showStyleBaseId: string
 	config: object
+	rank: number
 }
 
 export function showStyleVariantFrom(
@@ -786,6 +791,7 @@ export function showStyleVariantFrom(
 	)
 	return {
 		_id: existingId ?? getRandomId(),
+		_rank: apiShowStyleVariant.rank,
 		showStyleBaseId: protectString(apiShowStyleVariant.showStyleBaseId),
 		name: apiShowStyleVariant.name,
 		blueprintConfigWithOverrides: blueprintConfig,
@@ -796,6 +802,7 @@ export function showStyleVariantFrom(
 export function APIShowStyleVariantFrom(showStyleVariant: ShowStyleVariant): APIShowStyleVariant {
 	return {
 		name: showStyleVariant.name,
+		rank: showStyleVariant._rank,
 		showStyleBaseId: unprotectString(showStyleVariant.showStyleBaseId),
 		config: applyAndValidateOverrides(showStyleVariant.blueprintConfigWithOverrides).obj,
 	}
