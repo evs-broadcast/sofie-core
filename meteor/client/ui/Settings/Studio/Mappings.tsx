@@ -2,13 +2,7 @@ import ClassNames from 'classnames'
 import React, { useCallback, useMemo } from 'react'
 import * as _ from 'underscore'
 import Tooltip from 'rc-tooltip'
-import {
-	Studio,
-	Studios,
-	MappingExt,
-	getActiveRoutes,
-	ResultingMappingRoutes,
-} from '../../../../lib/collections/Studios'
+import { Studio, MappingExt, getActiveRoutes, ResultingMappingRoutes } from '../../../../lib/collections/Studios'
 import { EditAttribute } from '../../../lib/EditAttribute'
 import { doModalDialog } from '../../../lib/ModalDialog'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -45,13 +39,14 @@ import {
 	LabelAndOverridesForDropdown,
 	LabelAndOverridesForInt,
 } from '../../../lib/Components/LabelAndOverrides'
+import { Studios } from '../../../collections'
 
 interface IStudioMappingsProps {
 	studio: Studio
 	manifest: MappingsManifest | undefined
 }
 
-export function StudioMappings({ manifest, studio }: IStudioMappingsProps) {
+export function StudioMappings({ manifest, studio }: IStudioMappingsProps): JSX.Element {
 	const { t } = useTranslation()
 
 	const { toggleExpanded, isExpanded } = useToggleExpandHelper()
@@ -234,6 +229,26 @@ function StudioMappingsEntry({
 			),
 		})
 	}, [t, item.id, overrideHelper])
+	const confirmReset = useCallback(() => {
+		doModalDialog({
+			title: t('Reset this mapping?'),
+			yes: t('Reset'),
+			no: t('Cancel'),
+			onAccept: () => {
+				overrideHelper.resetItem(item.id)
+			},
+			message: (
+				<React.Fragment>
+					<p>
+						{t('Are you sure you want to reset all overrides for the mapping for layer "{{mappingId}}"?', {
+							mappingId: item.id,
+						})}
+					</p>
+					<p>{t('Please note: This action is irreversible!')}</p>
+				</React.Fragment>
+			),
+		})
+	}, [t, item.id, overrideHelper])
 
 	const doChangeItemId = useCallback(
 		(newItemId: string) => {
@@ -271,10 +286,20 @@ function StudioMappingsEntry({
 				</td>
 
 				<td className="settings-studio-device__actions table-item-actions c3">
-					<button className="action-btn" onClick={toggleEditItem}>
+					{!item.defaults && (
+						<button className="action-btn" disabled>
+							<FontAwesomeIcon icon={faSync} title={t('Mapping cannot be reset as it has no default values')} />
+						</button>
+					)}
+					{item.defaults && item.overrideOps.length > 0 && (
+						<button className="action-btn" onClick={confirmReset} title={t('Reset mapping to default values')}>
+							<FontAwesomeIcon icon={faSync} />
+						</button>
+					)}
+					<button className="action-btn" onClick={toggleEditItem} title={t('Edit mapping')}>
 						<FontAwesomeIcon icon={faPencilAlt} />
 					</button>
-					<button className="action-btn" onClick={confirmDelete}>
+					<button className="action-btn" onClick={confirmDelete} title={t('Delete mapping')}>
 						<FontAwesomeIcon icon={faTrash} />
 					</button>
 				</td>
@@ -484,7 +509,12 @@ interface IDeviceMappingSettingsProps {
 	manifest: MappingManifestEntry[] | undefined
 }
 
-export function DeviceMappingSettings({ attribute, showOptional, manifest, studio }: IDeviceMappingSettingsProps) {
+export function DeviceMappingSettings({
+	attribute,
+	showOptional,
+	manifest,
+	studio,
+}: IDeviceMappingSettingsProps): JSX.Element | null {
 	if (manifest) {
 		return (
 			<React.Fragment>

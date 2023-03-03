@@ -43,7 +43,7 @@
 		"@sofie-automation/shared-lib": "link:../shared-lib",
 		"timeline-state-resolver-types": "npm:@evs/timeline-state-resolver-types@8.0.0",
 		"tslib": "^2.4.0",
-		"type-fest": "^3.5.3"
+		"type-fest": "^2.19.0"
 	},
 	"lint-staged": {
 		"*.{css,json,md,scss}": [

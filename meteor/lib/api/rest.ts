@@ -24,7 +24,7 @@ import {
 	SourceLayerType,
 	StatusCode,
 } from '@sofie-automation/blueprints-integration'
-import { Blueprint, Blueprints } from '../collections/Blueprints'
+import { Blueprint } from '../collections/Blueprints'
 import { ShowStyleBase } from '../collections/ShowStyleBases'
 import {
 	applyAndValidateOverrides,
@@ -33,6 +33,7 @@ import {
 } from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
 import { ShowStyleVariant } from '../collections/ShowStyleVariants'
 import { IStudioSettings, Studio } from '../collections/Studios'
+import { Blueprints } from '../../client/collections'
 
 export interface RestAPI {
 	/**

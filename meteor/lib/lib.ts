@@ -1,6 +1,4 @@
 import * as _ from 'underscore'
-import { AsyncMongoCollection } from './collections/lib'
-import { CollectionName } from '@sofie-automation/corelib/dist/dataModel/Collections'
 import { ITranslatableMessage } from '@sofie-automation/corelib/dist/TranslatableMessage'
 import { Meteor } from 'meteor/meteor'
 import { ProtectedString } from '@sofie-automation/corelib/dist/protectedString'
@@ -18,11 +16,19 @@ export * from '@sofie-automation/corelib/dist/protectedString'
 export * from '@sofie-automation/corelib/dist/lib'
 
 /**
- * Convenience method to convert a Meteor.call() into a Promise
+ * Convenience method to convert a Meteor.apply() into a Promise
+ * @param callName {string} Method name
+ * @param args {Array<any>} An array of arguments for the method call
+ * @param options (Optional) An object with options for the call. See Meteor documentation.
+ * @returns {Promise<any>} A promise containing the result of the called method.
  */
-export async function MeteorPromiseCall(callName: string, ...args: any[]): Promise<any> {
+export async function MeteorPromiseApply(
+	callName: Parameters<typeof Meteor.apply>[0],
+	args: Parameters<typeof Meteor.apply>[1],
+	options?: Parameters<typeof Meteor.apply>[2]
+): Promise<any> {
 	return new Promise((resolve, reject) => {
-		Meteor.call(callName, ...args, (err, res) => {
+		Meteor.apply(callName, args, options, (err, res) => {
 			if (err) reject(err)
 			else resolve(res)
 		})
@@ -111,16 +117,6 @@ export function stringifyObjects(objs: unknown): string {
 	} else {
 		return objs + ''
 	}
-}
-export const Collections = new Map<CollectionName, AsyncMongoCollection<any>>()
-export function registerCollection(name: CollectionName, collection: AsyncMongoCollection<any>): void {
-	if (Collections.has(name)) throw new Meteor.Error(`Cannot re-register collection "${name}"`)
-	Collections.set(name, collection)
-}
-export function getCollectionKey(collection: AsyncMongoCollection<any>): CollectionName {
-	const o = Array.from(Collections.entries()).find(([_key, col]) => col === collection)
-	if (!o) throw new Meteor.Error(500, `Collection "${collection.name}" not found in Collections!`)
-	return o[0] // collectionName
 }
 
 /** Convenience function, to be used when length of array has previously been verified */
@@ -224,6 +220,13 @@ export function toc(name: string = 'default', logStr?: string | Promise<any>[]):
 }
 
 /**
+ * Make Meteor.startup support async functions
+ */
+export function MeteorStartupAsync(fcn: () => Promise<void>): void {
+	Meteor.startup(() => waitForPromise(fcn()))
+}
+
+/**
  * Make Meteor.wrapAsync a bit more type safe
  * The original version makes the callback be after the last non-undefined parameter, rather than after or replacing the last parameter.
  * Which makes it incredibly hard to find without iterating over all the parameters. This does that for you, so you dont need to check as many places
@@ -308,7 +311,7 @@ export const waitForPromise: <T>(p: Promise<T> | T) => Awaited<T> = Meteor.wrapA
 		.catch((e) => {
 			cb(e)
 		})
-})
+}) as <T>(p: Promise<T> | T) => Awaited<T>
 /**
  * Convert a Fiber function into a promise
  * Makes the Fiber function to run in its own fiber and return a promise

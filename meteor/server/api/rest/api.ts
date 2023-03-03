@@ -26,7 +26,6 @@ import {
 	studioFrom,
 	APIStudioFrom,
 } from '../../../lib/api/rest'
-import { RundownPlaylists } from '../../../lib/collections/RundownPlaylists'
 import { MeteorCall, MethodContextAPI } from '../../../lib/api/methods'
 import { ServerClientAPI } from '../client'
 import { ServerRundownAPI } from '../rundown'
@@ -48,25 +47,28 @@ import {
 	ShowStyleVariantId,
 	StudioId,
 } from '@sofie-automation/corelib/dist/dataModel/Ids'
-import { AdLibPieces } from '../../../lib/collections/AdLibPieces'
-import { AdLibActions } from '../../../lib/collections/AdLibActions'
-import { RundownBaselineAdLibPieces } from '../../../lib/collections/RundownBaselineAdLibPieces'
-import { RundownBaselineAdLibActions } from '../../../lib/collections/RundownBaselineAdLibActions'
-import { BucketAdLibs } from '../../../lib/collections/BucketAdlibs'
 import { UserError, UserErrorMessage } from '@sofie-automation/corelib/dist/error'
 import { StudioContentWriteAccess } from '../../security/studio'
 import { ServerPlayoutAPI } from '../playout/playout'
 import { TriggerReloadDataResponse } from '../../../lib/api/userActions'
 import { interpollateTranslation, translateMessage } from '@sofie-automation/corelib/dist/TranslatableMessage'
 import { Credentials } from '../../security/lib/credentials'
-import { PeripheralDevices } from '../../../lib/collections/PeripheralDevices'
 import { PeripheralDeviceAPI } from '../../../lib/api/peripheralDevice'
 import { assertNever } from '@sofie-automation/shared-lib/dist/lib/lib'
-import { Blueprints } from '../../../lib/collections/Blueprints'
-import { Studios } from '../../../lib/collections/Studios'
-import { ShowStyleBases } from '../../../lib/collections/ShowStyleBases'
-import { ShowStyleVariants } from '../../../lib/collections/ShowStyleVariants'
-import { Rundowns } from '../../../lib/collections/Rundowns'
+import {
+	AdLibActions,
+	AdLibPieces,
+	Blueprints,
+	BucketAdLibs,
+	PeripheralDevices,
+	RundownBaselineAdLibActions,
+	RundownBaselineAdLibPieces,
+	RundownPlaylists,
+	Rundowns,
+	ShowStyleBases,
+	ShowStyleVariants,
+	Studios,
+} from '../../collections'
 
 function restAPIUserEvent(
 	ctx: Koa.ParameterizedContext<

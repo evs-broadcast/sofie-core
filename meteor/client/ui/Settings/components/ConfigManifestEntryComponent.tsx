@@ -1,6 +1,5 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { PeripheralDevices } from '../../../../lib/collections/PeripheralDevices'
 import { EditAttribute } from '../../../lib/EditAttribute'
 import { ConfigManifestEntry, ConfigManifestEntryType } from '@sofie-automation/corelib/dist/deviceConfig'
 import { ConfigManifestEntry as BlueprintConfigManifestEntry } from '@sofie-automation/blueprints-integration'
@@ -22,6 +21,7 @@ import {
 	LabelAndOverridesProps,
 } from '../../../lib/Components/LabelAndOverrides'
 import { assertNever } from '@sofie-automation/corelib/dist/lib'
+import { PeripheralDevices } from '../../../collections'
 
 interface ConfigManifestEntryWithOverridesProps {
 	configField: ConfigManifestEntry
@@ -33,7 +33,7 @@ export function ManifestEntryWithOverrides({
 	configField,
 	item,
 	overrideHelper,
-}: ConfigManifestEntryWithOverridesProps) {
+}: ConfigManifestEntryWithOverridesProps): JSX.Element {
 	const { t } = useTranslation()
 
 	const wrapperProps: Omit<LabelAndOverridesProps<any, any>, 'children'> = {
@@ -150,7 +150,7 @@ export const renderEditAttribute = (
 	configField: ConfigManifestEntry | BlueprintConfigManifestEntry,
 	obj: object,
 	prefix?: string
-) => {
+): JSX.Element | undefined => {
 	const attribute = prefix + configField.id
 	const opts = {
 		modifiedClassName: 'bghl',
@@ -234,7 +234,7 @@ export function ConfigManifestEntryComponent({
 	prefix,
 	collection,
 	className,
-}: IConfigManifestEntryComponentProps) {
+}: IConfigManifestEntryComponentProps): JSX.Element {
 	const { t } = useTranslation() // TODO - should this use a namespace?
 
 	return (

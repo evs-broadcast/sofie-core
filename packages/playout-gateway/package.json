@@ -56,11 +56,10 @@
 		"production"
 	],
 	"dependencies": {
-		"@sofie-automation/blueprints-integration": "link:../blueprints-integration",
-		"@sofie-automation/server-core-integration": "link:../server-core-integration",
-		"@sofie-automation/shared-lib": "link:../shared-lib",
-		"debug": "^4.3.2",
-		"influx": "^5.9.2",
+		"@sofie-automation/server-core-integration": "1.49.0",
+		"@sofie-automation/shared-lib": "1.49.0",
+		"debug": "^4.3.3",
+		"influx": "^5.9.3",
 		"timeline-state-resolver": "npm:@evs/timeline-state-resolver@8.0.0",
 		"tslib": "^2.4.0",
 		"underscore": "^1.13.4",

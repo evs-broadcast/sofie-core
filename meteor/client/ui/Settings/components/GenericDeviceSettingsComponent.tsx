@@ -4,11 +4,7 @@ import * as _ from 'underscore'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faTrash, faPencilAlt, faCheck, faPlus } from '@fortawesome/free-solid-svg-icons'
 import { withTranslation } from 'react-i18next'
-import {
-	PeripheralDevices,
-	PeripheralDevice,
-	PeripheralDeviceType,
-} from '../../../../lib/collections/PeripheralDevices'
+import { PeripheralDevice, PeripheralDeviceType } from '../../../../lib/collections/PeripheralDevices'
 import { EditAttribute, EditAttributeBase } from '../../../lib/EditAttribute'
 import { ModalDialog } from '../../../lib/ModalDialog'
 import { Translated } from '../../../lib/ReactMeteorData/react-meteor-data'
@@ -22,6 +18,7 @@ import {
 } from '@sofie-automation/corelib/dist/deviceConfig'
 import { ConfigManifestEntryComponent } from './ConfigManifestEntryComponent'
 import { ConfigManifestOAuthFlowComponent } from './ConfigManifestOAuthFlow'
+import { PeripheralDevices } from '../../../collections'
 import { protectString, unprotectString } from '../../../../lib/lib'
 import { PeripheralDeviceId } from '@sofie-automation/shared-lib/dist/core/model/Ids'
 import { MeteorCall } from '../../../../lib/api/methods'
@@ -56,11 +53,11 @@ export const GenericDeviceSettingsComponent = withTranslation()(
 			}
 		}
 
-		componentDidMount() {
+		componentDidMount(): void {
 			this.refreshDebugStatesInterval = setInterval(this.refreshDebugStates, 1000)
 		}
 
-		componentWillUnmount() {
+		componentWillUnmount(): void {
 			if (this.refreshDebugStatesInterval) clearInterval(this.refreshDebugStatesInterval)
 		}
 
@@ -692,7 +689,7 @@ export const GenericDeviceSettingsComponent = withTranslation()(
 			return <div>{fields}</div>
 		}
 
-		render() {
+		render(): JSX.Element {
 			const { t, subDevices, device } = this.props
 
 			return (
