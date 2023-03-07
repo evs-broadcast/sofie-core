@@ -33,7 +33,7 @@ import {
 } from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
 import { ShowStyleVariant } from '../collections/ShowStyleVariants'
 import { IStudioSettings, Studio } from '../collections/Studios'
-import { Blueprints } from '../../client/collections'
+import { Blueprints } from '../../server/collections'
 
 export interface RestAPI {
 	/**
