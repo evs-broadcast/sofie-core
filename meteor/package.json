@@ -14,7 +14,7 @@
 		"prepareForTest": "node ../scripts/fixTestFibers.js",
 		"inject-git-hash": "node ./scripts/generate-version-file.js",
 		"unit": "jest",
-		"unitci": "jest --maxWorkers 2 --coverage",
+		"unitci": "jest --runInBand --coverage",
 		"unitcov": "jest --coverage",
 		"test": "meteor yarn check-types && meteor yarn unit",
 		"watch": "jest --watch",
