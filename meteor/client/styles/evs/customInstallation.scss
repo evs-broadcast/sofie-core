@@ -357,4 +357,16 @@ body.evs {
             border-color: $evs-danger;
         }
     }
+
+    .settings-studio-mappings-table, .settings-studio-source-table, .settings-studio-output-table {
+        .expando-details {
+            .mod.mvs.mhs {
+                margin-top: 20px !important;
+
+                .btn.btn-primary {
+                    float: right;
+                }
+            }
+        }
+    }
 }
