@@ -143,8 +143,6 @@ body.evs {
         border-radius: 8px;
         background: $segment-color;
         border: 0;
-        
-        grid-template-columns: [segment-name] 11.5rem [segment-group-controls] 130px [timeline] auto [end];
     
         // List view
         &.segment-opl > .segment-opl__part-list {
