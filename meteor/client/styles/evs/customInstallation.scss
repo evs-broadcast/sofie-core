@@ -367,4 +367,11 @@ body.evs {
             }
         }
     }
+
+    // Outside of other blocks to make it lower priority so that assigned Piece colours take higher priority.
+    .segment-opl__piece-indicator-placeholder {
+        .segment-opl__piece-indicator {
+            background: $segment-color;
+        }
+    }
 }
