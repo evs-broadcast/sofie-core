@@ -208,7 +208,7 @@ export function APIStudioFrom(studio: Studio): APIStudio {
 	return {
 		name: studio.name,
 		blueprintId: unprotectString(studio.blueprintId),
-		config: studio.blueprintConfigWithOverrides.overrides,
+		config: applyAndValidateOverrides(studio.blueprintConfigWithOverrides).obj,
 		settings: studioSettings,
 		supportedShowStyleBase: studio.supportedShowStyleBase.map((id) => unprotectString(id)),
 	}
