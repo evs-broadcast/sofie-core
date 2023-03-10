@@ -22,7 +22,9 @@ export class PlaylistsHandler extends CollectionBase<DBRundownPlaylist[]> implem
 	// override notify to implement empty array handling
 	async notify(data: DBRundownPlaylist[] | undefined): Promise<void> {
 		this._logger.info(
-			`${this._collection} notifying all observers of an update with ${this._collectionData?.length} playlists`
+			`${this._collection} notifying all observers of an update with ${
+				this._collectionData ? this._collectionData.length : 0
+			} playlists`
 		)
 		if (data !== undefined) {
 			for (const observer of this._observers) {
