@@ -608,7 +608,7 @@ export class RundownTimingCalculator {
 			}
 
 			remainingTimeOnCurrentPart = lastStartedPlayback
-				? now - (lastStartedPlayback + onAirPartDuration)
+				? now - (Math.min(lastStartedPlayback, now) + onAirPartDuration)
 				: onAirPartDuration * -1
 
 			currentPartWillAutoNext = !!(currentLivePart.autoNext && currentLivePart.expectedDuration)
