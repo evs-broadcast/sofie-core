@@ -692,6 +692,7 @@ export function APIBlueprintFrom(blueprint: Blueprint): APIBlueprint | undefined
 export interface APIShowStyleBase {
 	name: string
 	blueprintId: string
+	blueprintConfigPresetId?: string
 	outputLayers: APIOutputLayer[]
 	sourceLayers: APISourceLayer[]
 	config: object

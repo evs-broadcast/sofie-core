@@ -472,6 +472,9 @@ components:
         blueprintId:
           type: string
           description: Id of the blueprint used by this ShowStyleBase.
+        blueprintConfigPresetId:
+          type: string
+          description: Id of the Blueprint config preset to use for the ShowStyle.
         outputLayers:
           type: array
           items:
