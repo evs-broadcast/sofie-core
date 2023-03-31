@@ -109,7 +109,6 @@ describe('rundown Timing Calculator', () => {
 		)
 		expect(result).toEqual(
 			literal<RundownTimingContext>({
-				currentPartInstanceId: null,
 				isLowResolution: false,
 				asDisplayedPlaylistDuration: 0,
 				asPlayedPlaylistDuration: 0,
@@ -173,7 +172,6 @@ describe('rundown Timing Calculator', () => {
 		)
 		expect(result).toEqual(
 			literal<RundownTimingContext>({
-				currentPartInstanceId: null,
 				isLowResolution: false,
 				asDisplayedPlaylistDuration: 4000,
 				asPlayedPlaylistDuration: 4000,
@@ -276,7 +274,6 @@ describe('rundown Timing Calculator', () => {
 		)
 		expect(result).toEqual(
 			literal<RundownTimingContext>({
-				currentPartInstanceId: null,
 				isLowResolution: false,
 				asDisplayedPlaylistDuration: 4000,
 				asPlayedPlaylistDuration: 4000,
@@ -381,7 +378,6 @@ describe('rundown Timing Calculator', () => {
 		)
 		expect(result).toEqual(
 			literal<RundownTimingContext>({
-				currentPartInstanceId: null,
 				isLowResolution: false,
 				asDisplayedPlaylistDuration: 4000,
 				asPlayedPlaylistDuration: 4000,
@@ -510,7 +506,6 @@ describe('rundown Timing Calculator', () => {
 		)
 		expect(result).toEqual(
 			literal<RundownTimingContext>({
-				currentPartInstanceId: null,
 				isLowResolution: false,
 				asDisplayedPlaylistDuration: 4000,
 				asPlayedPlaylistDuration: 4000,
@@ -628,7 +623,6 @@ describe('rundown Timing Calculator', () => {
 		)
 		expect(result).toEqual(
 			literal<RundownTimingContext>({
-				currentPartInstanceId: null,
 				isLowResolution: false,
 				asDisplayedPlaylistDuration: 4000,
 				asPlayedPlaylistDuration: 8000,
