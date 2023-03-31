@@ -81,52 +81,56 @@ export function convertObjectIntoOverrides<T>(
  * Otherwise if the flat object value is different to the default add an override to the new value.
  */
 export function updateOverrides<T extends object>(
-	curObj: ObjectWithOverrides<T>,
+	curObj: ReadonlyDeep<ObjectWithOverrides<T>>,
 	rawObj: ReadonlyDeep<T>
 ): ObjectWithOverrides<T> {
-	const result = clone(curObj)
+	const result: ObjectWithOverrides<T> = { defaults: clone(curObj.defaults), overrides: [] }
 	for (const [key, value] of Object.entries(rawObj)) {
-		const override = result.overrides.find((ov) => {
+		const override = curObj.overrides.find((ov) => {
 			const parentPath = getParentObjectPath(ov.path)
 			return key === (parentPath ? parentPath : ov.path)
 		})
 		if (override) {
 			// Some or all members of the property are already overridden in curObj
 			if (objectPath.has(rawObj, override.path)) {
-				// A specific member of the override appears in the raw object
 				const rawValue = objectPath.get(rawObj, override.path)
-				if (override.op === 'set' && !_.isEqual(rawValue, override.value)) override.value = rawValue
-			}
-		} else {
-			// check the value of the raw object against the default, generating an override if it differs
-			for (const [defaultKey, defaultValue] of Object.entries(result.defaults)) {
-				if (key === defaultKey && !_.isEqual(value, defaultValue)) {
-					// Some or all members of the property have been modified
-					if (typeof value === 'object') {
-						// check one level down info the potentially modified object
-						for (const [rawKey, rawValue] of Object.entries(value)) {
-							if (!_.isEqual(rawValue, defaultValue[rawKey])) {
-								result.overrides.push(
-									literal<ObjectOverrideSetOp>({
-										op: 'set',
-										path: `${key}.${rawKey}`,
-										value: rawValue,
-									})
-								)
-							}
-						}
-					} else {
-						result.overrides.push(
-							literal<ObjectOverrideSetOp>({
-								op: 'set',
-								path: key,
-								value: value,
-							})
-						)
-					}
+				if (override.op === 'delete' || (override.op === 'set' && _.isEqual(rawValue, override.value))) {
+					// Preserve all existing delete overrides and any set overrides where the value is not updated
+					result.overrides.push(override)
 				}
 			}
 		}
+
+		// check the values of the raw object against the current object, generating an override for each difference
+		const appliedCurObj = applyAndValidateOverrides(curObj).obj
+		for (const [curKey, curValue] of Object.entries(appliedCurObj)) {
+			if (key === curKey && !_.isEqual(value, curValue)) {
+				// Some or all members of the property have been modified
+				if (typeof value === 'object') {
+					// check one level down info the potentially modified object
+					for (const [rawKey, rawValue] of Object.entries(value)) {
+						if (!_.isEqual(rawValue, curValue[rawKey])) {
+							result.overrides.push(
+								literal<ObjectOverrideSetOp>({
+									op: 'set',
+									path: `${key}.${rawKey}`,
+									value: rawValue,
+								})
+							)
+						}
+					}
+				} else {
+					result.overrides.push(
+						literal<ObjectOverrideSetOp>({
+							op: 'set',
+							path: key,
+							value: value,
+						})
+					)
+				}
+			}
+		}
+		// }
 	}
 	return result
 }
