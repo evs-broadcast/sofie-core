@@ -19,6 +19,13 @@ import {
 	APIShowStyleBase,
 	APIShowStyleVariant,
 	APIStudio,
+	ShowStyleBaseAction,
+	StudioAction,
+	StudioActionType,
+	ShowStyleBaseActionType,
+	MigrationData,
+	PendingMigrations,
+	PeripheralDeviceAction,
 } from '../../../lib/api/rest'
 import { MeteorCall, MethodContextAPI } from '../../../lib/api/methods'
 import { ServerClientAPI } from '../client'
@@ -71,6 +78,8 @@ import {
 	showStyleVariantFrom,
 	studioFrom,
 } from './typeConversion'
+import { runUpgradeForShowStyleBase, runUpgradeForStudio } from '../../migration/upgrades'
+import { MigrationStepInputResult } from '@sofie-automation/blueprints-integration'
 
 function restAPIUserEvent(
 	ctx: Koa.ParameterizedContext<
@@ -949,6 +958,78 @@ class ServerRestAPI implements RestAPI {
 
 		return ClientAPI.responseSuccess(undefined, 200)
 	}
+
+	async studioAction(
+		_connection: Meteor.Connection,
+		_event: string,
+		studioId: StudioId,
+		action: StudioAction
+	): Promise<ClientAPI.ClientResponse<void>> {
+		switch (action.type) {
+			case StudioActionType.BLUEPRINT_UPGRADE:
+				return ClientAPI.responseSuccess(await runUpgradeForStudio(studioId))
+			default:
+				assertNever(action.type)
+				throw new Meteor.Error(400, `Invalid action type`)
+		}
+	}
+
+	async showStyleBaseAction(
+		_connection: Meteor.Connection,
+		_event: string,
+		showStyleBaseId: ShowStyleBaseId,
+		action: ShowStyleBaseAction
+	): Promise<ClientAPI.ClientResponse<void>> {
+		switch (action.type) {
+			case ShowStyleBaseActionType.BLUEPRINT_UPGRADE:
+				return ClientAPI.responseSuccess(await runUpgradeForShowStyleBase(showStyleBaseId))
+			default:
+				assertNever(action.type)
+				throw new Meteor.Error(400, `Invalid action type`)
+		}
+	}
+
+	async getPendingMigrations(
+		_connection: Meteor.Connection,
+		_event: string
+	): Promise<ClientAPI.ClientResponse<{ inputs: PendingMigrations }>> {
+		let migrationStatus = await MeteorCall.migration.getMigrationStatus()
+		if (!migrationStatus.migrationNeeded) return ClientAPI.responseSuccess({ inputs: [] })
+
+		let requiredInputs: PendingMigrations = []
+		for (const migration of migrationStatus.migration.manualInputs) {
+			if (migration.stepId && migration.attribute) {
+				requiredInputs.push({
+					stepId: migration.stepId,
+					attributeId: migration.attribute,
+				})
+			}
+		}
+
+		return ClientAPI.responseSuccess({ inputs: requiredInputs })
+	}
+
+	async applyPendingMigrations(
+		_connection: Meteor.Connection,
+		_event: string,
+		inputs: MigrationData
+	): Promise<ClientAPI.ClientResponse<void>> {
+		let migrationStatus = await MeteorCall.migration.getMigrationStatus()
+		if (!migrationStatus.migrationNeeded) throw new Error(`Migration does not need to be applied`)
+
+		let migrationData: MigrationStepInputResult[] = inputs.map((input) => ({
+			stepId: input.stepId,
+			attribute: input.attributeId,
+			value: input.migrationValue,
+		}))
+		let result = await MeteorCall.migration.runMigration(
+			migrationStatus.migration.chunks,
+			migrationStatus.migration.hash,
+			migrationData
+		)
+		if (result.migrationCompleted) return ClientAPI.responseSuccess(undefined)
+		throw new Error(`Unknown error occurred`)
+	}
 }
 
 const koaRouter = new KoaRouter()
@@ -1267,16 +1348,18 @@ sofieAPIRequest<{ deviceId: string }, never, APIPeripheralDevice>(
 	}
 )
 
-sofieAPIRequest<{ deviceId: string }, { action: PeripheralDeviceActionType }, void>(
+sofieAPIRequest<{ deviceId: string }, { action: PeripheralDeviceAction }, void>(
 	'put',
 	'/devices/:deviceId/action',
 	new Map(),
 	async (serverAPI, connection, event, params, body) => {
 		const deviceId = protectString<PeripheralDeviceId>(params.deviceId)
-		logger.info(`koa PUT: peripheral device ${deviceId} action ${body.action}`)
+		const action = body.action
+		logger.info(`koa PUT: peripheral device ${deviceId} action ${action.type}`)
 
 		check(deviceId, String)
-		return await serverAPI.peripheralDeviceAction(connection, event, deviceId, { type: body.action })
+		check(action, Object)
+		return await serverAPI.peripheralDeviceAction(connection, event, deviceId, body.action)
 	}
 )
 
@@ -1578,6 +1661,60 @@ sofieAPIRequest<{ showStyleBaseId: string; showStyleVariantId: string }, never, 
 		check(showStyleBaseId, String)
 		check(showStyleVariantId, String)
 		return await serverAPI.deleteShowStyleVariant(connection, event, showStyleBaseId, showStyleVariantId)
+	}
+)
+
+sofieAPIRequest<{ studioId: string }, { action: StudioAction }, void>(
+	'put',
+	'/studios/{studioId}/action',
+	new Map([[404, UserErrorMessage.StudioNotFound]]),
+	async (serverAPI, connection, event, params, body) => {
+		const studioId = protectString<StudioId>(params.studioId)
+		const action = body.action
+		logger.info(`koa PUT: Studio action ${studioId} ${body.action.type}`)
+
+		check(studioId, String)
+		check(action, Object)
+		return await serverAPI.studioAction(connection, event, studioId, action)
+	}
+)
+
+sofieAPIRequest<{ showStyleId: string }, { action: ShowStyleBaseAction }, void>(
+	'put',
+	'/studios/{showStyleBaseId}/actions',
+	new Map([[404, UserErrorMessage.ShowStyleBaseNotFound]]),
+	async (serverAPI, connection, event, params, body) => {
+		const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleId)
+		const action = body.action
+		logger.info(`koa PUT: ShowStyleBase action ${showStyleBaseId} ${body.action.type}`)
+
+		check(showStyleBaseId, String)
+		check(action, Object)
+		return await serverAPI.showStyleBaseAction(connection, event, showStyleBaseId, action)
+	}
+)
+
+sofieAPIRequest<never, never, { inputs: PendingMigrations }>(
+	'get',
+	'/system/migrations',
+	new Map(),
+	async (serverAPI, connection, event, _params, _body) => {
+		logger.info(`koa GET: System migrations`)
+
+		return await serverAPI.getPendingMigrations(connection, event)
+	}
+)
+
+sofieAPIRequest<never, { inputs: MigrationData }, void>(
+	'post',
+	'/system/migrations',
+	new Map([[400, UserErrorMessage.NoMigrationsToApply]]),
+	async (serverAPI, connection, event, _params, body) => {
+		const inputs = body.inputs
+		logger.info(`koa POST: System migrations`)
+
+		check(inputs, Array)
+		return await serverAPI.applyPendingMigrations(connection, event, inputs)
 	}
 )
 

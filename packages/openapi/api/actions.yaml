@@ -17,13 +17,15 @@ paths:
     $ref: 'definitions/sofie.yaml#/resources/index'
   /system/blueprint:
     $ref: 'definitions/sofie.yaml#/resources/systemBlueprint'
+  /system/migrations:
+    $ref: 'definitions/sofie.yaml#/resources/migrations'
   # peripheral devices
   /devices:
     $ref: 'definitions/devices.yaml#/resources/devices'
   /devices/{deviceId}:
     $ref: 'definitions/devices.yaml#/resources/device'
   /devices/{deviceId}/action:
-    $ref: 'definitions/devices.yaml#/resources/action'
+    $ref: 'definitions/devices.yaml#/resources/deviceAction'
   # blueprint operations
   /blueprints:
     $ref: 'definitions/blueprints.yaml#/resources/blueprints'
@@ -65,6 +67,8 @@ paths:
     $ref: 'definitions/studios.yaml#/resources/devices'
   /studios/{studioId}/devices/{deviceId}:
     $ref: 'definitions/studios.yaml#/resources/device'
+  /studios/{studioId}/action:
+    $ref: 'definitions/studios.yaml#/resources/studioAction'
   # showstyle operations
   /showstyles:
     $ref: 'definitions/showstyles.yaml#/resources/showStyleBases'
@@ -74,3 +78,5 @@ paths:
     $ref: 'definitions/showstyles.yaml#/resources/showStyleVariants'
   /showstyles/{showStyleBaseId}/variants/{showStyleVariantId}:
     $ref: 'definitions/showstyles.yaml#/resources/showStyleVariant'
+  /showstyles/{showStyleBaseId}/action:
+    $ref: 'definitions/showstyles.yaml#/resources/showStyleBaseAction'
