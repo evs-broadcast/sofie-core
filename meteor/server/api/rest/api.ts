@@ -993,10 +993,10 @@ class ServerRestAPI implements RestAPI {
 		_connection: Meteor.Connection,
 		_event: string
 	): Promise<ClientAPI.ClientResponse<{ inputs: PendingMigrations }>> {
-		let migrationStatus = await MeteorCall.migration.getMigrationStatus()
+		const migrationStatus = await MeteorCall.migration.getMigrationStatus()
 		if (!migrationStatus.migrationNeeded) return ClientAPI.responseSuccess({ inputs: [] })
 
-		let requiredInputs: PendingMigrations = []
+		const requiredInputs: PendingMigrations = []
 		for (const migration of migrationStatus.migration.manualInputs) {
 			if (migration.stepId && migration.attribute) {
 				requiredInputs.push({
@@ -1014,15 +1014,15 @@ class ServerRestAPI implements RestAPI {
 		_event: string,
 		inputs: MigrationData
 	): Promise<ClientAPI.ClientResponse<void>> {
-		let migrationStatus = await MeteorCall.migration.getMigrationStatus()
+		const migrationStatus = await MeteorCall.migration.getMigrationStatus()
 		if (!migrationStatus.migrationNeeded) throw new Error(`Migration does not need to be applied`)
 
-		let migrationData: MigrationStepInputResult[] = inputs.map((input) => ({
+		const migrationData: MigrationStepInputResult[] = inputs.map((input) => ({
 			stepId: input.stepId,
 			attribute: input.attributeId,
 			value: input.migrationValue,
 		}))
-		let result = await MeteorCall.migration.runMigration(
+		const result = await MeteorCall.migration.runMigration(
 			migrationStatus.migration.chunks,
 			migrationStatus.migration.hash,
 			migrationData
