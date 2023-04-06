@@ -78,8 +78,13 @@ import {
 	showStyleVariantFrom,
 	studioFrom,
 } from './typeConversion'
-import { runUpgradeForShowStyleBase, runUpgradeForStudio } from '../../migration/upgrades'
-import { MigrationStepInputResult } from '@sofie-automation/blueprints-integration'
+import {
+	runUpgradeForShowStyleBase,
+	runUpgradeForStudio,
+	validateConfigForShowStyleBase,
+	validateConfigForStudio,
+} from '../../migration/upgrades'
+import { MigrationStepInputResult, NoteSeverity } from '@sofie-automation/blueprints-integration'
 
 function restAPIUserEvent(
 	ctx: Koa.ParameterizedContext<
@@ -627,6 +632,7 @@ class ServerRestAPI implements RestAPI {
 		if (!apiBlueprint) throw new Error(`Blueprint could not be converted to API representation`)
 		return ClientAPI.responseSuccess(apiBlueprint)
 	}
+
 	async assignSystemBlueprint(
 		_connection: Meteor.Connection,
 		_event: string,
@@ -754,7 +760,17 @@ class ServerRestAPI implements RestAPI {
 		}
 
 		ShowStyleBases.upsert(showStyleBaseId, showStyle)
-		return ClientAPI.responseSuccess(undefined, 200)
+
+		const validation = await validateConfigForShowStyleBase(showStyleBaseId)
+		const validateOK = validation.messages.reduce((acc, msg) => acc && msg.level === NoteSeverity.INFO, true)
+		if (!validateOK) {
+			logger.error(
+				`addOrUpdateShowStyleBase failed validation with errors: ${JSON.stringify(validation.messages)}`
+			)
+			throw new Meteor.Error(409, `ShowStyleBase ${showStyleBaseId} has failed validation`)
+		}
+
+		return ClientAPI.responseSuccess(await runUpgradeForShowStyleBase(showStyleBaseId))
 	}
 
 	async deleteShowStyleBase(
@@ -919,7 +935,15 @@ class ServerRestAPI implements RestAPI {
 		}
 
 		Studios.upsert(studioId, newStudio)
-		return ClientAPI.responseSuccess(undefined, 200)
+
+		const validation = await validateConfigForStudio(studioId)
+		const validateOK = validation.messages.reduce((acc, msg) => acc && msg.level === NoteSeverity.INFO, true)
+		if (!validateOK) {
+			logger.error(`addOrUpdateStudio failed validation with errors: ${JSON.stringify(validation.messages)}`)
+			throw new Meteor.Error(409, `Studio ${studioId} has failed validation`)
+		}
+
+		return ClientAPI.responseSuccess(await runUpgradeForStudio(studioId))
 	}
 
 	async deleteStudio(
@@ -1503,6 +1527,7 @@ sofieAPIRequest<{ blueprintId: string }, never, APIBlueprint>(
 		return await serverAPI.getBlueprint(connection, event, blueprintId)
 	}
 )
+
 sofieAPIRequest<never, { blueprintId: string }, void>(
 	'put',
 	'/system/blueprint',

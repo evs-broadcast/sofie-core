@@ -67,8 +67,6 @@ paths:
     $ref: 'definitions/studios.yaml#/resources/devices'
   /studios/{studioId}/devices/{deviceId}:
     $ref: 'definitions/studios.yaml#/resources/device'
-  /studios/{studioId}/action:
-    $ref: 'definitions/studios.yaml#/resources/studioAction'
   # showstyle operations
   /showstyles:
     $ref: 'definitions/showstyles.yaml#/resources/showStyleBases'
@@ -78,5 +76,3 @@ paths:
     $ref: 'definitions/showstyles.yaml#/resources/showStyleVariants'
   /showstyles/{showStyleBaseId}/variants/{showStyleVariantId}:
     $ref: 'definitions/showstyles.yaml#/resources/showStyleVariant'
-  /showstyles/{showStyleBaseId}/action:
-    $ref: 'definitions/showstyles.yaml#/resources/showStyleBaseAction'
