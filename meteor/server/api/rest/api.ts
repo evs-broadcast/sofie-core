@@ -1333,7 +1333,7 @@ sofieAPIRequest<{ playlistId: string; sourceLayerId: string }, never, void>(
 
 sofieAPIRequest<{ playlistId: string; sourceLayerId: string }, never, void>(
 	'put',
-	'/playlists/:playlistId/sourceLayer/:sourceLayerId',
+	'/playlists/:playlistId/sourceLayer/:sourceLayerId/sticky',
 	new Map([
 		[404, UserErrorMessage.RundownPlaylistNotFound],
 		[412, UserErrorMessage.InactiveRundown],
