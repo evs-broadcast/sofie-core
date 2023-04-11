@@ -62,12 +62,9 @@ export class LiveStatusServer {
 
 		// add observers for collection subscription updates
 		await playlistHandler.subscribe(rundownHandler)
-		// playlistHandler.subscribe(partHandler)
 		await playlistHandler.subscribe(partInstancesHandler)
 		await rundownHandler.subscribe(showStyleBaseHandler)
 		await partInstancesHandler.subscribe(rundownHandler)
-		// partInstancesHandler.subscribe(segmentHandler)
-		// partInstancesHandler.subscribe(partHandler)
 		await partInstancesHandler.subscribe(adLibActionsHandler)
 		await partInstancesHandler.subscribe(globalAdLibActionsHandler)
 
@@ -81,6 +78,7 @@ export class LiveStatusServer {
 		await adLibsHandler.subscribe(activePlaylistTopic)
 		await globalAdLibActionsHandler.subscribe(activePlaylistTopic)
 		await globalAdLibsHandler.subscribe(activePlaylistTopic)
+		await globalAdLibActionsHandler.subscribe(activePlaylistTopic)
 
 		const wss = new WebSocketServer({ port: 8080 })
 		wss.on('connection', (ws, request) => {
