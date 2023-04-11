@@ -33,13 +33,7 @@ resources:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                showStyleBase:
-                  $ref: '#/components/schemas/showStyleBase'
-              required:
-                - showStyleBase
-              additionalProperties: false
+              $ref: '#/components/schemas/showStyleBase'
       responses:
         200:
           description: Create successful, Id of new ShowStyle is returned.
@@ -52,14 +46,8 @@ resources:
                     type: number
                     example: 200
                   result:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        description: Id of the newly created ShowStyle.
-                    required:
-                      - id
-                    additionalProperties: false
+                    type: string
+                    description: Id of the newly created ShowStyle.
                 required:
                   - status
                   - result
@@ -128,13 +116,7 @@ resources:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                showStyleBase:
-                  $ref: '#/components/schemas/showStyleBase'
-              required:
-                - showStyleBase
-              additionalProperties: false
+              $ref: '#/components/schemas/showStyleBase'
       responses:
         200:
           description: Operation successful.
@@ -156,6 +138,22 @@ resources:
                   status:
                     type: number
                     example: 400
+                  message:
+                    type: string
+                required:
+                  - status
+                  - message
+                additionalProperties: false
+        409:
+          description: The specified ShowStyleBase is not valid.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: number
+                    example: 409
                   message:
                     type: string
                 required:
@@ -269,13 +267,7 @@ resources:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                showStyleVariant:
-                  $ref: '#/components/schemas/showStyleVariant'
-              required:
-                - showStyleVariant
-              additionalProperties: false
+              $ref: '#/components/schemas/showStyleVariant'
       responses:
         200:
           description: Create successful, Id of new ShowStyle is returned.
@@ -288,14 +280,10 @@ resources:
                     type: number
                     example: 200
                   result:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        description: Id of the newly created ShowStyle.
-                    required:
-                      - id
-                    additionalProperties: false
+                    type: string
+                    description: Id of the newly created ShowStyle Variant.
+        404:
+          $ref: '#/components/responses/showStyleBaseNotFound'
         500:
           $ref: '#/components/responses/internalServerError'
   showStyleVariant:
@@ -356,13 +344,7 @@ resources:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                showStyleVariant:
-                  $ref: '#/components/schemas/showStyleVariant'
-              required:
-                - showStyleVariant
-              additionalProperties: false
+              $ref: '#/components/schemas/showStyleVariant'
       responses:
         200:
           description: Operation successful.
@@ -442,6 +424,8 @@ resources:
                 required:
                   - status
                 additionalProperties: false
+        404:
+          $ref: '#/components/responses/showStyleBaseNotFound'
         412:
           description: The specified ShowStyleVariant is in use in an on-air Rundown.
           content:
@@ -458,6 +442,46 @@ resources:
                   - status
                   - message
                 additionalProperties: false
+        500:
+          $ref: '#/components/responses/internalServerError'
+  showStyleBaseAction:
+    put:
+      operationId: showStyleBaseAction
+      tags:
+        - showstyles
+      summary: Performs an action on a showstyle base.
+      parameters:
+        - name: showStyleBaseId
+          in: path
+          description: Target showstyle base.
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: Contains the action to perform.
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/blueprintUpgrade'
+              example:
+                action: blueprintUpgrade
+      responses:
+        202:
+          description: The action is valid for the requested showstyle base and will be dispatched. It may not have been dispatched yet.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: number
+                    example: 202
+        400:
+          $ref: '#/components/responses/badRequest'
+        404:
+          $ref: '#/components/responses/showStyleBaseNotFound'
         500:
           $ref: '#/components/responses/internalServerError'
 components:
@@ -478,6 +502,18 @@ components:
               - status
               - message
             additionalProperties: false
+    badRequest:
+      description: Request is invalid
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: number
+                example: 400
+              message:
+                type: string
     showStyleBaseNotFound:
       description: The specified ShowStyleBase does not exist.
       content:
@@ -504,6 +540,9 @@ components:
         blueprintId:
           type: string
           description: Id of the blueprint used by this ShowStyleBase.
+        blueprintConfigPresetId:
+          type: string
+          description: Id of the Blueprint config preset to use for the ShowStyle.
         outputLayers:
           type: array
           items:
@@ -515,6 +554,11 @@ components:
         config:
           type: object
           description: Blueprint config.
+          properties:
+            developerMode:
+              type: boolean
+              example: true
+          additionalProperties: true
       required:
         - name
         - blueprintId
@@ -537,6 +581,11 @@ components:
         config:
           type: object
           description: Blueprint config.
+          properties:
+            developerMode:
+              type: boolean
+              example: true
+          additionalProperties: true
         required:
           - name
           - rank
@@ -606,4 +655,14 @@ components:
         - name
         - rank
         - layerType
+      additionalProperties: false
+    blueprintUpgrade:
+      type: object
+      description: Runs blueprint upgrades.
+      properties:
+        action:
+          type: string
+          const: blueprintUpgrade
+      required:
+        - action
       additionalProperties: false

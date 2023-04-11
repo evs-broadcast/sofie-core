@@ -1,5 +1,5 @@
 // eslint-disable-next-line node/no-missing-import
-import { Configuration, StudiosApi } from '../../client/ts'
+import { Configuration, Studio, StudiosApi } from '../../client/ts'
 import { checkServer } from '../checkServer'
 import Logging from '../httpLogging'
 
@@ -9,67 +9,97 @@ const testServer = process.env.SERVER_TYPE === 'TEST'
 describe('Network client', () => {
 	const config = new Configuration({
 		basePath: process.env.ACTIONS_URL,
-		middleware: httpLogging ? [new Logging()] : [],
+		middleware: [new Logging(httpLogging)],
 	})
 
 	beforeAll(async () => await checkServer(config))
 
 	const studiosApi = new StudiosApi(config)
-	if (testServer) {
-		test('can request all Studios', async () => {
-			const studios = await studiosApi.getStudios()
-			expect(studios.status).toBe(200)
+	const studioIds: string[] = []
+	test('can request all Studios', async () => {
+		const studios = await studiosApi.getStudios()
+		expect(studios.status).toBe(200)
+		expect(studios).toHaveProperty('result')
+		expect(studios.result.length).toBeGreaterThanOrEqual(1)
+		studios.result.forEach((id) => {
+			expect(typeof id).toBe('string')
+			studioIds.push(id)
 		})
-	} else {
-		test.todo('Yet to be implemented')
-	}
+	})
+
+	let newStudio: Studio | undefined
+	test('can request a Studio by id', async () => {
+		const studio = await studiosApi.getStudio({
+			studioId: studioIds[0],
+		})
+		expect(studio.status).toBe(200)
+		expect(studio).toHaveProperty('result')
+		expect(studio.result).toHaveProperty('name')
+		expect(studio.result).toHaveProperty('blueprintId')
+		expect(studio.result).toHaveProperty('blueprintConfigPresetId')
+		expect(studio.result).toHaveProperty('supportedShowStyleBase')
+		expect(studio.result).toHaveProperty('config')
+		expect(studio.result).toHaveProperty('settings')
+		expect(studio.result.settings).toHaveProperty('frameRate')
+		expect(studio.result.settings).toHaveProperty('mediaPreviewsUrl')
+		newStudio = JSON.parse(JSON.stringify(studio.result))
+	})
+
+	test('can update a studio', async () => {
+		newStudio.config.developerMode = !newStudio.config.developerMode
+		const studio = await studiosApi.addOrUpdateStudio({
+			studioId: studioIds[0],
+			studio: newStudio,
+		})
+		expect(studio.status).toBe(200)
+	})
+
+	const studioDevices: string[] = []
+	test('can request a list of devices for a studio', async () => {
+		const devices = await studiosApi.devices({ studioId: studioIds[0] })
+		expect(devices.status).toBe(200)
+		expect(devices).toHaveProperty('result')
+		expect(devices.result.length).toBeGreaterThanOrEqual(1)
+		devices.result.forEach((id) => {
+			expect(typeof id).toBe('string')
+			studioDevices.push(id)
+		})
+	})
+
+	test('can detach a device from a studio', async () => {
+		const detach = await studiosApi.detachDevice({
+			studioId: studioIds[0],
+			deviceId: studioDevices[0],
+		})
+		expect(detach.status).toBe(200)
+	})
+
+	test('can attach a device to a studio', async () => {
+		const attach = await studiosApi.attachDevice({
+			studioId: studioIds[0],
+			attachDeviceRequest: {
+				deviceId: studioDevices[0],
+			},
+		})
+		expect(attach.status).toBe(200)
+	})
 
 	if (testServer) {
+		let testStudioId: string | undefined
 		test('can add a new Studio', async () => {
+			newStudio.name = newStudio.name + 'Added'
 			const studio = await studiosApi.addStudio({
-				addStudioRequest: {
-					studio: {
-						name: '',
-						blueprintId: '',
-						config: {},
-						settings: {
-							frameRate: 25,
-							mediaPreviewsUrl: 'http://127.0.0.1:8080',
-						},
-					},
-				},
+				studio: newStudio,
 			})
 			expect(studio.status).toBe(200)
-		})
-
-		test('can request a Studio by id', async () => {
-			const studio = await studiosApi.getStudio({
-				studioId: 'B0avqzSM41UJDpbyf3U28',
-			})
-			expect(studio.status).toBe(200)
-		})
-
-		test('can update a studio', async () => {
-			const studio = await studiosApi.addOrUpdateStudio({
-				studioId: 'B0avqzSM41UJDpbyf3U28',
-				addStudioRequest: {
-					studio: {
-						name: '',
-						blueprintId: '',
-						config: {},
-						settings: {
-							frameRate: 25,
-							mediaPreviewsUrl: 'http://127.0.0.1:8080',
-						},
-					},
-				},
-			})
-			expect(studio.status).toBe(200)
+			expect(studio).toHaveProperty('result')
+			expect(typeof studio.result).toBe('string')
+			testStudioId = studio.result
 		})
 
 		test('can remove a Studio by id', async () => {
 			const studio = await studiosApi.deleteStudio({
-				studioId: 'B0avqzSM41UJDpbyf3U28',
+				studioId: testStudioId,
 			})
 			expect(studio.status).toBe(200)
 		})
@@ -88,29 +118,6 @@ describe('Network client', () => {
 				switchRouteSetRequest: { routeSetId: 'Main', active: false },
 			})
 			expect(routeSet.status).toBe(200)
-		})
-
-		test('can request a list of devices for a studio', async () => {
-			const devices = await studiosApi.devices({ studioId: 'B0avqzSM41UJDpbyf3U28' })
-			expect(devices.status).toBe(200)
-		})
-
-		test('can attach a device to a studio', async () => {
-			const attach = await studiosApi.attachDevice({
-				studioId: 'B0avqzSM41UJDpbyf3U28',
-				attachDeviceRequest: {
-					deviceId: 'playoutgateway0',
-				},
-			})
-			expect(attach.status).toBe(200)
-		})
-
-		test('can detach a device from a studio', async () => {
-			const detach = await studiosApi.detachDevice({
-				studioId: 'B0avqzSM41UJDpbyf3U28',
-				deviceId: 'playoutgateway0',
-			})
-			expect(detach.status).toBe(200)
 		})
 	} else {
 		test.todo('Setup mocks for Sofie')

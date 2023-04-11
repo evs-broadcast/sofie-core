@@ -17,13 +17,15 @@ paths:
     $ref: 'definitions/sofie.yaml#/resources/index'
   /system/blueprint:
     $ref: 'definitions/sofie.yaml#/resources/systemBlueprint'
+  /system/migrations:
+    $ref: 'definitions/sofie.yaml#/resources/migrations'
   # peripheral devices
   /devices:
     $ref: 'definitions/devices.yaml#/resources/devices'
   /devices/{deviceId}:
     $ref: 'definitions/devices.yaml#/resources/device'
   /devices/{deviceId}/action:
-    $ref: 'definitions/devices.yaml#/resources/action'
+    $ref: 'definitions/devices.yaml#/resources/deviceAction'
   # blueprint operations
   /blueprints:
     $ref: 'definitions/blueprints.yaml#/resources/blueprints'
@@ -54,6 +56,8 @@ paths:
     $ref: 'definitions/playlists.yaml#/resources/take'
   /playlists/{playlistId}/sourceLayer/{sourceLayerId}:
     $ref: 'definitions/playlists.yaml#/resources/sourceLayer'
+  /playlists/{playlistId}/sourceLayer/{sourceLayerId}/sticky:
+    $ref: 'definitions/playlists.yaml#/resources/sourceLayer/sticky'
   # studio operations
   /studios:
     $ref: 'definitions/studios.yaml#/resources/studios'
