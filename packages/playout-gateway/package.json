@@ -56,8 +56,8 @@
 		"production"
 	],
 	"dependencies": {
-		"@sofie-automation/server-core-integration": "1.49.0",
-		"@sofie-automation/shared-lib": "1.49.0",
+		"@sofie-automation/server-core-integration": "1.49.1",
+		"@sofie-automation/shared-lib": "1.49.1",
 		"debug": "^4.3.3",
 		"influx": "^5.9.3",
 		"timeline-state-resolver": "npm:@evs/timeline-state-resolver@8.0.0-master.223",
