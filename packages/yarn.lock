@@ -3172,10 +3172,10 @@
   resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/cortex-dsom-api/-/@evs/cortex-dsom-api-1.2.1.tgz#cbb27ccc5426b11c971111fed998fb8b3c10c4ea"
   integrity sha512-2cHEcsXAjjjiskS0NJ56XU7CmcrP0aFy/K8+SEJB6dUHmRwkgS4OIhsISmbD2v81G9z8VweGmnWi3RV1u2A2QQ==
 
-"@evs/dsom-connection@0.1.21":
-  version "0.1.21"
-  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/dsom-connection/-/@evs/dsom-connection-0.1.21.tgz#e96c42392eaf44207496cda2f11df74eb36c5ada"
-  integrity sha512-rZhtCG6N5vAAhdqzLkqbg1ICj1ExvK1WA/0jJtzD0zBPmKJQ+Cf+vvtI/c3pj4dERJDYB3+6LM1+p5LYdj13MA==
+"@evs/dsom-connection@0.1.22":
+  version "0.1.22"
+  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/dsom-connection/-/@evs/dsom-connection-0.1.22.tgz#03a2e3aa51502763d955be87fb9c70964141418b"
+  integrity sha512-nsjlQ7Yna6eY2ZoUojDCVNIJZvoqJSo+yE9q5jViqqiItjmwqYlnvL/YXescig57VJYC80MDCWs+Yj2u2CwvQQ==
   dependencies:
     "@evs/cortex-dsom-api" "1.2.1"
 
@@ -4959,10 +4959,10 @@
     webpack-sources "^3.2.2"
 
 "@sofie-automation/blueprints-integration@link:blueprints-integration":
-  version "1.49.0"
+  version "1.49.1"
   dependencies:
     "@sofie-automation/shared-lib" "link:shared-lib"
-    timeline-state-resolver-types "npm:@evs/timeline-state-resolver-types@8.0.0-master.223"
+    timeline-state-resolver-types "npm:@evs/timeline-state-resolver-types@8.0.1"
     tslib "^2.4.0"
     type-fest "^2.19.0"
 
@@ -4989,7 +4989,7 @@
     shelljs "^0.8.5"
 
 "@sofie-automation/corelib@link:corelib":
-  version "1.49.0"
+  version "1.49.1"
   dependencies:
     "@sofie-automation/blueprints-integration" "link:blueprints-integration"
     "@sofie-automation/shared-lib" "link:shared-lib"
@@ -5004,10 +5004,10 @@
     underscore "^1.13.4"
 
 "@sofie-automation/shared-lib@link:shared-lib":
-  version "1.49.0"
+  version "1.49.1"
   dependencies:
     "@mos-connection/model" "^3.0.1"
-    timeline-state-resolver-types "npm:@evs/timeline-state-resolver-types@8.0.0-master.223"
+    timeline-state-resolver-types "npm:@evs/timeline-state-resolver-types@8.0.1"
     tslib "^2.4.0"
     type-fest "^2.19.0"
 
@@ -16960,19 +16960,19 @@ timecode@0.0.4:
   resolved "https://registry.yarnpkg.com/timecode/-/timecode-0.0.4.tgz#cdea9d2352009700e50da657cb7fb7c1720f5704"
   integrity sha512-xFVZlWnqls5eVphtUJo0UuXeJa0grBmxESSn5QPQB7CMsaVgTnLdP9PTZqb4KyFmLdrE+PUu3eEt42zHsMxCtw==
 
-"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.0-master.223":
-  version "8.0.0-master.223"
-  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver-types/-/@evs/timeline-state-resolver-types-8.0.0-master.223.tgz#e2efa0bfa81b1f6b64d8e1dfed5fad36c9c07728"
-  integrity sha512-x0U3hOLmZ+9hwqWZEc55Aga3fL8bL5s3AFlCBKycXBVVdVZOe3ItLYPvckblM/03NxhKboAE8qR8Y2Y3/aagzg==
+"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.1":
+  version "8.0.1"
+  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver-types/-/@evs/timeline-state-resolver-types-8.0.1.tgz#4bedff7e462a6f0c2ba87acb8f38dca3469c063d"
+  integrity sha512-u8Tt42iGlXfxWk0/COm8FeQ9HiMcJIf1e5kvMW2z+4TQbYMp9w/nh7ySz2MKIZQb4f7ueMngtdafH2xtRrK9Vg==
   dependencies:
     tslib "^2.4.1"
 
-"timeline-state-resolver@npm:@evs/timeline-state-resolver@8.0.0-master.223":
-  version "8.0.0-master.223"
-  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver/-/@evs/timeline-state-resolver-8.0.0-master.223.tgz#8227fd6b4f3bc7c63ca8de88375595fa70007975"
-  integrity sha512-Mt1elNtJ+46pVDe+LwPHPQbMrKqHDxKrRv/7ZhfuH0+jNJoXeQqMyoH47KwnwHS79unDvt6w08uPGTPypD/d2g==
+"timeline-state-resolver@npm:@evs/timeline-state-resolver@8.0.1":
+  version "8.0.1"
+  resolved "https://artifactory.evs.tv:443/artifactory/api/npm/evs-snapshot-npm/@evs/timeline-state-resolver/-/@evs/timeline-state-resolver-8.0.1.tgz#3de73048266d474b3a49709c097b35bcf6c09445"
+  integrity sha512-8kHL153cIfioGxEVLowhiw0mOBA2ky0JnVdNdNkjJL6BtNU9A5YA+JbvFTzOzYEmqcT7YuVi2NqL2HOfdonaBg==
   dependencies:
-    "@evs/dsom-connection" "0.1.21"
+    "@evs/dsom-connection" "0.1.22"
     "@tv2media/v-connection" "git+https://github.com/nrkno/v-connection.git#5386986d87ea6d1b5164d206ea42c975654b36cd"
     atem-connection "2.4.0"
     atem-state "^0.12.2"
@@ -16993,7 +16993,7 @@ timecode@0.0.4:
     sprintf-js "^1.1.2"
     superfly-timeline "^8.3.1"
     threadedclass "^1.2.0"
-    timeline-state-resolver-types "npm:@evs/timeline-state-resolver-types@8.0.0-master.223"
+    timeline-state-resolver-types "npm:@evs/timeline-state-resolver-types@8.0.1"
     tslib "^2.4.1"
     tv-automation-quantel-gateway-client "^3.0.2"
     underscore "^1.13.4"
