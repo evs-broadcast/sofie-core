@@ -1,5 +1,4 @@
 import { ExpectedPackage } from './package'
-import { ConfigManifestEntry } from './config'
 import { SomeContent } from './content'
 import { ITranslatableMessage } from './translations'
 import { ExpectedPlayoutItemGeneric } from './rundown'
@@ -92,7 +91,7 @@ export interface IBlueprintActionManifest {
 
 	userDataManifest: {
 		/** List of editable fields in userData, to allow for customising */
-		editableFields?: ConfigManifestEntry[]
+		editableFields?: any
 		/** Execute the action after userData is changed. If not present ActionExecuteAfterChanged.none is assumed. */
 		executeOnUserDataChanged?: ActionExecuteAfterChanged
 		// Potential future properties:
