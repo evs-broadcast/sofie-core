@@ -201,7 +201,8 @@ class ServerRestAPI implements RestAPI {
 		event: string,
 		rundownPlaylistId: RundownPlaylistId,
 		adLibId: AdLibActionId | RundownBaselineAdLibActionId | PieceId | BucketAdLibId,
-		triggerMode?: string | null
+		triggerMode?: string | null,
+		adLibOptions?: any
 	): Promise<ClientAPI.ClientResponse<object>> {
 		const baselineAdLibPiece = RundownBaselineAdLibPieces.findOneAsync(adLibId as PieceId, {
 			projection: { _id: 1 },
@@ -225,6 +226,17 @@ class ServerRestAPI implements RestAPI {
 		const regularAdLibDoc = baselineAdLibDoc ?? segmentAdLibDoc ?? bucketAdLibDoc
 		if (regularAdLibDoc) {
 			// This is an AdLib Piece
+
+			if (adLibOptions) {
+				return ClientAPI.responseError(
+					UserError.from(
+						Error(`AdLib options can not be provided for AdLib pieces`),
+						UserErrorMessage.AdlibUnplayable
+					),
+					412
+				)
+			}
+
 			const pieceType = baselineAdLibDoc ? 'baseline' : segmentAdLibDoc ? 'normal' : 'bucket'
 			const rundownPlaylist = RundownPlaylists.findOne(rundownPlaylistId, {
 				projection: { currentPartInstanceId: 1 },
@@ -264,6 +276,8 @@ class ServerRestAPI implements RestAPI {
 			return ClientAPI.responseSuccess({})
 		} else if (adLibActionDoc) {
 			// This is an AdLib Action
+			const actionUserData = adLibOptions
+
 			return ServerClientAPI.runUserActionInLogForPlaylistOnWorker(
 				ServerRestAPI.getMethodContext(connection),
 				event,
@@ -278,7 +292,7 @@ class ServerRestAPI implements RestAPI {
 					playlistId: rundownPlaylistId,
 					actionDocId: adLibActionDoc._id,
 					actionId: adLibActionDoc.actionId,
-					userData: adLibActionDoc.userData,
+					userData: actionUserData,
 					triggerMode: triggerMode ? triggerMode : undefined,
 				}
 			)
@@ -1171,7 +1185,7 @@ sofieAPIRequest<{ playlistId: string }, never, void>(
 	}
 )
 
-sofieAPIRequest<{ playlistId: string }, { adLibId: string; actionType?: string }, object>(
+sofieAPIRequest<{ playlistId: string }, { adLibId: string; actionType?: string; adLibOptions?: any }, object>(
 	'put',
 	'/playlists/:playlistId/executeAdLib',
 	new Map([
@@ -1185,12 +1199,17 @@ sofieAPIRequest<{ playlistId: string }, { adLibId: string; actionType?: string }
 		)
 		const actionTypeObj = body
 		const triggerMode = actionTypeObj ? (actionTypeObj as { actionType: string }).actionType : undefined
-		logger.info(`koa PUT: executeAdLib ${rundownPlaylistId} ${adLibId} - triggerMode: ${triggerMode}`)
+		const adLibOptions = actionTypeObj ? actionTypeObj.adLibOptions : undefined
+		logger.info(
+			`koa PUT: executeAdLib ${rundownPlaylistId} ${adLibId} - triggerMode: ${triggerMode} - options: ${
+				adLibOptions ? JSON.stringify(adLibOptions) : 'undefined'
+			}`
+		)
 
 		check(adLibId, String)
 		check(rundownPlaylistId, String)
 
-		return await serverAPI.executeAdLib(connection, event, rundownPlaylistId, adLibId, triggerMode)
+		return await serverAPI.executeAdLib(connection, event, rundownPlaylistId, adLibId, triggerMode, adLibOptions)
 	}
 )
 

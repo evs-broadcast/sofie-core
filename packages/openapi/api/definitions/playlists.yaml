@@ -114,6 +114,9 @@ resources:
                 adLibId:
                   type: string
                   description: AdLib to execute
+                adLibOptions:
+                  type: object
+                  description: AdLibAction options
               required:
                 - adLibId
               example:
