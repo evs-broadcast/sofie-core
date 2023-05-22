@@ -1,6 +1,6 @@
 {
 	"name": "@sofie-automation/openapi",
-	"version": "1.49.3",
+	"version": "1.49.4",
 	"private": true,
 	"license": "MIT",
 	"repository": {
@@ -43,13 +43,13 @@
 		"eslint-plugin-yml": "^1.2.0",
 		"js-yaml": "^4.1.0",
 		"wget-improved": "^3.3.1"
-  },
-  "lint-staged": {
-	"*.{css,json,md,scss}": [
-		"prettier"
-	],
-	"*.{ts,tsx,js,jsx,yaml}": [
-		"yarn lint:raw"
-	]
-}
+	},
+	"lint-staged": {
+		"*.{css,json,md,scss}": [
+			"prettier"
+		],
+		"*.{ts,tsx,js,jsx,yaml}": [
+			"yarn lint:raw"
+		]
+	}
 }
