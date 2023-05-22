@@ -35,6 +35,7 @@ interface AdLibStatus {
 	sourceLayer: string
 	outputLayer: string
 	actionType: AdLibActionType[]
+	editableFields?: any
 }
 
 interface ActivePlaylistStatus {
@@ -106,6 +107,7 @@ export class ActivePlaylistTopic
 						sourceLayer: sourceLayerName ? sourceLayerName : 'invalid',
 						outputLayer: outputLayerName ? outputLayerName : 'invalid',
 						actionType: triggerModes,
+						editableFields: action.userDataManifest.editableFields,
 					})
 				})
 			)
@@ -150,6 +152,7 @@ export class ActivePlaylistTopic
 						sourceLayer: sourceLayerName ? sourceLayerName : 'invalid',
 						outputLayer: outputLayerName ? outputLayerName : 'invalid',
 						actionType: triggerModes,
+						editableFields: action.userDataManifest.editableFields,
 					})
 				})
 			)

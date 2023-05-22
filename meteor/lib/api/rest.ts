@@ -75,13 +75,15 @@ export interface RestAPI {
 	 * @param rundownPlaylistId Playlist to execute adLib in.
 	 * @param adLibId AdLib to execute.
 	 * @param triggerMode A string to specify a particular variation for the AdLibAction, valid actionType strings are to be read from the status API.
+	 * @param adLibOptions Options object for specified adLib.
 	 */
 	executeAdLib(
 		connection: Meteor.Connection,
 		event: string,
 		rundownPlaylistId: RundownPlaylistId,
 		adLibId: AdLibActionId | RundownBaselineAdLibActionId | PieceId | BucketAdLibId,
-		triggerMode?: string
+		triggerMode?: string,
+		adLibOptions?: any
 	): Promise<ClientAPI.ClientResponse<object>>
 	/**
 	 * Moves the next point by `delta` places. Negative values are allowed to move "backwards" in the script.
