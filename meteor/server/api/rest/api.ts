@@ -10,11 +10,9 @@ import { ClientAPI } from '../../../lib/api/client'
 import { getCurrentTime, getRandomString, protectString, unprotectString } from '../../../lib/lib'
 import {
 	APIPeripheralDevice,
-	APIPeripheralDeviceFrom,
 	PeripheralDeviceActionRestart,
 	PeripheralDeviceActionType,
 	APIBlueprint,
-	APIBlueprintFrom,
 	RestAPI,
 	APIShowStyleBase,
 	APIShowStyleVariant,
@@ -31,7 +29,7 @@ import { MeteorCall, MethodContextAPI } from '../../../lib/api/methods'
 import { ServerClientAPI } from '../client'
 import { ServerRundownAPI } from '../rundown'
 import { triggerWriteAccess } from '../../security/lib/securityVerify'
-import { ExecuteActionResult, StudioJobs } from '@sofie-automation/corelib/dist/worker/studio'
+import { StudioJobs } from '@sofie-automation/corelib/dist/worker/studio'
 import { CURRENT_SYSTEM_VERSION } from '../../migration/currentSystemVersion'
 import {
 	AdLibActionId,
@@ -54,7 +52,6 @@ import { ServerPlayoutAPI } from '../playout/playout'
 import { TriggerReloadDataResponse } from '../../../lib/api/userActions'
 import { interpollateTranslation, translateMessage } from '@sofie-automation/corelib/dist/TranslatableMessage'
 import { Credentials } from '../../security/lib/credentials'
-import { PeripheralDeviceAPI } from '../../../lib/api/peripheralDevice'
 import { assertNever } from '@sofie-automation/shared-lib/dist/lib/lib'
 import {
 	AdLibActions,
@@ -71,6 +68,8 @@ import {
 	Studios,
 } from '../../collections'
 import {
+	APIBlueprintFrom,
+	APIPeripheralDeviceFrom,
 	APIShowStyleBaseFrom,
 	APIShowStyleVariantFrom,
 	APIStudioFrom,
@@ -85,6 +84,14 @@ import {
 	validateConfigForStudio,
 } from '../../migration/upgrades'
 import { MigrationStepInputResult, NoteSeverity } from '@sofie-automation/blueprints-integration'
+import { PeripheralDevice } from '@sofie-automation/corelib/dist/dataModel/PeripheralDevice'
+import { Blueprint } from '@sofie-automation/corelib/dist/dataModel/Blueprint'
+import { ShowStyleBase } from '../../../lib/collections/ShowStyleBases'
+import { ShowStyleVariant } from '../../../lib/collections/ShowStyleVariants'
+import { Studio } from '../../../lib/collections/Studios'
+import { RundownPlaylist } from '../../../lib/collections/RundownPlaylists'
+import { Rundown } from '@sofie-automation/corelib/dist/dataModel/Rundown'
+import { executePeripheralDeviceFunction } from '../peripheralDevice/executeFunction'
 
 function restAPIUserEvent(
 	ctx: Koa.ParameterizedContext<
@@ -93,7 +100,7 @@ function restAPIUserEvent(
 		unknown
 	>
 ): string {
-	return `rest_api_${ctx.method}_${ctx.URL.origin}/api2${ctx.URL.pathname}}`
+	return `rest_api_${ctx.method}_${ctx.URL.origin}/api/v1.0${ctx.URL.pathname}}`
 }
 
 class ServerRestAPI implements RestAPI {
@@ -124,9 +131,12 @@ class ServerRestAPI implements RestAPI {
 	async getAllRundownPlaylists(
 		_connection: Meteor.Connection,
 		_event: string
-	): Promise<ClientAPI.ClientResponse<string[]>> {
+	): Promise<ClientAPI.ClientResponse<Array<{ id: string }>>> {
+		const rundownPlaylists = (await RundownPlaylists.findFetchAsync({}, { projection: { _id: 1 } })) as Array<
+			Pick<RundownPlaylist, '_id'>
+		>
 		return ClientAPI.responseSuccess(
-			RundownPlaylists.find().map((rundownPlaylist) => unprotectString(rundownPlaylist._id))
+			rundownPlaylists.map((rundownPlaylist) => ({ id: unprotectString(rundownPlaylist._id) }))
 		)
 	}
 
@@ -171,31 +181,6 @@ class ServerRestAPI implements RestAPI {
 			}
 		)
 	}
-	async executeAction(
-		connection: Meteor.Connection,
-		event: string,
-		rundownPlaylistId: RundownPlaylistId,
-		actionId: string,
-		userData: any
-	): Promise<ClientAPI.ClientResponse<ExecuteActionResult>> {
-		return ServerClientAPI.runUserActionInLogForPlaylistOnWorker(
-			ServerRestAPI.getMethodContext(connection),
-			event,
-			getCurrentTime(),
-			rundownPlaylistId,
-			() => {
-				check(rundownPlaylistId, String)
-				check(actionId, String)
-			},
-			StudioJobs.ExecuteAction,
-			{
-				playlistId: rundownPlaylistId,
-				actionDocId: null,
-				actionId,
-				userData,
-			}
-		)
-	}
 	async executeAdLib(
 		connection: Meteor.Connection,
 		event: string,
@@ -226,8 +211,8 @@ class ServerRestAPI implements RestAPI {
 		if (regularAdLibDoc) {
 			// This is an AdLib Piece
 			const pieceType = baselineAdLibDoc ? 'baseline' : segmentAdLibDoc ? 'normal' : 'bucket'
-			const rundownPlaylist = RundownPlaylists.findOne(rundownPlaylistId, {
-				projection: { currentPartInstanceId: 1 },
+			const rundownPlaylist = await RundownPlaylists.findOneAsync(rundownPlaylistId, {
+				projection: { currentPartInfo: 1 },
 			})
 			if (!rundownPlaylist)
 				return ClientAPI.responseError(
@@ -237,7 +222,7 @@ class ServerRestAPI implements RestAPI {
 					),
 					404
 				)
-			if (rundownPlaylist.currentPartInstanceId === null)
+			if (rundownPlaylist.currentPartInfo === null)
 				return ClientAPI.responseError(
 					UserError.from(Error(`No active Part in ${rundownPlaylistId}`), UserErrorMessage.PartNotFound),
 					412
@@ -256,7 +241,7 @@ class ServerRestAPI implements RestAPI {
 				{
 					playlistId: rundownPlaylistId,
 					adLibPieceId: regularAdLibDoc._id,
-					partInstanceId: rundownPlaylist.currentPartInstanceId,
+					partInstanceId: rundownPlaylist.currentPartInfo.partInstanceId,
 					pieceType,
 				}
 			)
@@ -437,7 +422,7 @@ class ServerRestAPI implements RestAPI {
 		fromPartInstanceId: PartInstanceId | undefined
 	): Promise<ClientAPI.ClientResponse<void>> {
 		triggerWriteAccess()
-		const rundownPlaylist = RundownPlaylists.findOne(rundownPlaylistId)
+		const rundownPlaylist = await RundownPlaylists.findOneAsync(rundownPlaylistId)
 		if (!rundownPlaylist) throw new Error(`Rundown playlist ${rundownPlaylistId} does not exist`)
 
 		return ServerClientAPI.runUserActionInLogForPlaylistOnWorker(
@@ -451,7 +436,7 @@ class ServerRestAPI implements RestAPI {
 			StudioJobs.TakeNextPart,
 			{
 				playlistId: rundownPlaylistId,
-				fromPartInstanceId: fromPartInstanceId ?? rundownPlaylist.currentPartInstanceId,
+				fromPartInstanceId: fromPartInstanceId ?? rundownPlaylist.currentPartInfo?.partInstanceId ?? null,
 			}
 		)
 	}
@@ -489,7 +474,7 @@ class ServerRestAPI implements RestAPI {
 		rundownPlaylistId: RundownPlaylistId,
 		sourceLayerId: string
 	): Promise<ClientAPI.ClientResponse<void>> {
-		const rundownPlaylist = RundownPlaylists.findOne(rundownPlaylistId)
+		const rundownPlaylist = await RundownPlaylists.findOneAsync(rundownPlaylistId)
 		if (!rundownPlaylist)
 			return ClientAPI.responseError(
 				UserError.from(
@@ -498,7 +483,7 @@ class ServerRestAPI implements RestAPI {
 				),
 				412
 			)
-		if (!rundownPlaylist.currentPartInstanceId || !rundownPlaylist.activationId)
+		if (!rundownPlaylist.currentPartInfo?.partInstanceId || !rundownPlaylist.activationId)
 			return ClientAPI.responseError(
 				UserError.from(
 					new Error(`Rundown playlist ${rundownPlaylistId} is not currently active`),
@@ -519,7 +504,7 @@ class ServerRestAPI implements RestAPI {
 			StudioJobs.StopPiecesOnSourceLayers,
 			{
 				playlistId: rundownPlaylistId,
-				partInstanceId: rundownPlaylist.currentPartInstanceId,
+				partInstanceId: rundownPlaylist.currentPartInfo.partInstanceId,
 				sourceLayerIds: [sourceLayerId],
 			}
 		)
@@ -551,8 +536,11 @@ class ServerRestAPI implements RestAPI {
 	async getPeripheralDevices(
 		_connection: Meteor.Connection,
 		_event: string
-	): Promise<ClientAPI.ClientResponse<string[]>> {
-		return ClientAPI.responseSuccess(PeripheralDevices.find().map((p) => unprotectString(p._id)))
+	): Promise<ClientAPI.ClientResponse<Array<{ id: string }>>> {
+		const peripheralDevices = (await PeripheralDevices.findFetchAsync({}, { projection: { _id: 1 } })) as Array<
+			Pick<PeripheralDevice, '_id'>
+		>
+		return ClientAPI.responseSuccess(peripheralDevices.map((p) => ({ id: unprotectString(p._id) })))
 	}
 
 	async getPeripheralDevice(
@@ -560,7 +548,7 @@ class ServerRestAPI implements RestAPI {
 		_event: string,
 		deviceId: PeripheralDeviceId
 	): Promise<ClientAPI.ClientResponse<APIPeripheralDevice>> {
-		const device = PeripheralDevices.findOne(deviceId)
+		const device = await PeripheralDevices.findOneAsync(deviceId)
 		if (!device)
 			return ClientAPI.responseError(
 				UserError.from(
@@ -578,7 +566,7 @@ class ServerRestAPI implements RestAPI {
 		deviceId: PeripheralDeviceId,
 		action: PeripheralDeviceActionRestart
 	): Promise<ClientAPI.ClientResponse<void>> {
-		const device = PeripheralDevices.findOne(deviceId)
+		const device = await PeripheralDevices.findOneAsync(deviceId)
 		if (!device)
 			return ClientAPI.responseError(
 				UserError.from(
@@ -591,7 +579,7 @@ class ServerRestAPI implements RestAPI {
 		switch (action.type) {
 			case PeripheralDeviceActionType.RESTART:
 				// This dispatches the command but does not wait for it to complete
-				await PeripheralDeviceAPI.executeFunction(deviceId, 'killProcess', 1).catch(logger.error)
+				await executePeripheralDeviceFunction(deviceId, 'killProcess', 1).catch(logger.error)
 				break
 			default:
 				assertNever(action.type)
@@ -604,15 +592,24 @@ class ServerRestAPI implements RestAPI {
 		_connection: Meteor.Connection,
 		_event: string,
 		studioId: StudioId
-	): Promise<ClientAPI.ClientResponse<string[]>> {
-		return ClientAPI.responseSuccess(PeripheralDevices.find({ studioId }).map((p) => unprotectString(p._id)))
+	): Promise<ClientAPI.ClientResponse<Array<{ id: string }>>> {
+		const peripheralDevices = (await PeripheralDevices.findFetchAsync(
+			{ studioId },
+			{ projection: { _id: 1 } }
+		)) as Array<Pick<PeripheralDevice, '_id'>>
+
+		return ClientAPI.responseSuccess(peripheralDevices.map((p) => ({ id: unprotectString(p._id) })))
 	}
 
 	async getAllBlueprints(
 		_connection: Meteor.Connection,
 		_event: string
-	): Promise<ClientAPI.ClientResponse<string[]>> {
-		return ClientAPI.responseSuccess(Blueprints.find().map((blueprint) => unprotectString(blueprint._id)))
+	): Promise<ClientAPI.ClientResponse<Array<{ id: string }>>> {
+		const blueprints = (await Blueprints.findFetchAsync({}, { projection: { _id: 1 } })) as Array<
+			Pick<Blueprint, '_id'>
+		>
+
+		return ClientAPI.responseSuccess(blueprints.map((blueprint) => ({ id: unprotectString(blueprint._id) })))
 	}
 
 	async getBlueprint(
@@ -620,7 +617,7 @@ class ServerRestAPI implements RestAPI {
 		_event: string,
 		blueprintId: BlueprintId
 	): Promise<ClientAPI.ClientResponse<APIBlueprint>> {
-		const blueprint = Blueprints.findOne(blueprintId)
+		const blueprint = await Blueprints.findOneAsync(blueprintId)
 		if (!blueprint) {
 			return ClientAPI.responseError(
 				UserError.from(new Error(`Blueprint ${blueprintId} not found`), UserErrorMessage.BlueprintNotFound),
@@ -654,14 +651,14 @@ class ServerRestAPI implements RestAPI {
 		studioId: StudioId,
 		deviceId: PeripheralDeviceId
 	): Promise<ClientAPI.ClientResponse<void>> {
-		const studio = Studios.findOne(studioId)
+		const studio = await Studios.findOneAsync(studioId)
 		if (!studio)
 			return ClientAPI.responseError(
 				UserError.from(new Error(`Studio does not exist`), UserErrorMessage.StudioNotFound),
 				404
 			)
 
-		const device = PeripheralDevices.findOne(deviceId)
+		const device = await PeripheralDevices.findOneAsync(deviceId)
 		if (!device)
 			return ClientAPI.responseError(
 				UserError.from(new Error(`Studio does not exist`), UserErrorMessage.PeripheralDeviceNotFound),
@@ -677,7 +674,7 @@ class ServerRestAPI implements RestAPI {
 				412
 			)
 		}
-		PeripheralDevices.update(deviceId, {
+		await PeripheralDevices.updateAsync(deviceId, {
 			$set: {
 				studioId,
 			},
@@ -692,13 +689,13 @@ class ServerRestAPI implements RestAPI {
 		studioId: StudioId,
 		deviceId: PeripheralDeviceId
 	) {
-		const studio = Studios.findOne(studioId)
+		const studio = await Studios.findOneAsync(studioId)
 		if (!studio)
 			return ClientAPI.responseError(
 				UserError.from(new Error(`Studio does not exist`), UserErrorMessage.StudioNotFound),
 				404
 			)
-		PeripheralDevices.update(deviceId, {
+		await PeripheralDevices.updateAsync(deviceId, {
 			$unset: {
 				studioId: 1,
 			},
@@ -710,8 +707,11 @@ class ServerRestAPI implements RestAPI {
 	async getShowStyleBases(
 		_connection: Meteor.Connection,
 		_event: string
-	): Promise<ClientAPI.ClientResponse<string[]>> {
-		return ClientAPI.responseSuccess(ShowStyleBases.find().map((base) => unprotectString(base._id)))
+	): Promise<ClientAPI.ClientResponse<Array<{ id: string }>>> {
+		const showStyleBases = (await ShowStyleBases.findFetchAsync({}, { projection: { _id: 1 } })) as Array<
+			Pick<ShowStyleBase, '_id'>
+		>
+		return ClientAPI.responseSuccess(showStyleBases.map((base) => ({ id: unprotectString(base._id) })))
 	}
 
 	async addShowStyleBase(
@@ -719,10 +719,10 @@ class ServerRestAPI implements RestAPI {
 		_event: string,
 		showStyleBase: APIShowStyleBase
 	): Promise<ClientAPI.ClientResponse<string>> {
-		const showStyle = showStyleBaseFrom(showStyleBase)
+		const showStyle = await showStyleBaseFrom(showStyleBase)
 		if (!showStyle) throw new Meteor.Error(400, `Invalid ShowStyleBase`)
 		const showStyleId = showStyle._id
-		ShowStyleBases.insert(showStyle)
+		await ShowStyleBases.insertAsync(showStyle)
 
 		return ClientAPI.responseSuccess(unprotectString(showStyleId), 200)
 	}
@@ -732,7 +732,7 @@ class ServerRestAPI implements RestAPI {
 		_event: string,
 		showStyleBaseId: ShowStyleBaseId
 	): Promise<ClientAPI.ClientResponse<APIShowStyleBase>> {
-		const showStyleBase = ShowStyleBases.findOne(showStyleBaseId)
+		const showStyleBase = await ShowStyleBases.findOneAsync(showStyleBaseId)
 		if (!showStyleBase) throw new Meteor.Error(404, `ShowStyleBase ${showStyleBaseId} does not exist`)
 
 		return ClientAPI.responseSuccess(APIShowStyleBaseFrom(showStyleBase))
@@ -744,13 +744,23 @@ class ServerRestAPI implements RestAPI {
 		showStyleBaseId: ShowStyleBaseId,
 		showStyleBase: APIShowStyleBase
 	): Promise<ClientAPI.ClientResponse<void>> {
-		const showStyle = showStyleBaseFrom(showStyleBase, showStyleBaseId)
+		const showStyle = await showStyleBaseFrom(showStyleBase, showStyleBaseId)
 		if (!showStyle) throw new Meteor.Error(400, `Invalid ShowStyleBase`)
 
-		const existingShowStyle = ShowStyleBases.findOne(showStyleBaseId)
+		const existingShowStyle = await ShowStyleBases.findOneAsync(showStyleBaseId)
 		if (existingShowStyle) {
-			const rundowns = Rundowns.find({ showStyleBaseId })
-			const playlists = RundownPlaylists.find({ _id: { $in: rundowns.map((r) => r.playlistId) } }).fetch()
+			const rundowns = (await Rundowns.findFetchAsync(
+				{ showStyleBaseId },
+				{ projection: { playlistId: 1 } }
+			)) as Array<Pick<Rundown, 'playlistId'>>
+			const playlists = (await RundownPlaylists.findFetchAsync(
+				{ _id: { $in: rundowns.map((r) => r.playlistId) } },
+				{
+					projection: {
+						activationId: 1,
+					},
+				}
+			)) as Array<Pick<RundownPlaylist, 'activationId'>>
 			if (playlists.some((playlist) => playlist.activationId !== undefined)) {
 				throw new Meteor.Error(
 					412,
@@ -759,7 +769,7 @@ class ServerRestAPI implements RestAPI {
 			}
 		}
 
-		ShowStyleBases.upsert(showStyleBaseId, showStyle)
+		await ShowStyleBases.upsertAsync(showStyleBaseId, showStyle)
 
 		const validation = await validateConfigForShowStyleBase(showStyleBaseId)
 		const validateOK = validation.messages.reduce((acc, msg) => acc && msg.level === NoteSeverity.INFO, true)
@@ -778,8 +788,18 @@ class ServerRestAPI implements RestAPI {
 		_event: string,
 		showStyleBaseId: ShowStyleBaseId
 	): Promise<ClientAPI.ClientResponse<void>> {
-		const rundowns = Rundowns.find({ showStyleBaseId })
-		const playlists = RundownPlaylists.find({ _id: { $in: rundowns.map((r) => r.playlistId) } }).fetch()
+		const rundowns = (await Rundowns.findFetchAsync(
+			{ showStyleBaseId },
+			{ projection: { playlistId: 1 } }
+		)) as Array<Pick<Rundown, 'playlistId'>>
+		const playlists = (await RundownPlaylists.findFetchAsync(
+			{ _id: { $in: rundowns.map((r) => r.playlistId) } },
+			{
+				projection: {
+					activationId: 1,
+				},
+			}
+		)) as Array<Pick<RundownPlaylist, 'activationId'>>
 		if (playlists.some((playlist) => playlist.activationId !== undefined)) {
 			throw new Meteor.Error(
 				412,
@@ -787,7 +807,7 @@ class ServerRestAPI implements RestAPI {
 			)
 		}
 
-		ShowStyleBases.remove(showStyleBaseId)
+		await ShowStyleBases.removeAsync(showStyleBaseId)
 		return ClientAPI.responseSuccess(undefined)
 	}
 
@@ -795,13 +815,16 @@ class ServerRestAPI implements RestAPI {
 		_connection: Meteor.Connection,
 		_event: string,
 		showStyleBaseId: ShowStyleBaseId
-	): Promise<ClientAPI.ClientResponse<string[]>> {
-		const showStyleBase = ShowStyleBases.findOne(showStyleBaseId)
+	): Promise<ClientAPI.ClientResponse<Array<{ id: string }>>> {
+		const showStyleBase = await ShowStyleBases.findOneAsync(showStyleBaseId)
 		if (!showStyleBase) throw new Meteor.Error(404, `ShowStyleBase ${showStyleBaseId} not found`)
 
-		return ClientAPI.responseSuccess(
-			ShowStyleVariants.find({ showStyleBaseId }).map((variant) => unprotectString(variant._id))
-		)
+		const showStyleVariants = (await ShowStyleVariants.findFetchAsync(
+			{ showStyleBaseId },
+			{ projection: { _id: 1 } }
+		)) as Array<Pick<ShowStyleVariant, '_id'>>
+
+		return ClientAPI.responseSuccess(showStyleVariants.map((variant) => ({ id: unprotectString(variant._id) })))
 	}
 
 	async addShowStyleVariant(
@@ -810,14 +833,14 @@ class ServerRestAPI implements RestAPI {
 		showStyleBaseId: ShowStyleBaseId,
 		showStyleVariant: APIShowStyleVariant
 	): Promise<ClientAPI.ClientResponse<string>> {
-		const showStyleBase = ShowStyleBases.findOne(showStyleBaseId)
+		const showStyleBase = await ShowStyleBases.findOneAsync(showStyleBaseId)
 		if (!showStyleBase) throw new Meteor.Error(404, `ShowStyleBase ${showStyleBaseId} not found`)
 
 		const variant = showStyleVariantFrom(showStyleVariant)
 		if (!variant) throw new Meteor.Error(400, `Invalid ShowStyleVariant`)
 
 		const variantId = variant._id
-		ShowStyleVariants.insert(variant)
+		await ShowStyleVariants.insertAsync(variant)
 
 		return ClientAPI.responseSuccess(unprotectString(variantId), 200)
 	}
@@ -828,10 +851,10 @@ class ServerRestAPI implements RestAPI {
 		showStyleBaseId: ShowStyleBaseId,
 		showStyleVariantId: ShowStyleVariantId
 	): Promise<ClientAPI.ClientResponse<APIShowStyleVariant>> {
-		const showStyleBase = ShowStyleBases.findOne(showStyleBaseId)
+		const showStyleBase = await ShowStyleBases.findOneAsync(showStyleBaseId)
 		if (!showStyleBase) throw new Meteor.Error(404, `ShowStyleBase ${showStyleBaseId} not found`)
 
-		const variant = ShowStyleVariants.findOne(showStyleVariantId)
+		const variant = await ShowStyleVariants.findOneAsync(showStyleVariantId)
 		if (!variant) throw new Meteor.Error(404, `ShowStyleVariant ${showStyleVariantId} not found`)
 
 		return ClientAPI.responseSuccess(APIShowStyleVariantFrom(variant))
@@ -844,16 +867,26 @@ class ServerRestAPI implements RestAPI {
 		showStyleVariantId: ShowStyleVariantId,
 		showStyleVariant: APIShowStyleVariant
 	): Promise<ClientAPI.ClientResponse<void>> {
-		const showStyleBase = ShowStyleBases.findOne(showStyleBaseId)
+		const showStyleBase = await ShowStyleBases.findOneAsync(showStyleBaseId)
 		if (!showStyleBase) throw new Meteor.Error(404, `ShowStyleBase ${showStyleBaseId} does not exist`)
 
 		const showStyle = showStyleVariantFrom(showStyleVariant, showStyleVariantId)
 		if (!showStyle) throw new Meteor.Error(400, `Invalid ShowStyleVariant`)
 
-		const existingShowStyle = ShowStyleVariants.findOne(showStyleVariantId)
+		const existingShowStyle = await ShowStyleVariants.findOneAsync(showStyleVariantId)
 		if (existingShowStyle) {
-			const rundowns = Rundowns.find({ showStyleVariantId })
-			const playlists = RundownPlaylists.find({ _id: { $in: rundowns.map((r) => r.playlistId) } }).fetch()
+			const rundowns = (await Rundowns.findFetchAsync(
+				{ showStyleVariantId },
+				{ projection: { playlistId: 1 } }
+			)) as Array<Pick<Rundown, 'playlistId'>>
+			const playlists = (await RundownPlaylists.findFetchAsync(
+				{ _id: { $in: rundowns.map((r) => r.playlistId) } },
+				{
+					projection: {
+						activationId: 1,
+					},
+				}
+			)) as Array<Pick<RundownPlaylist, 'activationId'>>
 			if (playlists.some((playlist) => playlist.activationId !== undefined)) {
 				throw new Meteor.Error(
 					412,
@@ -862,7 +895,7 @@ class ServerRestAPI implements RestAPI {
 			}
 		}
 
-		ShowStyleVariants.upsert(showStyleVariantId, showStyle)
+		await ShowStyleVariants.upsertAsync(showStyleVariantId, showStyle)
 		return ClientAPI.responseSuccess(undefined, 200)
 	}
 
@@ -872,11 +905,21 @@ class ServerRestAPI implements RestAPI {
 		showStyleBaseId: ShowStyleBaseId,
 		showStyleVariantId: ShowStyleVariantId
 	): Promise<ClientAPI.ClientResponse<void>> {
-		const showStyleBase = ShowStyleBases.findOne(showStyleBaseId)
+		const showStyleBase = await ShowStyleBases.findOneAsync(showStyleBaseId)
 		if (!showStyleBase) throw new Meteor.Error(404, `ShowStyleBase ${showStyleBaseId} does not exist`)
 
-		const rundowns = Rundowns.find({ showStyleVariantId })
-		const playlists = RundownPlaylists.find({ _id: { $in: rundowns.map((r) => r.playlistId) } }).fetch()
+		const rundowns = (await Rundowns.findFetchAsync(
+			{ showStyleVariantId },
+			{ projection: { playlistId: 1 } }
+		)) as Array<Pick<Rundown, 'playlistId'>>
+		const playlists = (await RundownPlaylists.findFetchAsync(
+			{ _id: { $in: rundowns.map((r) => r.playlistId) } },
+			{
+				projection: {
+					activationId: 1,
+				},
+			}
+		)) as Array<Pick<RundownPlaylist, 'activationId'>>
 		if (playlists.some((playlist) => playlist.activationId !== undefined)) {
 			throw new Meteor.Error(
 				412,
@@ -884,12 +927,17 @@ class ServerRestAPI implements RestAPI {
 			)
 		}
 
-		ShowStyleVariants.remove(showStyleVariantId)
+		await ShowStyleVariants.removeAsync(showStyleVariantId)
 		return ClientAPI.responseSuccess(undefined, 200)
 	}
 
-	async getStudios(_connection: Meteor.Connection, _event: string): Promise<ClientAPI.ClientResponse<string[]>> {
-		return ClientAPI.responseSuccess(Studios.find().map((studio) => unprotectString(studio._id)))
+	async getStudios(
+		_connection: Meteor.Connection,
+		_event: string
+	): Promise<ClientAPI.ClientResponse<Array<{ id: string }>>> {
+		const studios = (await Studios.findFetchAsync({}, { projection: { _id: 1 } })) as Array<Pick<Studio, '_id'>>
+
+		return ClientAPI.responseSuccess(studios.map((studio) => ({ id: unprotectString(studio._id) })))
 	}
 
 	async addStudio(
@@ -897,11 +945,11 @@ class ServerRestAPI implements RestAPI {
 		_event: string,
 		studio: APIStudio
 	): Promise<ClientAPI.ClientResponse<string>> {
-		const newStudio = studioFrom(studio)
+		const newStudio = await studioFrom(studio)
 		if (!newStudio) throw new Meteor.Error(400, `Invalid Studio`)
 
 		const newStudioId = newStudio._id
-		Studios.insert(newStudio)
+		await Studios.insertAsync(newStudio)
 
 		return ClientAPI.responseSuccess(unprotectString(newStudioId), 200)
 	}
@@ -911,7 +959,7 @@ class ServerRestAPI implements RestAPI {
 		_event: string,
 		studioId: StudioId
 	): Promise<ClientAPI.ClientResponse<APIStudio>> {
-		const studio = Studios.findOne(studioId)
+		const studio = await Studios.findOneAsync(studioId)
 		if (!studio) throw new Meteor.Error(404, `Studio ${studioId} not found`)
 
 		return ClientAPI.responseSuccess(APIStudioFrom(studio))
@@ -923,18 +971,25 @@ class ServerRestAPI implements RestAPI {
 		studioId: StudioId,
 		studio: APIStudio
 	): Promise<ClientAPI.ClientResponse<void>> {
-		const newStudio = studioFrom(studio, studioId)
+		const newStudio = await studioFrom(studio, studioId)
 		if (!newStudio) throw new Meteor.Error(400, `Invalid Studio`)
 
-		const existingStudio = Studios.findOne(studioId)
+		const existingStudio = await Studios.findOneAsync(studioId)
 		if (existingStudio) {
-			const playlists = RundownPlaylists.find({ studioId }).fetch()
+			const playlists = (await RundownPlaylists.findFetchAsync(
+				{ studioId },
+				{
+					projection: {
+						activationId: 1,
+					},
+				}
+			)) as Array<Pick<RundownPlaylist, 'activationId'>>
 			if (playlists.some((p) => p.activationId !== undefined)) {
 				throw new Meteor.Error(412, `Studio ${studioId} cannot be updated, it is in use in an active Playlist`)
 			}
 		}
 
-		Studios.upsert(studioId, newStudio)
+		await Studios.upsertAsync(studioId, newStudio)
 
 		const validation = await validateConfigForStudio(studioId)
 		const validateOK = validation.messages.reduce((acc, msg) => acc && msg.level === NoteSeverity.INFO, true)
@@ -951,34 +1006,50 @@ class ServerRestAPI implements RestAPI {
 		event: string,
 		studioId: StudioId
 	): Promise<ClientAPI.ClientResponse<void>> {
-		const existingStudio = Studios.findOne(studioId)
+		const existingStudio = await Studios.findOneAsync(studioId)
 		if (existingStudio) {
-			const playlists = RundownPlaylists.find({ studioId }).fetch()
+			const playlists = (await RundownPlaylists.findFetchAsync(
+				{ studioId },
+				{
+					projection: {
+						activationId: 1,
+					},
+				}
+			)) as Array<Pick<RundownPlaylist, 'activationId'>>
 			if (playlists.some((p) => p.activationId !== undefined)) {
 				throw new Meteor.Error(412, `Studio ${studioId} cannot be deleted, it is in use in an active Playlist`)
 			}
 		}
 
-		PeripheralDevices.update({ studioId }, { $unset: { studioId: 1 } })
-		const rundownPlaylists = RundownPlaylists.find({ studioId }).map((playlist) => playlist._id)
-		const promises = rundownPlaylists.map(async (rundownPlaylistId) =>
+		await PeripheralDevices.updateAsync({ studioId }, { $unset: { studioId: 1 } })
+
+		const rundownPlaylists = (await RundownPlaylists.findFetchAsync(
+			{ studioId },
+			{
+				projection: {
+					_id: 1,
+				},
+			}
+		)) as Array<Pick<RundownPlaylist, '_id'>>
+
+		const promises = rundownPlaylists.map(async (rundownPlaylist) =>
 			ServerClientAPI.runUserActionInLogForPlaylistOnWorker(
 				ServerRestAPI.getMethodContext(connection),
 				event,
 				getCurrentTime(),
-				rundownPlaylistId,
+				rundownPlaylist._id,
 				() => {
-					check(rundownPlaylistId, String)
+					check(rundownPlaylist._id, String)
 				},
 				StudioJobs.RemovePlaylist,
 				{
-					playlistId: rundownPlaylistId,
+					playlistId: rundownPlaylist._id,
 				}
 			)
 		)
 
 		await Promise.all(promises)
-		Studios.remove(studioId)
+		await Studios.removeAsync(studioId)
 
 		return ClientAPI.responseSuccess(undefined, 200)
 	}
@@ -1122,6 +1193,12 @@ function sofieAPIRequest<Params, Body, Response>(
 	})
 }
 
+/* ****************************************************************************
+  IMPORTANT: IF YOU MAKE ANY MODIFICATIONS TO THE API, YOU MUST ENSURE THAT
+  THEY ARE REFLECTED IN THE OPENAPI SPECIFICATION FILES
+  (/packages/openapi/api/definitions)
+**************************************************************************** */
+
 koaRouter.get('/', async (ctx, next) => {
 	ctx.type = 'application/json'
 	const server = new ServerRestAPI()
@@ -1131,12 +1208,12 @@ koaRouter.get('/', async (ctx, next) => {
 	await next()
 })
 
-sofieAPIRequest<never, never, string[]>(
+sofieAPIRequest<never, never, Array<{ id: string }>>(
 	'get',
 	'/playlists',
 	new Map(),
 	async (serverAPI, connection, event, _params, _body) => {
-		logger.info(`koa GET: playlists`)
+		logger.info(`API GET: playlists`)
 		return await serverAPI.getAllRundownPlaylists(connection, event)
 	}
 )
@@ -1151,7 +1228,7 @@ sofieAPIRequest<{ playlistId: string }, { rehearsal: boolean }, void>(
 	async (serverAPI, connection, event, params, body) => {
 		const rundownPlaylistId = protectString<RundownPlaylistId>(params.playlistId)
 		const rehearsal = body.rehearsal
-		logger.info(`koa PUT: activate ${rundownPlaylistId} - ${rehearsal ? 'rehearsal' : 'live'}`)
+		logger.info(`API PUT: activate ${rundownPlaylistId} - ${rehearsal ? 'rehearsal' : 'live'}`)
 
 		check(rundownPlaylistId, String)
 		return await serverAPI.activate(connection, event, rundownPlaylistId, rehearsal)
@@ -1164,7 +1241,7 @@ sofieAPIRequest<{ playlistId: string }, never, void>(
 	new Map([[404, UserErrorMessage.RundownPlaylistNotFound]]),
 	async (serverAPI, connection, event, params, _) => {
 		const rundownPlaylistId = protectString<RundownPlaylistId>(params.playlistId)
-		logger.info(`koa PUT: deactivate ${rundownPlaylistId}`)
+		logger.info(`API PUT: deactivate ${rundownPlaylistId}`)
 
 		check(rundownPlaylistId, String)
 		return await serverAPI.deactivate(connection, event, rundownPlaylistId)
@@ -1172,8 +1249,8 @@ sofieAPIRequest<{ playlistId: string }, never, void>(
 )
 
 sofieAPIRequest<{ playlistId: string }, { adLibId: string; actionType?: string }, object>(
-	'put',
-	'/playlists/:playlistId/executeAdLib',
+	'post',
+	'/playlists/:playlistId/execute-adlib',
 	new Map([
 		[404, UserErrorMessage.RundownPlaylistNotFound],
 		[412, UserErrorMessage.AdlibNotFound],
@@ -1185,7 +1262,7 @@ sofieAPIRequest<{ playlistId: string }, { adLibId: string; actionType?: string }
 		)
 		const actionTypeObj = body
 		const triggerMode = actionTypeObj ? (actionTypeObj as { actionType: string }).actionType : undefined
-		logger.info(`koa PUT: executeAdLib ${rundownPlaylistId} ${adLibId} - triggerMode: ${triggerMode}`)
+		logger.info(`API POST: execute-adlib ${rundownPlaylistId} ${adLibId} - triggerMode: ${triggerMode}`)
 
 		check(adLibId, String)
 		check(rundownPlaylistId, String)
@@ -1195,8 +1272,8 @@ sofieAPIRequest<{ playlistId: string }, { adLibId: string; actionType?: string }
 )
 
 sofieAPIRequest<{ playlistId: string }, { delta: number }, PartId | null>(
-	'put',
-	'/playlists/:playlistId/moveNextPart',
+	'post',
+	'/playlists/:playlistId/move-next-part',
 	new Map([
 		[404, UserErrorMessage.RundownPlaylistNotFound],
 		[412, UserErrorMessage.PartNotFound],
@@ -1204,7 +1281,7 @@ sofieAPIRequest<{ playlistId: string }, { delta: number }, PartId | null>(
 	async (serverAPI, connection, event, params, body) => {
 		const rundownPlaylistId = protectString<RundownPlaylistId>(params.playlistId)
 		const delta = body.delta
-		logger.info(`koa PUT: moveNextPart ${rundownPlaylistId} ${delta}`)
+		logger.info(`API POST: move-next-part ${rundownPlaylistId} ${delta}`)
 
 		check(rundownPlaylistId, String)
 		check(delta, Number)
@@ -1213,8 +1290,8 @@ sofieAPIRequest<{ playlistId: string }, { delta: number }, PartId | null>(
 )
 
 sofieAPIRequest<{ playlistId: string }, { delta: number }, PartId | null>(
-	'put',
-	'/playlists/:playlistId/moveNextSegment',
+	'post',
+	'/playlists/:playlistId/move-next-segment',
 	new Map([
 		[404, UserErrorMessage.RundownPlaylistNotFound],
 		[412, UserErrorMessage.PartNotFound],
@@ -1222,7 +1299,7 @@ sofieAPIRequest<{ playlistId: string }, { delta: number }, PartId | null>(
 	async (serverAPI, connection, event, params, body) => {
 		const rundownPlaylistId = protectString<RundownPlaylistId>(params.playlistId)
 		const delta = body.delta
-		logger.info(`koa PUT: moveNextSegment ${rundownPlaylistId} ${delta}`)
+		logger.info(`API POST: move-next-segment ${rundownPlaylistId} ${delta}`)
 
 		check(rundownPlaylistId, String)
 		check(delta, Number)
@@ -1232,11 +1309,11 @@ sofieAPIRequest<{ playlistId: string }, { delta: number }, PartId | null>(
 
 sofieAPIRequest<{ playlistId: string }, never, object>(
 	'put',
-	'/playlists/:playlistId/reloadPlaylist',
+	'/playlists/:playlistId/reload-playlist',
 	new Map([[404, UserErrorMessage.RundownPlaylistNotFound]]),
 	async (serverAPI, connection, event, params, _) => {
 		const rundownPlaylistId = protectString<RundownPlaylistId>(params.playlistId)
-		logger.info(`koa PUT: reloadPlaylist ${rundownPlaylistId}`)
+		logger.info(`API PUT: reload-playlist ${rundownPlaylistId}`)
 
 		check(rundownPlaylistId, String)
 		return await serverAPI.reloadPlaylist(connection, event, rundownPlaylistId)
@@ -1245,14 +1322,14 @@ sofieAPIRequest<{ playlistId: string }, never, object>(
 
 sofieAPIRequest<{ playlistId: string }, never, void>(
 	'put',
-	'/playlists/:playlistId/resetPlaylist',
+	'/playlists/:playlistId/reset-playlist',
 	new Map([
 		[404, UserErrorMessage.RundownPlaylistNotFound],
 		[412, UserErrorMessage.RundownResetWhileActive],
 	]),
 	async (serverAPI, connection, event, params, _) => {
 		const rundownPlaylistId = protectString<RundownPlaylistId>(params.playlistId)
-		logger.info(`koa PUT: resetPlaylist ${rundownPlaylistId}`)
+		logger.info(`API PUT: reset-playlist ${rundownPlaylistId}`)
 
 		check(rundownPlaylistId, String)
 		return await serverAPI.resetPlaylist(connection, event, rundownPlaylistId)
@@ -1261,7 +1338,7 @@ sofieAPIRequest<{ playlistId: string }, never, void>(
 
 sofieAPIRequest<{ playlistId: string }, { partId: string }, void>(
 	'put',
-	'/playlists/:playlistId/setNextPart',
+	'/playlists/:playlistId/set-next-part',
 	new Map([
 		[404, UserErrorMessage.RundownPlaylistNotFound],
 		[412, UserErrorMessage.PartNotFound],
@@ -1269,7 +1346,7 @@ sofieAPIRequest<{ playlistId: string }, { partId: string }, void>(
 	async (serverAPI, connection, event, params, body) => {
 		const rundownPlaylistId = protectString<RundownPlaylistId>(params.playlistId)
 		const partId = protectString<PartId>(body.partId)
-		logger.info(`koa PUT: setNextPart ${rundownPlaylistId} ${partId}`)
+		logger.info(`API PUT: set-next-part ${rundownPlaylistId} ${partId}`)
 
 		check(rundownPlaylistId, String)
 		check(partId, String)
@@ -1279,7 +1356,7 @@ sofieAPIRequest<{ playlistId: string }, { partId: string }, void>(
 
 sofieAPIRequest<{ playlistId: string }, { segmentId: string }, void>(
 	'put',
-	'/playlists/:playlistId/setNextSegment',
+	'/playlists/:playlistId/set-next-segment',
 	new Map([
 		[404, UserErrorMessage.RundownPlaylistNotFound],
 		[412, UserErrorMessage.PartNotFound],
@@ -1287,7 +1364,7 @@ sofieAPIRequest<{ playlistId: string }, { segmentId: string }, void>(
 	async (serverAPI, connection, event, params, body) => {
 		const rundownPlaylistId = protectString<RundownPlaylistId>(params.playlistId)
 		const segmentId = protectString<SegmentId>(body.segmentId)
-		logger.info(`koa PUT: setNextSegment ${rundownPlaylistId} ${segmentId}`)
+		logger.info(`API PUT: set-next-segment ${rundownPlaylistId} ${segmentId}`)
 
 		check(rundownPlaylistId, String)
 		check(segmentId, String)
@@ -1296,7 +1373,7 @@ sofieAPIRequest<{ playlistId: string }, { segmentId: string }, void>(
 )
 
 sofieAPIRequest<{ playlistId: string }, { fromPartInstanceId?: string }, void>(
-	'put',
+	'post',
 	'/playlists/:playlistId/take',
 	new Map([
 		[404, UserErrorMessage.RundownPlaylistNotFound],
@@ -1305,7 +1382,7 @@ sofieAPIRequest<{ playlistId: string }, { fromPartInstanceId?: string }, void>(
 	async (serverAPI, connection, event, params, body) => {
 		const rundownPlaylistId = protectString<RundownPlaylistId>(params.playlistId)
 		const fromPartInstanceId = body.fromPartInstanceId
-		logger.info(`koa PUT: take ${rundownPlaylistId}`)
+		logger.info(`API POST: take ${rundownPlaylistId}`)
 
 		check(rundownPlaylistId, String)
 		check(fromPartInstanceId, Match.Optional(String))
@@ -1323,7 +1400,7 @@ sofieAPIRequest<{ playlistId: string; sourceLayerId: string }, never, void>(
 	async (serverAPI, connection, event, params, _) => {
 		const playlistId = protectString<RundownPlaylistId>(params.playlistId)
 		const sourceLayerId = params.sourceLayerId
-		logger.info(`koa DELETE: sourceLayer ${playlistId} ${sourceLayerId}`)
+		logger.info(`API DELETE: sourceLayer ${playlistId} ${sourceLayerId}`)
 
 		check(playlistId, String)
 		check(sourceLayerId, String)
@@ -1332,7 +1409,7 @@ sofieAPIRequest<{ playlistId: string; sourceLayerId: string }, never, void>(
 )
 
 sofieAPIRequest<{ playlistId: string; sourceLayerId: string }, never, void>(
-	'put',
+	'post',
 	'/playlists/:playlistId/sourceLayer/:sourceLayerId/sticky',
 	new Map([
 		[404, UserErrorMessage.RundownPlaylistNotFound],
@@ -1341,7 +1418,7 @@ sofieAPIRequest<{ playlistId: string; sourceLayerId: string }, never, void>(
 	async (serverAPI, connection, event, params, _) => {
 		const playlistId = protectString<RundownPlaylistId>(params.playlistId)
 		const sourceLayerId = params.sourceLayerId
-		logger.info(`koa PUT: sourceLayer recallSticky ${playlistId} ${sourceLayerId}`)
+		logger.info(`API POST: sourceLayer recallSticky ${playlistId} ${sourceLayerId}`)
 
 		check(playlistId, String)
 		check(sourceLayerId, String)
@@ -1349,12 +1426,12 @@ sofieAPIRequest<{ playlistId: string; sourceLayerId: string }, never, void>(
 	}
 )
 
-sofieAPIRequest<never, never, string[]>(
+sofieAPIRequest<never, never, Array<{ id: string }>>(
 	'get',
 	'/devices',
 	new Map(),
 	async (serverAPI, connection, event, _params, _body) => {
-		logger.info(`koa GET: peripheral devices`)
+		logger.info(`API GET: peripheral devices`)
 		return await serverAPI.getPeripheralDevices(connection, event)
 	}
 )
@@ -1365,7 +1442,7 @@ sofieAPIRequest<{ deviceId: string }, never, APIPeripheralDevice>(
 	new Map(),
 	async (serverAPI, connection, event, params, _) => {
 		const deviceId = protectString<PeripheralDeviceId>(params.deviceId)
-		logger.info(`koa GET: peripheral device ${deviceId}`)
+		logger.info(`API GET: peripheral device ${deviceId}`)
 
 		check(deviceId, String)
 		return await serverAPI.getPeripheralDevice(connection, event, deviceId)
@@ -1373,13 +1450,13 @@ sofieAPIRequest<{ deviceId: string }, never, APIPeripheralDevice>(
 )
 
 sofieAPIRequest<{ deviceId: string }, { action: PeripheralDeviceAction }, void>(
-	'put',
+	'post',
 	'/devices/:deviceId/action',
 	new Map(),
 	async (serverAPI, connection, event, params, body) => {
 		const deviceId = protectString<PeripheralDeviceId>(params.deviceId)
 		const action = body.action
-		logger.info(`koa PUT: peripheral device ${deviceId} action ${action.type}`)
+		logger.info(`API POST: peripheral device ${deviceId} action ${action.type}`)
 
 		check(deviceId, String)
 		check(action, Object)
@@ -1387,12 +1464,12 @@ sofieAPIRequest<{ deviceId: string }, { action: PeripheralDeviceAction }, void>(
 	}
 )
 
-sofieAPIRequest<never, never, string[]>(
+sofieAPIRequest<never, never, Array<{ id: string }>>(
 	'get',
 	'/studios',
 	new Map(),
 	async (serverAPI, connection, event, _params, _) => {
-		logger.info(`koa GET: Studios`)
+		logger.info(`API GET: Studios`)
 		return await serverAPI.getStudios(connection, event)
 	}
 )
@@ -1402,7 +1479,7 @@ sofieAPIRequest<{ studioId: string }, APIStudio, string>(
 	'/studios',
 	new Map(),
 	async (serverAPI, connection, event, _params, body) => {
-		logger.info(`koa POST: Add studio ${body.name}`)
+		logger.info(`API POST: Add studio ${body.name}`)
 		return await serverAPI.addStudio(connection, event, body)
 	}
 )
@@ -1413,7 +1490,7 @@ sofieAPIRequest<{ studioId: string }, never, APIStudio>(
 	new Map([[404, UserErrorMessage.StudioNotFound]]),
 	async (serverAPI, connection, event, params, _) => {
 		const studioId = protectString<StudioId>(params.studioId)
-		logger.info(`koa GET: studio ${studioId}`)
+		logger.info(`API GET: studio ${studioId}`)
 
 		check(studioId, String)
 		return await serverAPI.getStudio(connection, event, studioId)
@@ -1426,7 +1503,7 @@ sofieAPIRequest<{ studioId: string }, APIStudio, void>(
 	new Map([[404, UserErrorMessage.StudioNotFound]]),
 	async (serverAPI, connection, event, params, body) => {
 		const studioId = protectString<StudioId>(params.studioId)
-		logger.info(`koa PUT: Add or Update studio ${studioId} ${body.name}`)
+		logger.info(`API PUT: Add or Update studio ${studioId} ${body.name}`)
 
 		check(studioId, String)
 		return await serverAPI.addOrUpdateStudio(connection, event, studioId, body)
@@ -1439,20 +1516,20 @@ sofieAPIRequest<{ studioId: string }, never, void>(
 	new Map([[404, UserErrorMessage.StudioNotFound]]),
 	async (serverAPI, connection, event, params, _) => {
 		const studioId = protectString<StudioId>(params.studioId)
-		logger.info(`koa DELETE: studio ${studioId}`)
+		logger.info(`API DELETE: studio ${studioId}`)
 
 		check(studioId, String)
 		return await serverAPI.deleteStudio(connection, event, studioId)
 	}
 )
 
-sofieAPIRequest<{ studioId: string }, never, string[]>(
+sofieAPIRequest<{ studioId: string }, never, Array<{ id: string }>>(
 	'get',
 	'/studios/:studioId/devices',
 	new Map([[404, UserErrorMessage.StudioNotFound]]),
 	async (serverAPI, connection, event, params, _) => {
 		const studioId = protectString<StudioId>(params.studioId)
-		logger.info(`koa GET: peripheral devices for studio ${studioId}`)
+		logger.info(`API GET: peripheral devices for studio ${studioId}`)
 
 		check(studioId, String)
 		return await serverAPI.getPeripheralDevicesForStudio(connection, event, studioId)
@@ -1461,13 +1538,13 @@ sofieAPIRequest<{ studioId: string }, never, string[]>(
 
 sofieAPIRequest<{ studioId: string }, { routeSetId: string; active: boolean }, void>(
 	'put',
-	'/studios/:studioId/switchRouteSet',
+	'/studios/:studioId/switch-route-set',
 	new Map([[404, UserErrorMessage.StudioNotFound]]),
 	async (serverAPI, connection, event, params, body) => {
 		const studioId = protectString<StudioId>(params.studioId)
 		const routeSetId = body.routeSetId
 		const active = body.active
-		logger.info(`koa PUT: switchRouteSet ${studioId} ${routeSetId} ${active}`)
+		logger.info(`API PUT: switch-route-set ${studioId} ${routeSetId} ${active}`)
 
 		check(studioId, String)
 		check(routeSetId, String)
@@ -1486,7 +1563,7 @@ sofieAPIRequest<{ studioId: string }, { deviceId: string }, void>(
 	async (serverAPI, connection, events, params, body) => {
 		const studioId = protectString<StudioId>(params.studioId)
 		const deviceId = protectString<PeripheralDeviceId>(body.deviceId)
-		logger.info(`koa PUT: Attach device ${deviceId} to studio ${studioId}`)
+		logger.info(`API PUT: Attach device ${deviceId} to studio ${studioId}`)
 
 		return await serverAPI.attachDeviceToStudio(connection, events, studioId, deviceId)
 	}
@@ -1499,18 +1576,18 @@ sofieAPIRequest<{ studioId: string; deviceId: string }, never, void>(
 	async (serverAPI, connection, events, params, _) => {
 		const studioId = protectString<StudioId>(params.studioId)
 		const deviceId = protectString<PeripheralDeviceId>(params.deviceId)
-		logger.info(`koa DELETE: Detach device ${deviceId} from studio ${studioId}`)
+		logger.info(`API DELETE: Detach device ${deviceId} from studio ${studioId}`)
 
 		return await serverAPI.detachDeviceFromStudio(connection, events, studioId, deviceId)
 	}
 )
 
-sofieAPIRequest<never, never, string[]>(
+sofieAPIRequest<never, never, Array<{ id: string }>>(
 	'get',
 	'/blueprints',
 	new Map(),
 	async (serverAPI, connection, event, _params, _body) => {
-		logger.info(`koa GET: blueprints`)
+		logger.info(`API GET: blueprints`)
 		return await serverAPI.getAllBlueprints(connection, event)
 	}
 )
@@ -1521,7 +1598,7 @@ sofieAPIRequest<{ blueprintId: string }, never, APIBlueprint>(
 	new Map(),
 	async (serverAPI, connection, event, params, _) => {
 		const blueprintId = protectString<BlueprintId>(params.blueprintId)
-		logger.info(`koa GET: blueprint ${blueprintId}`)
+		logger.info(`API GET: blueprint ${blueprintId}`)
 
 		check(blueprintId, String)
 		return await serverAPI.getBlueprint(connection, event, blueprintId)
@@ -1534,7 +1611,7 @@ sofieAPIRequest<never, { blueprintId: string }, void>(
 	new Map(),
 	async (serverAPI, connection, events, _, body) => {
 		const blueprintId = protectString<BlueprintId>(body.blueprintId)
-		logger.info(`koa PUT: system blueprint ${blueprintId}`)
+		logger.info(`API PUT: system blueprint ${blueprintId}`)
 
 		check(blueprintId, String)
 		return await serverAPI.assignSystemBlueprint(connection, events, blueprintId)
@@ -1546,18 +1623,18 @@ sofieAPIRequest<never, never, void>(
 	'/system/blueprint',
 	new Map(),
 	async (serverAPI, connection, events, _params, _body) => {
-		logger.info(`koa DELETE: system blueprint`)
+		logger.info(`API DELETE: system blueprint`)
 
 		return await serverAPI.unassignSystemBlueprint(connection, events)
 	}
 )
 
-sofieAPIRequest<never, never, string[]>(
+sofieAPIRequest<never, never, Array<{ id: string }>>(
 	'get',
 	'/showstyles',
 	new Map(),
 	async (serverAPI, connection, event, _params, _body) => {
-		logger.info(`koa GET: ShowStyleBases`)
+		logger.info(`API GET: ShowStyleBases`)
 		return await serverAPI.getShowStyleBases(connection, event)
 	}
 )
@@ -1567,7 +1644,7 @@ sofieAPIRequest<never, APIShowStyleBase, string>(
 	'/showstyles',
 	new Map([[400, UserErrorMessage.BlueprintNotFound]]),
 	async (serverAPI, connection, event, _params, body) => {
-		logger.info(`koa POST: Add ShowStyleBase ${body.name}`)
+		logger.info(`API POST: Add ShowStyleBase ${body.name}`)
 		return await serverAPI.addShowStyleBase(connection, event, body)
 	}
 )
@@ -1577,7 +1654,7 @@ sofieAPIRequest<{ showStyleBaseId: ShowStyleBaseId }, never, APIShowStyleBase>(
 	'/showstyles/:showStyleBaseId',
 	new Map([[404, UserErrorMessage.BlueprintNotFound]]),
 	async (serverAPI, connection, event, params, _body) => {
-		logger.info(`koa GET: ShowStyleBase ${params.showStyleBaseId}`)
+		logger.info(`API GET: ShowStyleBase ${params.showStyleBaseId}`)
 		return await serverAPI.getShowStyleBase(connection, event, params.showStyleBaseId)
 	}
 )
@@ -1591,7 +1668,7 @@ sofieAPIRequest<{ showStyleBaseId: string }, APIShowStyleBase, void>(
 	]),
 	async (serverAPI, connection, event, params, body) => {
 		const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleBaseId)
-		logger.info(`koa PUT: Add or Update ShowStyleBase ${showStyleBaseId}`)
+		logger.info(`API PUT: Add or Update ShowStyleBase ${showStyleBaseId}`)
 
 		check(showStyleBaseId, String)
 		return await serverAPI.addOrUpdateShowStyleBase(connection, event, showStyleBaseId, body)
@@ -1604,20 +1681,20 @@ sofieAPIRequest<{ showStyleBaseId: string }, never, void>(
 	new Map([[412, UserErrorMessage.RundownAlreadyActive]]),
 	async (serverAPI, connection, event, params, _body) => {
 		const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleBaseId)
-		logger.info(`koa DELETE: ShowStyleBase ${showStyleBaseId}`)
+		logger.info(`API DELETE: ShowStyleBase ${showStyleBaseId}`)
 
 		check(showStyleBaseId, String)
 		return await serverAPI.deleteShowStyleBase(connection, event, showStyleBaseId)
 	}
 )
 
-sofieAPIRequest<{ showStyleBaseId: string }, never, string[]>(
+sofieAPIRequest<{ showStyleBaseId: string }, never, Array<{ id: string }>>(
 	'get',
 	'/showstyles/:showStyleBaseId/variants',
 	new Map([[404, UserErrorMessage.BlueprintNotFound]]),
 	async (serverAPI, connection, event, params, _body) => {
 		const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleBaseId)
-		logger.info(`koa GET: ShowStyleVariants ${showStyleBaseId}`)
+		logger.info(`API GET: ShowStyleVariants ${showStyleBaseId}`)
 
 		check(showStyleBaseId, String)
 		return await serverAPI.getShowStyleVariants(connection, event, showStyleBaseId)
@@ -1630,7 +1707,7 @@ sofieAPIRequest<{ showStyleBaseId: string }, APIShowStyleVariant, string>(
 	new Map([[404, UserErrorMessage.BlueprintNotFound]]),
 	async (serverAPI, connection, event, params, body) => {
 		const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleBaseId)
-		logger.info(`koa POST: Add ShowStyleVariant ${showStyleBaseId}`)
+		logger.info(`API POST: Add ShowStyleVariant ${showStyleBaseId}`)
 
 		check(showStyleBaseId, String)
 		return await serverAPI.addShowStyleVariant(connection, event, showStyleBaseId, body)
@@ -1644,7 +1721,7 @@ sofieAPIRequest<{ showStyleBaseId: string; showStyleVariantId: string }, never, 
 	async (serverAPI, connection, event, params, _body) => {
 		const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleBaseId)
 		const showStyleVariantId = protectString<ShowStyleVariantId>(params.showStyleVariantId)
-		logger.info(`koa GET: ShowStyleVariant ${showStyleBaseId} ${showStyleVariantId}`)
+		logger.info(`API GET: ShowStyleVariant ${showStyleBaseId} ${showStyleVariantId}`)
 
 		check(showStyleBaseId, String)
 		check(showStyleVariantId, String)
@@ -1663,7 +1740,7 @@ sofieAPIRequest<{ showStyleBaseId: string; showStyleVariantId: string }, APIShow
 	async (serverAPI, connection, event, params, body) => {
 		const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleBaseId)
 		const showStyleVariantId = protectString<ShowStyleVariantId>(params.showStyleVariantId)
-		logger.info(`koa PUT: Add or Update ShowStyleVariant ${showStyleBaseId} ${showStyleVariantId}`)
+		logger.info(`API PUT: Add or Update ShowStyleVariant ${showStyleBaseId} ${showStyleVariantId}`)
 
 		check(showStyleBaseId, String)
 		check(showStyleVariantId, String)
@@ -1681,7 +1758,7 @@ sofieAPIRequest<{ showStyleBaseId: string; showStyleVariantId: string }, never, 
 	async (serverAPI, connection, event, params, _body) => {
 		const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleBaseId)
 		const showStyleVariantId = protectString<ShowStyleVariantId>(params.showStyleVariantId)
-		logger.info(`koa DELETE: ShowStyleVariant ${showStyleBaseId} ${showStyleVariantId}`)
+		logger.info(`API DELETE: ShowStyleVariant ${showStyleBaseId} ${showStyleVariantId}`)
 
 		check(showStyleBaseId, String)
 		check(showStyleVariantId, String)
@@ -1690,13 +1767,13 @@ sofieAPIRequest<{ showStyleBaseId: string; showStyleVariantId: string }, never, 
 )
 
 sofieAPIRequest<{ studioId: string }, { action: StudioAction }, void>(
-	'put',
+	'post',
 	'/studios/{studioId}/action',
 	new Map([[404, UserErrorMessage.StudioNotFound]]),
 	async (serverAPI, connection, event, params, body) => {
 		const studioId = protectString<StudioId>(params.studioId)
 		const action = body.action
-		logger.info(`koa PUT: Studio action ${studioId} ${body.action.type}`)
+		logger.info(`API POST: Studio action ${studioId} ${body.action.type}`)
 
 		check(studioId, String)
 		check(action, Object)
@@ -1711,7 +1788,7 @@ sofieAPIRequest<{ showStyleId: string }, { action: ShowStyleBaseAction }, void>(
 	async (serverAPI, connection, event, params, body) => {
 		const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleId)
 		const action = body.action
-		logger.info(`koa PUT: ShowStyleBase action ${showStyleBaseId} ${body.action.type}`)
+		logger.info(`API PUT: ShowStyleBase action ${showStyleBaseId} ${body.action.type}`)
 
 		check(showStyleBaseId, String)
 		check(action, Object)
@@ -1724,7 +1801,7 @@ sofieAPIRequest<never, never, { inputs: PendingMigrations }>(
 	'/system/migrations',
 	new Map(),
 	async (serverAPI, connection, event, _params, _body) => {
-		logger.info(`koa GET: System migrations`)
+		logger.info(`API GET: System migrations`)
 
 		return await serverAPI.getPendingMigrations(connection, event)
 	}
@@ -1736,7 +1813,7 @@ sofieAPIRequest<never, { inputs: MigrationData }, void>(
 	new Map([[400, UserErrorMessage.NoMigrationsToApply]]),
 	async (serverAPI, connection, event, _params, body) => {
 		const inputs = body.inputs
-		logger.info(`koa POST: System migrations`)
+		logger.info(`API POST: System migrations`)
 
 		check(inputs, Array)
 		return await serverAPI.applyPendingMigrations(connection, event, inputs)
@@ -1766,7 +1843,16 @@ const makeConnection = (
 Meteor.startup(() => {
 	const app = new Koa()
 	if (!Meteor.isAppTest) {
-		WebApp.connectHandlers.use('/api2', Meteor.bindEnvironment(app.callback()))
+		// Expose the API at the url /api/v1.0
+		WebApp.connectHandlers.use('/api/v1.0', Meteor.bindEnvironment(app.callback()))
+		// Redirect `/api/latest` to the most recent API version
+		WebApp.connectHandlers.use(function (req, res, next) {
+			const path = req.url
+			if (path == '/api/latest') {
+				res.writeHead(307, { Location: '/api/v1.0' })
+				res.end()
+			} else next()
+		})
 	}
 	app.use(async (ctx, next) => {
 		// Strange - sometimes a JSON body gets parsed by Koa before here (eg for a POST call?).

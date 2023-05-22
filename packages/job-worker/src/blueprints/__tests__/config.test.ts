@@ -21,7 +21,7 @@ describe('Test blueprint config', () => {
 			blueprintConfigWithOverrides: wrapDefaultObject({ sdfsdf: 'one', another: 5 }),
 		})
 		jobContext.updateStudioBlueprint({
-			studioConfigManifest: undefined,
+			studioConfigSchema: undefined,
 		})
 
 		const res = preprocessStudioConfig(jobContext.studio, jobContext.studioBlueprint.blueprint)
@@ -43,7 +43,7 @@ describe('Test blueprint config', () => {
 			blueprintConfigWithOverrides: wrapDefaultObject({ sdfsdf: 'one', another: 5 }),
 		})
 		jobContext.updateStudioBlueprint({
-			studioConfigManifest: undefined,
+			studioConfigSchema: undefined,
 			preprocessConfig: (_context, config, coreConfig) => {
 				return {
 					studio: config,
@@ -56,6 +56,7 @@ describe('Test blueprint config', () => {
 		expect(res).toEqual({
 			core: {
 				hostUrl: 'https://sofie-in-jest:3000',
+				frameRate: 25,
 			},
 			studio: {
 				sdfsdf: 'one',
@@ -144,8 +145,8 @@ describe('Test blueprint config', () => {
 				}),
 			})
 			jobContext.updateStudioBlueprint({
-				// Bypass running through configManifest
-				studioConfigManifest: undefined,
+				// Bypass running through configSchema
+				studioConfigSchema: undefined,
 			})
 
 			expect(
@@ -167,12 +168,12 @@ describe('Test blueprint config', () => {
 
 			const showStyle = await setupMockShowStyleCompound(jobContext)
 
-			await jobContext.directCollections.ShowStyleBases.update(showStyle._id, {
+			await jobContext.mockCollections.ShowStyleBases.update(showStyle._id, {
 				$set: {
 					blueprintConfigWithOverrides: wrapDefaultObject({ number: 56, bool: true }),
 				},
 			})
-			await jobContext.directCollections.ShowStyleVariants.update(showStyle.showStyleVariantId, {
+			await jobContext.mockCollections.ShowStyleVariants.update(showStyle.showStyleVariantId, {
 				$set: {
 					blueprintConfigWithOverrides: wrapDefaultObject({
 						two: 'abc',
@@ -186,8 +187,8 @@ describe('Test blueprint config', () => {
 				supportedShowStyleBase: [showStyle._id],
 			})
 			jobContext.updateShowStyleBlueprint({
-				// Bypass running through configManifest
-				showStyleConfigManifest: undefined,
+				// Bypass running through configSchema
+				showStyleConfigSchema: undefined,
 			})
 
 			expect(

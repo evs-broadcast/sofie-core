@@ -1,10 +1,12 @@
 import {
 	BlueprintManifestType,
 	IBlueprintConfig,
-	ISourceLayer,
 	IOutputLayer,
+	ISourceLayer,
 	SourceLayerType,
+	StatusCode,
 } from '@sofie-automation/blueprints-integration'
+import { PeripheralDevice, PeripheralDeviceType } from '@sofie-automation/corelib/dist/dataModel/PeripheralDevice'
 import { Blueprint } from '@sofie-automation/corelib/dist/dataModel/Blueprint'
 import { ShowStyleBaseId, ShowStyleVariantId, StudioId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import { DBStudio, IStudioSettings } from '@sofie-automation/corelib/dist/dataModel/Studio'
@@ -17,7 +19,9 @@ import {
 	updateOverrides,
 } from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
 import {
-	APIOutputLayerFrom,
+	APIBlueprint,
+	APIOutputLayer,
+	APIPeripheralDevice,
 	APIShowStyleBase,
 	APIShowStyleVariant,
 	APISourceLayer,
@@ -29,16 +33,21 @@ import { ShowStyleVariant } from '../../../lib/collections/ShowStyleVariants'
 import { Studio } from '../../../lib/collections/Studios'
 import { Blueprints, ShowStyleBases, Studios } from '../../collections'
 
-export function showStyleBaseFrom(
+/*
+This file contains functions that convert between the internal Sofie-Core types and types exposed to the external API.
+When making changes to this file, be wary of breaking changes to the API.
+*/
+
+export async function showStyleBaseFrom(
 	apiShowStyleBase: APIShowStyleBase,
 	existingId?: ShowStyleBaseId
-): ShowStyleBase | undefined {
-	const blueprint = Blueprints.findOne(protectString(apiShowStyleBase.blueprintId))
+): Promise<ShowStyleBase | undefined> {
+	const blueprint = await Blueprints.findOneAsync(protectString(apiShowStyleBase.blueprintId))
 	if (!blueprint) return undefined
 	if (blueprint.blueprintType !== BlueprintManifestType.SHOWSTYLE) return undefined
 
 	let showStyleBase: DBShowStyleBase | undefined
-	if (existingId) showStyleBase = ShowStyleBases.findOne(existingId)
+	if (existingId) showStyleBase = await ShowStyleBases.findOneAsync(existingId)
 
 	const newOutputLayers = apiShowStyleBase.outputLayers.reduce<Record<string, IOutputLayer>>((acc, op) => {
 		acc[op.id] = { _id: op.id, name: op.name, _rank: op.rank, isPGM: op.isPgm }
@@ -79,12 +88,12 @@ export function APIShowStyleBaseFrom(showStyleBase: ShowStyleBase): APIShowStyle
 		name: showStyleBase.name,
 		blueprintId: unprotectString(showStyleBase.blueprintId),
 		blueprintConfigPresetId: showStyleBase.blueprintConfigPresetId,
-		outputLayers: Object.values(applyAndValidateOverrides(showStyleBase.outputLayersWithOverrides).obj).map(
-			(layer) => APIOutputLayerFrom(layer!)
-		),
-		sourceLayers: Object.values(applyAndValidateOverrides(showStyleBase.sourceLayersWithOverrides).obj).map(
-			(layer) => APISourceLayerFrom(layer!)
-		),
+		outputLayers: Object.values<IOutputLayer | undefined>(
+			applyAndValidateOverrides(showStyleBase.outputLayersWithOverrides).obj
+		).map((layer) => APIOutputLayerFrom(layer!)),
+		sourceLayers: Object.values<ISourceLayer | undefined>(
+			applyAndValidateOverrides(showStyleBase.sourceLayersWithOverrides).obj
+		).map((layer) => APISourceLayerFrom(layer!)),
 		config: applyAndValidateOverrides(showStyleBase.blueprintConfigWithOverrides).obj,
 	}
 }
@@ -94,7 +103,7 @@ export function showStyleVariantFrom(
 	existingId?: ShowStyleVariantId
 ): ShowStyleVariant | undefined {
 	const blueprintConfig = wrapDefaultObject({})
-	blueprintConfig.overrides = Object.entries(apiShowStyleVariant.config).map(([key, value]) =>
+	blueprintConfig.overrides = Object.entries<any>(apiShowStyleVariant.config).map(([key, value]) =>
 		literal<ObjectOverrideSetOp>({
 			op: 'set',
 			path: key,
@@ -121,7 +130,7 @@ export function APIShowStyleVariantFrom(showStyleVariant: ShowStyleVariant): API
 }
 
 export function sourceLayerFrom(apiSourceLayer: APISourceLayer): ISourceLayer {
-	let layerType: SourceLayerType = SourceLayerType.UNKNOWN
+	let layerType: SourceLayerType
 	switch (apiSourceLayer.layerType) {
 		case 'audio':
 			layerType = SourceLayerType.AUDIO
@@ -175,7 +184,7 @@ export function sourceLayerFrom(apiSourceLayer: APISourceLayer): ISourceLayer {
 }
 
 export function APISourceLayerFrom(sourceLayer: ISourceLayer): APISourceLayer {
-	let layerType: APISourceLayer['layerType'] = 'unknown'
+	let layerType: APISourceLayer['layerType']
 	switch (sourceLayer.type) {
 		case SourceLayerType.AUDIO:
 			layerType = 'audio'
@@ -228,16 +237,16 @@ export function APISourceLayerFrom(sourceLayer: ISourceLayer): APISourceLayer {
 	}
 }
 
-export function studioFrom(apiStudio: APIStudio, existingId?: StudioId): Studio | undefined {
+export async function studioFrom(apiStudio: APIStudio, existingId?: StudioId): Promise<Studio | undefined> {
 	let blueprint: Blueprint | undefined
 	if (apiStudio.blueprintId) {
-		blueprint = Blueprints.findOne(protectString(apiStudio.blueprintId))
+		blueprint = await Blueprints.findOneAsync(protectString(apiStudio.blueprintId))
 		if (!blueprint) return undefined
 		if (blueprint.blueprintType !== BlueprintManifestType.STUDIO) return undefined
 	}
 
 	let studio: DBStudio | undefined
-	if (existingId) studio = Studios.findOne(existingId)
+	if (existingId) studio = await Studios.findOneAsync(existingId)
 
 	const blueprintConfig = studio
 		? updateOverrides(studio.blueprintConfigWithOverrides, apiStudio.config as IBlueprintConfig)
@@ -259,6 +268,11 @@ export function studioFrom(apiStudio: APIStudio, existingId?: StudioId): Studio 
 		packageContainers: {},
 		previewContainerIds: [],
 		thumbnailContainerIds: [],
+		peripheralDeviceSettings: {
+			playoutDevices: wrapDefaultObject({}),
+			ingestDevices: wrapDefaultObject({}),
+			inputDevices: wrapDefaultObject({}),
+		},
 		lastBlueprintConfig: undefined,
 	}
 }
@@ -305,5 +319,90 @@ export function APIStudioSettingsFrom(settings: IStudioSettings): APIStudioSetti
 		preserveUnsyncedPlayingSegmentContents: settings.preserveUnsyncedPlayingSegmentContents,
 		allowRundownResetOnAir: settings.allowRundownResetOnAir,
 		preserveOrphanedSegmentPositionInRundown: settings.preserveOrphanedSegmentPositionInRundown,
+	}
+}
+
+export function APIPeripheralDeviceFrom(device: PeripheralDevice): APIPeripheralDevice {
+	let status: APIPeripheralDevice['status'] = 'unknown'
+	switch (device.status.statusCode) {
+		case StatusCode.BAD:
+			status = 'bad'
+			break
+		case StatusCode.FATAL:
+			status = 'fatal'
+			break
+		case StatusCode.GOOD:
+			status = 'good'
+			break
+		case StatusCode.WARNING_MAJOR:
+			status = 'warning_major'
+			break
+		case StatusCode.WARNING_MINOR:
+			status = 'marning_minor'
+			break
+		case StatusCode.UNKNOWN:
+			status = 'unknown'
+			break
+		default:
+			assertNever(device.status.statusCode)
+	}
+
+	let deviceType: APIPeripheralDevice['deviceType'] = 'unknown'
+	switch (device.type) {
+		case PeripheralDeviceType.INEWS:
+			deviceType = 'inews'
+			break
+		case PeripheralDeviceType.LIVE_STATUS:
+			deviceType = 'live_status'
+			break
+		case PeripheralDeviceType.MEDIA_MANAGER:
+			deviceType = 'media_manager'
+			break
+		case PeripheralDeviceType.MOS:
+			deviceType = 'mos'
+			break
+		case PeripheralDeviceType.PACKAGE_MANAGER:
+			deviceType = 'package_manager'
+			break
+		case PeripheralDeviceType.PLAYOUT:
+			deviceType = 'playout'
+			break
+		case PeripheralDeviceType.SPREADSHEET:
+			deviceType = 'spreadsheet'
+			break
+		case PeripheralDeviceType.INPUT:
+			deviceType = 'input'
+			break
+		default:
+			assertNever(device.type)
+	}
+
+	return {
+		id: unprotectString(device._id),
+		name: device.name,
+		status,
+		messages: device.status.messages ?? [],
+		deviceType,
+		connected: device.connected,
+	}
+}
+
+export function APIBlueprintFrom(blueprint: Blueprint): APIBlueprint | undefined {
+	if (!blueprint.blueprintType) return undefined
+
+	return {
+		id: unprotectString(blueprint._id),
+		name: blueprint.name,
+		blueprintType: blueprint.blueprintType,
+		blueprintVersion: blueprint.blueprintVersion,
+	}
+}
+
+export function APIOutputLayerFrom(outputLayer: IOutputLayer): APIOutputLayer {
+	return {
+		id: outputLayer._id,
+		name: outputLayer.name,
+		rank: outputLayer._rank,
+		isPgm: outputLayer.isPGM,
 	}
 }

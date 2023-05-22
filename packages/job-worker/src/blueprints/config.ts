@@ -3,8 +3,6 @@ import { ReadonlyDeep } from 'type-fest'
 import {
 	BlueprintConfigCoreConfig,
 	ConfigItemValue,
-	ConfigManifestEntry,
-	IBlueprintConfig,
 	ShowStyleBlueprintManifest,
 	StudioBlueprintManifest,
 } from '@sofie-automation/blueprints-integration'
@@ -12,7 +10,7 @@ import { getSofieHostUrl, objectPathGet, stringifyError } from '@sofie-automatio
 import _ = require('underscore')
 import { logger } from '../logging'
 import { CommonContext } from './context'
-import { DBStudio } from '@sofie-automation/corelib/dist/dataModel/Studio'
+import { DBStudio, IStudioSettings } from '@sofie-automation/corelib/dist/dataModel/Studio'
 import { protectString } from '@sofie-automation/corelib/dist/protectedString'
 import { ProcessedShowStyleCompound, StudioCacheContext } from '../jobs'
 import { applyAndValidateOverrides } from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
@@ -101,9 +99,10 @@ export interface ProcessedStudioConfig {
  * Get the `BlueprintConfigCoreConfig`
  * This is a set of values provided to the blueprints about the environment, such as the url to access sofie ui
  */
-export function compileCoreConfigValues(): BlueprintConfigCoreConfig {
+export function compileCoreConfigValues(studioSettings: ReadonlyDeep<IStudioSettings>): BlueprintConfigCoreConfig {
 	return {
 		hostUrl: getSofieHostUrl(),
+		frameRate: studioSettings.frameRate,
 	}
 }
 
@@ -123,7 +122,7 @@ export function preprocessStudioConfig(
 				name: `preprocessStudioConfig`,
 				identifier: `studioId=${studio._id}`,
 			})
-			res = blueprint.preprocessConfig(context, res, compileCoreConfigValues())
+			res = blueprint.preprocessConfig(context, res, compileCoreConfigValues(studio.settings))
 		}
 	} catch (err) {
 		logger.error(`Error in studioBlueprint.preprocessConfig: ${stringifyError(err)}`)
@@ -138,7 +137,8 @@ export function preprocessStudioConfig(
  */
 export function preprocessShowStyleConfig(
 	showStyle: Pick<ReadonlyDeep<ProcessedShowStyleCompound>, '_id' | 'combinedBlueprintConfig' | 'showStyleVariantId'>,
-	blueprint: ReadonlyDeep<ShowStyleBlueprintManifest>
+	blueprint: ReadonlyDeep<ShowStyleBlueprintManifest>,
+	studioSettings: ReadonlyDeep<IStudioSettings>
 ): ProcessedShowStyleConfig {
 	let res: any = showStyle.combinedBlueprintConfig
 
@@ -148,35 +148,11 @@ export function preprocessShowStyleConfig(
 				name: `preprocessShowStyleConfig`,
 				identifier: `showStyleBaseId=${showStyle._id},showStyleVariantId=${showStyle.showStyleVariantId}`,
 			})
-			const coreConfigValues = compileCoreConfigValues()
-			res = blueprint.preprocessConfig(context, res, coreConfigValues)
+			res = blueprint.preprocessConfig(context, res, compileCoreConfigValues(studioSettings))
 		}
 	} catch (err) {
 		logger.error(`Error in showStyleBlueprint.preprocessConfig: ${stringifyError(err)}`)
 	}
 
 	return res
-}
-
-/**
- * Find any config manifest keys marked as `required` that do not have values specified
- * @param manifest Blueprint Config Manifest to validate for
- * @param config Blueprint Config to check
- * @returns Array of manifest entry names that are missing values
- */
-export function findMissingConfigs(
-	manifest: ReadonlyDeep<ConfigManifestEntry[]> | undefined,
-	config: ReadonlyDeep<IBlueprintConfig>
-): string[] {
-	const missingKeys: string[] = []
-	if (manifest === undefined) {
-		return missingKeys
-	}
-	_.each(manifest, (m) => {
-		if (m.required && config && objectPathGet(config, m.id) === undefined) {
-			missingKeys.push(m.name)
-		}
-	})
-
-	return missingKeys
 }

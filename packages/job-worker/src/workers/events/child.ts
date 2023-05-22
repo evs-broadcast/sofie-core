@@ -20,6 +20,8 @@ import { setupInfluxDb } from '../../influx'
 import { getEventsQueueName } from '@sofie-automation/corelib/dist/worker/events'
 import { ExternalMessageQueueRunner } from '../../events/ExternalMessageQueue'
 import { WorkerJobResult } from '../parent-base'
+import { endTrace, sendTrace, startTrace } from '@sofie-automation/corelib/dist/influxdb'
+import { getPrometheusMetricsString, setupPrometheusMetrics } from '@sofie-automation/corelib/dist/prometheus'
 
 interface StaticData {
 	readonly mongoClient: MongoClient
@@ -49,6 +51,7 @@ export class EventsWorkerChild {
 	) {
 		// Intercept logging to pipe back over ipc
 		interceptLogging(getEventsQueueName(studioId), logLine)
+		setupPrometheusMetrics(getEventsQueueName(studioId))
 
 		setupApmAgent()
 		setupInfluxDb()
@@ -105,9 +108,13 @@ export class EventsWorkerChild {
 			transaction?.end()
 		}
 	}
+	async collectMetrics(): Promise<string> {
+		return getPrometheusMetricsString()
+	}
 	async runJob(jobName: string, data: unknown): Promise<WorkerJobResult> {
 		if (!this.#staticData) throw new Error('Worker not initialised')
 
+		const trace = startTrace('studioWorker' + jobName)
 		const transaction = startTransaction(jobName, 'worker-studio')
 		if (transaction) {
 			transaction.setLabel('studioId', unprotectString(this.#staticData.dataCache.studio._id))
@@ -146,6 +153,7 @@ export class EventsWorkerChild {
 		} finally {
 			await context.cleanupResources()
 
+			sendTrace(endTrace(trace))
 			transaction?.end()
 		}
 	}

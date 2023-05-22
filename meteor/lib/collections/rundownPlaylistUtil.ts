@@ -3,7 +3,7 @@ import { DBPart } from '@sofie-automation/corelib/dist/dataModel/Part'
 import { Rundown, DBRundown } from '@sofie-automation/corelib/dist/dataModel/Rundown'
 import { DBRundownPlaylist } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
 import { DBSegment } from '@sofie-automation/corelib/dist/dataModel/Segment'
-import { normalizeArrayToMap, normalizeArrayFunc } from '@sofie-automation/corelib/dist/lib'
+import { normalizeArrayToMap, normalizeArrayFunc, groupByToMap } from '@sofie-automation/corelib/dist/lib'
 import {
 	sortRundownIDsInPlaylist,
 	sortSegmentsInRundowns,
@@ -240,10 +240,7 @@ export class RundownPlaylistCollectionUtil {
 		}
 	}
 	static getSelectedPartInstances(
-		playlist: Pick<
-			RundownPlaylist,
-			'_id' | 'currentPartInstanceId' | 'previousPartInstanceId' | 'nextPartInstanceId'
-		>,
+		playlist: Pick<RundownPlaylist, '_id' | 'currentPartInfo' | 'previousPartInfo' | 'nextPartInfo'>,
 		rundownIds0?: RundownId[]
 	): {
 		currentPartInstance: PartInstance | undefined
@@ -256,9 +253,9 @@ export class RundownPlaylistCollectionUtil {
 		}
 
 		const ids = _.compact([
-			playlist.currentPartInstanceId,
-			playlist.previousPartInstanceId,
-			playlist.nextPartInstanceId,
+			playlist.currentPartInfo?.partInstanceId,
+			playlist.previousPartInfo?.partInstanceId,
+			playlist.nextPartInfo?.partInstanceId,
 		])
 		const instances =
 			ids.length > 0
@@ -270,9 +267,9 @@ export class RundownPlaylistCollectionUtil {
 				: []
 
 		return {
-			currentPartInstance: instances.find((inst) => inst._id === playlist.currentPartInstanceId),
-			nextPartInstance: instances.find((inst) => inst._id === playlist.nextPartInstanceId),
-			previousPartInstance: instances.find((inst) => inst._id === playlist.previousPartInstanceId),
+			currentPartInstance: instances.find((inst) => inst._id === playlist.currentPartInfo?.partInstanceId),
+			nextPartInstance: instances.find((inst) => inst._id === playlist.nextPartInfo?.partInstanceId),
+			previousPartInstance: instances.find((inst) => inst._id === playlist.previousPartInfo?.partInstanceId),
 		}
 	}
 
@@ -314,17 +311,24 @@ export class RundownPlaylistCollectionUtil {
 		const instances = RundownPlaylistCollectionUtil.getActivePartInstances(playlist, selector, options)
 		return normalizeArrayFunc(instances, (i) => unprotectString(i.part._id))
 	}
-	static getPiecesForParts(parts: Array<PartId>): Map<PartId, Piece[]> {
-		const allPieces = Pieces.find({ startPartId: { $in: parts } }).fetch()
-		const piecesMap = new Map<PartId, Piece[]>()
-
-		for (const piece of allPieces) {
-			const entry = piecesMap.get(piece.startPartId) ?? []
-			entry.push(piece)
-			piecesMap.set(piece.startPartId, entry)
-		}
-
-		return piecesMap
+	static getPiecesForParts(
+		parts: Array<PartId>,
+		piecesOptions?: Omit<FindOptions<Piece>, 'projection'> // We are mangling fields, so block projection
+	): Map<PartId, Piece[]> {
+		const allPieces = Pieces.find(
+			{ startPartId: { $in: parts } },
+			{
+				...piecesOptions,
+				//@ts-expect-error This is too clever for the compiler
+				fields: piecesOptions?.fields
+					? {
+							...piecesOptions?.fields,
+							startPartId: 1,
+					  }
+					: undefined,
+			}
+		).fetch()
+		return groupByToMap(allPieces, 'startPartId')
 	}
 
 	static _sortSegments<TSegment extends Pick<DBSegment, '_id' | 'rundownId' | '_rank'>>(

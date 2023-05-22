@@ -5,7 +5,7 @@ import { withMediaObjectStatus } from '../../SegmentTimeline/withMediaObjectStat
 import { getElementDocumentOffset, OffsetPosition } from '../../../utils/positions'
 import { getElementWidth } from '../../../utils/dimensions'
 import renderThumbnail from './Renderers/ThumbnailRendererFactory'
-import { PieceElement } from '../utils/PieceElement'
+import { PieceElement } from '../../SegmentContainer/PieceElement'
 import { UIStudio } from '../../../../lib/api/studios'
 import { PartId, PartInstanceId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 
@@ -13,17 +13,28 @@ interface IProps {
 	partId: PartId
 	partInstanceId: PartInstanceId
 	partAutoNext: boolean
+	partPlannedStoppedPlayback: number | undefined
 	layer: ISourceLayer | undefined
 	piece: PieceExtended
 	studio: UIStudio | undefined
 	isLive: boolean
 	isNext: boolean
-	isFinished: boolean
 	highlight?: boolean
 }
 
 export const StoryboardPartThumbnailInner = withMediaObjectStatus<IProps, {}>()(
-	({ piece, layer, partId, partInstanceId, studio, highlight, partAutoNext, isLive, isNext, isFinished }: IProps) => {
+	({
+		piece,
+		layer,
+		partId,
+		partInstanceId,
+		studio,
+		highlight,
+		partAutoNext,
+		partPlannedStoppedPlayback,
+		isLive,
+		isNext,
+	}: IProps) => {
 		const [hover, setHover] = useState(false)
 		const [origin, setOrigin] = useState<OffsetPosition>({ left: 0, top: 0 })
 		const [width, setWidth] = useState(0)
@@ -78,6 +89,7 @@ export const StoryboardPartThumbnailInner = withMediaObjectStatus<IProps, {}>()(
 						partId,
 						partInstanceId,
 						partAutoNext,
+						partPlannedStoppedPlayback,
 						hoverScrubTimePosition: mousePosition * (piece.instance.piece.content.sourceDuration || 0),
 						hovering: hover,
 						layer: layer,
@@ -86,7 +98,6 @@ export const StoryboardPartThumbnailInner = withMediaObjectStatus<IProps, {}>()(
 						studio,
 						isLive,
 						isNext,
-						isFinished,
 					})}
 			</PieceElement>
 		)

@@ -1,9 +1,8 @@
 import { Meteor } from 'meteor/meteor'
 import { check, Match } from '../../lib/check'
 import * as _ from 'underscore'
-import { PeripheralDeviceAPI } from '../../lib/api/peripheralDevice'
 import { PeripheralDeviceType, PeripheralDevice } from '../../lib/collections/PeripheralDevices'
-import { PeripheralDeviceCommands, PeripheralDevices, Rundowns, UserActionsLog } from '../collections'
+import { PeripheralDeviceCommands, PeripheralDevices, Rundowns, Studios, UserActionsLog } from '../collections'
 import { getCurrentTime, protectString, stringifyObjects, literal, unprotectString } from '../../lib/lib'
 import { logger } from '../logging'
 import { TimelineHash } from '../../lib/collections/Timeline'
@@ -38,11 +37,7 @@ import { PackageManagerIntegration } from './integration/expectedPackages'
 import { profiler } from './profiler'
 import { QueueStudioJob } from '../worker/worker'
 import { StudioJobs } from '@sofie-automation/corelib/dist/worker/studio'
-import {
-	ConfigManifestEntryType,
-	DeviceConfigManifest,
-	TableConfigManifestEntry,
-} from '@sofie-automation/corelib/dist/deviceConfig'
+import { DeviceConfigManifest } from '@sofie-automation/corelib/dist/deviceConfig'
 import {
 	PlayoutChangedResults,
 	PeripheralDeviceInitOptions,
@@ -66,6 +61,13 @@ import { insertInputDeviceTriggerIntoPreview } from '../publications/deviceTrigg
 import { receiveInputDeviceTrigger } from './deviceTriggers/observer'
 import { upsertBundles, generateTranslationBundleOriginId } from './translationsBundles'
 import { isTranslatableMessage } from '@sofie-automation/corelib/dist/TranslatableMessage'
+import { JSONBlobParse, JSONBlobStringify } from '@sofie-automation/shared-lib/dist/lib/JSONBlob'
+import {
+	applyAndValidateOverrides,
+	SomeObjectOverrideOp,
+} from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
+import { convertPeripheralDeviceForGateway } from '../publications/peripheralDeviceForDevice'
+import { executePeripheralDeviceFunction } from './peripheralDevice/executeFunction'
 
 const apmNamespace = 'peripheralDevice'
 export namespace ServerPeripheralDeviceAPI {
@@ -77,7 +79,7 @@ export namespace ServerPeripheralDeviceAPI {
 	): Promise<PeripheralDeviceId> {
 		triggerWriteAccess() // This is somewhat of a hack, since we want to check if it exists at all, before checking access
 		check(deviceId, String)
-		const existingDevice = PeripheralDevices.findOne(deviceId)
+		const existingDevice = await PeripheralDevices.findOneAsync(deviceId)
 		if (existingDevice) {
 			await PeripheralDeviceContentWriteAccess.peripheralDevice({ userId: context.userId, token }, deviceId)
 		}
@@ -124,6 +126,8 @@ export namespace ServerPeripheralDeviceAPI {
 								translations: undefined, // unset the translations
 						  }
 						: undefined,
+
+					documentationUrl: options.documentationUrl,
 				},
 				$unset:
 					newVersionsStr !== oldVersionsStr
@@ -163,8 +167,11 @@ export namespace ServerPeripheralDeviceAPI {
 							translations: undefined,
 					  }
 					: literal<DeviceConfigManifest>({
-							deviceConfig: [],
+							deviceConfigSchema: JSONBlobStringify({}),
+							subdeviceManifest: {},
 					  }),
+
+				documentationUrl: options.documentationUrl,
 			})
 		}
 		if (options.configManifest?.translations) {
@@ -309,7 +316,7 @@ export namespace ServerPeripheralDeviceAPI {
 	): Promise<void> {
 		const peripheralDevice = await checkAccessAndGetPeripheralDevice(deviceId, token, context)
 
-		PeripheralDeviceAPI.executeFunction(peripheralDevice._id, 'pingResponse', message)
+		executePeripheralDeviceFunction(peripheralDevice._id, 'pingResponse', message)
 			.then((res) => {
 				if (cb) cb(null, res)
 			})
@@ -331,7 +338,8 @@ export namespace ServerPeripheralDeviceAPI {
 		const peripheralDevice = await checkAccessAndGetPeripheralDevice(deviceId, token, context)
 
 		// Make sure this never runs if this server isn't empty:
-		if (Rundowns.find().count()) throw new Meteor.Error(400, 'Unable to run killProcess: Rundowns not empty!')
+		if (await Rundowns.countDocuments())
+			throw new Meteor.Error(400, 'Unable to run killProcess: Rundowns not empty!')
 
 		if (really) {
 			logger.info('KillProcess command received from ' + peripheralDevice._id + ', shutting down in 1000ms!')
@@ -343,57 +351,82 @@ export namespace ServerPeripheralDeviceAPI {
 		}
 		return false
 	}
-	export function disableSubDevice(
+	export async function disableSubDevice(
 		access: PeripheralDeviceContentWriteAccess.ContentAccess,
 		subDeviceId: string,
 		disable: boolean
-	): void {
+	): Promise<void> {
 		const peripheralDevice = access.device
 		const deviceId = access.deviceId
 
 		// check that the peripheralDevice has subDevices
-		if (!peripheralDevice.settings)
-			throw new Meteor.Error(405, `PeripheralDevice "${deviceId}" does not provide a settings object`)
+		if (peripheralDevice.type !== PeripheralDeviceType.PLAYOUT)
+			throw new Meteor.Error(405, `PeripheralDevice "${deviceId}" cannot have subdevice disabled`)
 		if (!peripheralDevice.configManifest)
 			throw new Meteor.Error(405, `PeripheralDevice "${deviceId}" does not provide a configuration manifest`)
+		if (!peripheralDevice.studioId)
+			throw new Meteor.Error(405, `PeripheralDevice "${deviceId}" does not belong to a Studio`)
 
-		const subDevicesProp = peripheralDevice.configManifest.deviceConfig.find(
-			(prop) => prop.type === ConfigManifestEntryType.TABLE && prop.isSubDevices === true
-		) as TableConfigManifestEntry | undefined
+		const studio = await Studios.findOneAsync(peripheralDevice.studioId)
+		if (!studio) throw new Meteor.Error(405, `PeripheralDevice "${deviceId}" does not belong to a Studio`)
 
-		if (!subDevicesProp)
-			throw new Meteor.Error(
-				405,
-				`PeripheralDevice "${deviceId}" does not provide a subDevices configuration property`
-			)
-
-		const subDevicesPropId = subDevicesProp.id
-
-		const subDevices = peripheralDevice.settings[subDevicesPropId]
-		if (!subDevices) throw new Meteor.Error(500, `PeripheralDevice "${deviceId}" has a malformed settings object`)
+		const playoutDevices = applyAndValidateOverrides(studio.peripheralDeviceSettings.playoutDevices).obj
 
 		// check if the subDevice supports disabling using the magical 'disable' BOOLEAN property.
-		const subDeviceSettings = subDevices[subDeviceId] as Record<string, any> | undefined
-		if (!subDeviceSettings)
+		const subDeviceSettings = playoutDevices[subDeviceId]
+		if (!subDeviceSettings || subDeviceSettings.peripheralDeviceId !== peripheralDevice._id)
 			throw new Meteor.Error(404, `PeripheralDevice "${deviceId}", subDevice "${subDeviceId}" is not configured`)
 
-		const subDeviceType = subDeviceSettings[subDevicesProp.typeField || 'type']
-		const subDeviceSettingTopology = subDevicesProp.config[subDeviceType]
-
-		const hasDisableProperty = subDeviceSettingTopology.find(
-			(prop) => prop.id === 'disable' && prop.type === ConfigManifestEntryType.BOOLEAN
-		)
-		if (!hasDisableProperty)
+		// Check there is a common properties subdevice schema
+		const subDeviceCommonSchemaStr = peripheralDevice.configManifest.subdeviceConfigSchema
+		if (!subDeviceCommonSchemaStr)
 			throw new Meteor.Error(
 				405,
-				`PeripheralDevice "${deviceId}, subDevice "${subDeviceId}" of type "${subDeviceType}" does not support the disable property`
+				`PeripheralDevice "${deviceId}" does not provide a subDevices common configuration schema`
 			)
 
-		PeripheralDevices.update(deviceId, {
-			$set: {
-				[`settings.${subDevicesPropId}.${subDeviceId}.disable`]: disable,
-			},
+		let subDeviceCommonSchema: any
+		try {
+			// Try and parse the schema, making sure to hide the parse error if it isn't json
+			subDeviceCommonSchema = JSONBlobParse(subDeviceCommonSchemaStr)
+		} catch (_e) {
+			throw new Meteor.Error(
+				405,
+				`PeripheralDevice "${deviceId}" does not provide a valid subDevices common configuration schema`
+			)
+		}
+
+		// Check for a boolean 'disable' property, if there is one
+		if (subDeviceCommonSchema?.properties?.disable?.type !== 'boolean')
+			throw new Meteor.Error(
+				405,
+				`PeripheralDevice "${deviceId} does not support the disable property for subDevices`
+			)
+
+		const overridesPath = `peripheralDeviceSettings.playoutDevices.overrides`
+		const propPath = `${subDeviceId}.options.disable`
+		const newOverrideOp = literal<SomeObjectOverrideOp>({
+			op: 'set',
+			path: propPath,
+			value: disable,
 		})
+
+		const existingIndex = studio.peripheralDeviceSettings.playoutDevices.overrides.findIndex(
+			(o) => o.path === propPath
+		)
+		if (existingIndex !== -1) {
+			await Studios.updateAsync(peripheralDevice.studioId, {
+				$set: {
+					[`${overridesPath}.${existingIndex}`]: newOverrideOp,
+				},
+			})
+		} else {
+			await Studios.updateAsync(peripheralDevice.studioId, {
+				$push: {
+					[overridesPath]: newOverrideOp,
+				},
+			})
+		}
 	}
 	export async function getDebugStates(access: PeripheralDeviceContentWriteAccess.ContentAccess): Promise<object> {
 		if (
@@ -408,7 +441,7 @@ export namespace ServerPeripheralDeviceAPI {
 		}
 
 		try {
-			return await PeripheralDeviceAPI.executeFunction(access.deviceId, 'getDebugStates')
+			return await executePeripheralDeviceFunction(access.deviceId, 'getDebugStates')
 		} catch (e) {
 			logger.error(e)
 			return {}
@@ -574,7 +607,7 @@ PickerPOST.route('/devices/:deviceId/uploadCredentials', async (params, req: Inc
 
 		const credentials = JSON.parse(body)
 
-		PeripheralDevices.update(peripheralDevice._id, {
+		await PeripheralDevices.updateAsync(peripheralDevice._id, {
 			$set: {
 				'secretSettings.credentials': credentials,
 				'settings.secretCredentials': true,
@@ -622,7 +655,7 @@ PickerGET.route('/devices/:deviceId/oauthResponse', async (params, req: Incoming
 		if (accessToken && accessToken.length > 5) {
 			// If this fails, there's not much we can do except kick the user back to the
 			//  device config screen to try again.
-			PeripheralDeviceAPI.executeFunction(deviceId, 'receiveAuthToken', accessToken)
+			executePeripheralDeviceFunction(deviceId, 'receiveAuthToken', accessToken)
 				.then(() => {
 					logger.info(`Sent auth token to device "${deviceId}"`)
 				})
@@ -655,7 +688,7 @@ PickerPOST.route('/devices/:deviceId/resetAuth', async (params, _req: IncomingMe
 		const peripheralDevice = await PeripheralDevices.findOneAsync(deviceId)
 		if (!peripheralDevice) throw new Meteor.Error(404, `Peripheral device "${deviceId}" not found`)
 
-		PeripheralDevices.update(peripheralDevice._id, {
+		await PeripheralDevices.updateAsync(peripheralDevice._id, {
 			$unset: {
 				// User credentials
 				'secretSettings.accessToken': true,
@@ -689,7 +722,7 @@ PickerPOST.route(
 			const peripheralDevice = await PeripheralDevices.findOneAsync(deviceId)
 			if (!peripheralDevice) throw new Meteor.Error(404, `Peripheral device "${deviceId}" not found`)
 
-			PeripheralDevices.update(peripheralDevice._id, {
+			await PeripheralDevices.updateAsync(peripheralDevice._id, {
 				$unset: {
 					// App credentials
 					'secretSettings.credentials': true,
@@ -701,7 +734,7 @@ PickerPOST.route(
 				},
 			})
 
-			// PeripheralDeviceAPI.executeFunction(deviceId, 'killProcess', 1).catch(logger.error)
+			// executePeripheralDeviceFunction(deviceId, 'killProcess', 1).catch(logger.error)
 
 			res.statusCode = 200
 		} catch (e) {
@@ -813,7 +846,9 @@ class ServerPeripheralDeviceAPIClass extends MethodContextAPI implements NewPeri
 	async getPeripheralDevice(deviceId: PeripheralDeviceId, deviceToken: string) {
 		const peripheralDevice = await checkAccessAndGetPeripheralDevice(deviceId, deviceToken, this)
 
-		return peripheralDevice
+		const studio = peripheralDevice.studioId && (await Studios.findOneAsync(peripheralDevice.studioId))
+
+		return convertPeripheralDeviceForGateway(peripheralDevice, studio)
 	}
 	async pingWithCommand(
 		deviceId: PeripheralDeviceId,
@@ -1225,9 +1260,10 @@ class ServerPeripheralDeviceAPIClass extends MethodContextAPI implements NewPeri
 		deviceId: PeripheralDeviceId,
 		deviceToken: string,
 		type: string,
-		packageId: ExpectedPackageId
+		packageId: ExpectedPackageId,
+		removeDelay?: number
 	) {
-		await PackageManagerIntegration.removePackageInfo(this, deviceId, deviceToken, type, packageId)
+		await PackageManagerIntegration.removePackageInfo(this, deviceId, deviceToken, type, packageId, removeDelay)
 	}
 	// --- Triggers ---
 	/**

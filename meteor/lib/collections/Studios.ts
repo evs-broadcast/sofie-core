@@ -95,6 +95,7 @@ export function getRoutedMappings<M extends MappingExt>(
 				lookahead: route.remapping.lookahead || LookaheadMode.NONE,
 				device: route.deviceType,
 				deviceId: protectString<any>(route.remapping.deviceId),
+				options: {},
 				...route.remapping,
 			}
 			outputMappings[route.outputMappedLayer] = routedMapping as M
@@ -103,8 +104,9 @@ export function getRoutedMappings<M extends MappingExt>(
 	return outputMappings
 }
 
+export type MappingExtWithPackage = MappingExt & { expectedPackages: (ExpectedPackage.Base & { rundownId?: string })[] }
 export type MappingsExtWithPackage = {
-	[layerName: string]: MappingExt & { expectedPackages: (ExpectedPackage.Base & { rundownId?: string })[] }
+	[layerName: string]: MappingExtWithPackage
 }
 export function routeExpectedPackages(
 	studio: ReadonlyDeep<Pick<Studio, 'routeSets'>>,

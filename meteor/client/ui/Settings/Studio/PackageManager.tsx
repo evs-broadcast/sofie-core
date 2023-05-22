@@ -8,11 +8,10 @@ import { doModalDialog } from '../../../lib/ModalDialog'
 import { Translated } from '../../../lib/ReactMeteorData/react-meteor-data'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faTrash, faPencilAlt, faCheck, faPlus } from '@fortawesome/free-solid-svg-icons'
-import { PeripheralDeviceCategory, PeripheralDeviceType } from '../../../../lib/collections/PeripheralDevices'
 import { withTranslation } from 'react-i18next'
 import { Accessor } from '@sofie-automation/blueprints-integration'
-import { PlayoutDeviceSettings } from '@sofie-automation/corelib/dist/dataModel/PeripheralDeviceSettings/playoutDevice'
-import { PeripheralDevices, Studios } from '../../../collections'
+import { Studios } from '../../../collections'
+import { applyAndValidateOverrides } from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
 
 interface IStudioPackageManagerSettingsProps {
 	studio: Studio
@@ -137,22 +136,15 @@ export const StudioPackageManagerSettings = withTranslation()(
 				value: string
 			}[] = []
 
-			PeripheralDevices.find().forEach((device) => {
-				if (
-					device.category === PeripheralDeviceCategory.PLAYOUT &&
-					device.type === PeripheralDeviceType.PLAYOUT &&
-					device.settings
-				) {
-					const settings = device.settings as PlayoutDeviceSettings
+			const playoutDevices = applyAndValidateOverrides(this.props.studio.peripheralDeviceSettings.playoutDevices).obj
 
-					for (const deviceId of Object.keys(settings.devices || {})) {
-						deviceIds.push({
-							name: deviceId,
-							value: deviceId,
-						})
-					}
-				}
-			})
+			for (const deviceId of Object.keys(playoutDevices)) {
+				deviceIds.push({
+					name: deviceId,
+					value: deviceId,
+				})
+			}
+
 			return deviceIds
 		}
 		renderPackageContainers() {
@@ -786,9 +778,11 @@ export const StudioPackageManagerSettings = withTranslation()(
 				value: string
 			}[] = []
 
-			for (const [containerId, packageContainer] of Object.entries(this.props.studio.packageContainers)) {
+			for (const [containerId, packageContainer] of Object.entries<StudioPackageContainer>(
+				this.props.studio.packageContainers
+			)) {
 				let hasHttpAccessor = false
-				for (const accessor of Object.values(packageContainer.container.accessors)) {
+				for (const accessor of Object.values<Accessor.Any>(packageContainer.container.accessors)) {
 					if (accessor.type === Accessor.AccessType.HTTP_PROXY) {
 						hasHttpAccessor = true
 						break

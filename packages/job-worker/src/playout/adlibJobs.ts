@@ -3,7 +3,7 @@ import { BucketAdLib } from '@sofie-automation/corelib/dist/dataModel/BucketAdLi
 import { DBPartInstance } from '@sofie-automation/corelib/dist/dataModel/PartInstance'
 import { PieceInstance, PieceInstancePiece } from '@sofie-automation/corelib/dist/dataModel/PieceInstance'
 import { RundownHoldState } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
-import { assertNever, stringifyError } from '@sofie-automation/corelib/dist/lib'
+import { assertNever } from '@sofie-automation/corelib/dist/lib'
 import { logger } from '../logging'
 import { ProcessedShowStyleBase, JobContext } from '../jobs'
 import {
@@ -48,7 +48,7 @@ export async function handleTakePieceAsAdlibNow(context: JobContext, data: TakeP
 				throw UserError.create(UserErrorMessage.DuringHold)
 			}
 
-			if (playlist.currentPartInstanceId !== data.partInstanceId)
+			if (playlist.currentPartInfo?.partInstanceId !== data.partInstanceId)
 				throw UserError.create(UserErrorMessage.AdlibCurrentPart)
 		},
 		async (cache) => {
@@ -105,37 +105,10 @@ export async function handleTakePieceAsAdlibNow(context: JobContext, data: TakeP
 						const blueprint = await context.getShowStyleBlueprint(showStyle._id)
 						const watchedPackages = WatchedPackagesHelper.empty(context) // TODO: should this be able to retrieve any watched packages?
 
-						await executeActionInner(
-							context,
-							cache,
-							rundown,
-							showStyle,
-							blueprint,
-							partInstance,
-							watchedPackages,
-							async (actionContext, _rundown, _currentPartInstance, blueprint) => {
-								if (!blueprint.blueprint.executeAction)
-									throw UserError.create(UserErrorMessage.ActionsNotSupported)
-
-								logger.info(
-									`Executing AdlibAction "${executeProps.actionId}": ${JSON.stringify(
-										executeProps.userData
-									)}`
-								)
-
-								try {
-									await blueprint.blueprint.executeAction(
-										actionContext,
-										executeProps.actionId,
-										executeProps.userData
-									)
-								} catch (err) {
-									logger.error(`Error in showStyleBlueprint.executeAction: ${stringifyError(err)}`)
-									// TODO: should we throw here?
-									throw UserError.fromUnknown(err, UserErrorMessage.InternalError)
-								}
-							}
-						)
+						await executeActionInner(context, cache, rundown, showStyle, blueprint, watchedPackages, {
+							...executeProps,
+							triggerMode: undefined,
+						})
 						break
 					}
 					default:
@@ -197,11 +170,7 @@ async function pieceTakeNowAsAdlib(
 			}
 		}
 
-		cache.PieceInstances.updateOne(pieceInstanceToCopy._id, (p) => {
-			p.disabled = true
-			p.hidden = true
-			return p
-		})
+		cache.PieceInstances.remove(pieceInstanceToCopy._id)
 	}
 
 	cache.PieceInstances.insert(newPieceInstance)
@@ -225,7 +194,7 @@ export async function handleAdLibPieceStart(context: JobContext, data: AdlibPiec
 				throw UserError.create(UserErrorMessage.DuringHold)
 			}
 
-			if (!data.queue && playlist.currentPartInstanceId !== data.partInstanceId)
+			if (!data.queue && playlist.currentPartInfo?.partInstanceId !== data.partInstanceId)
 				throw UserError.create(UserErrorMessage.AdlibCurrentPart)
 		},
 		async (cache) => {
@@ -305,7 +274,7 @@ export async function handleStartStickyPieceOnSourceLayer(
 			if (playlist.holdState === RundownHoldState.ACTIVE || playlist.holdState === RundownHoldState.PENDING) {
 				throw UserError.create(UserErrorMessage.DuringHold)
 			}
-			if (!playlist.currentPartInstanceId) throw UserError.create(UserErrorMessage.NoCurrentPart)
+			if (!playlist.currentPartInfo) throw UserError.create(UserErrorMessage.NoCurrentPart)
 		},
 		async (cache) => {
 			const { currentPartInstance } = getSelectedPartInstancesFromCache(cache)
@@ -357,7 +326,7 @@ export async function handleStopPiecesOnSourceLayers(
 			if (playlist.holdState === RundownHoldState.ACTIVE || playlist.holdState === RundownHoldState.PENDING) {
 				throw UserError.create(UserErrorMessage.DuringHold)
 			}
-			if (!playlist.currentPartInstanceId) throw UserError.create(UserErrorMessage.NoCurrentPart)
+			if (!playlist.currentPartInfo) throw UserError.create(UserErrorMessage.NoCurrentPart)
 		},
 		async (cache) => {
 			const partInstance = cache.PartInstances.findOne(data.partInstanceId)
@@ -399,13 +368,14 @@ export async function handleDisableNextPiece(context: JobContext, data: DisableN
 			const playlist = cache.Playlist.doc
 			if (!playlist.activationId) throw UserError.create(UserErrorMessage.InactiveRundown)
 
-			if (!playlist.currentPartInstanceId) throw UserError.create(UserErrorMessage.NoCurrentPart)
+			if (!playlist.currentPartInfo) throw UserError.create(UserErrorMessage.NoCurrentPart)
 		},
 		async (cache) => {
 			const playlist = cache.Playlist.doc
 
 			const { currentPartInstance, nextPartInstance } = getSelectedPartInstancesFromCache(cache)
-			if (!currentPartInstance) throw new Error(`PartInstance "${playlist.currentPartInstanceId}" not found!`)
+			if (!currentPartInstance)
+				throw new Error(`PartInstance "${playlist.currentPartInfo?.partInstanceId}" not found!`)
 
 			const rundown = cache.Rundowns.findOne(currentPartInstance.rundownId)
 			if (!rundown) throw new Error(`Rundown "${currentPartInstance.rundownId}" not found!`)

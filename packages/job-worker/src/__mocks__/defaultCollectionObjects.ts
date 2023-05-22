@@ -36,9 +36,9 @@ export function defaultRundownPlaylist(_id: RundownPlaylistId, studioId: StudioI
 
 		// activationId: undefined,
 		rehearsal: false,
-		currentPartInstanceId: null,
-		nextPartInstanceId: null,
-		previousPartInstanceId: null,
+		currentPartInfo: null,
+		nextPartInfo: null,
+		previousPartInfo: null,
 
 		timing: {
 			type: PlaylistTimingType.None,
@@ -104,6 +104,11 @@ export function defaultStudio(_id: StudioId): DBStudio {
 		packageContainers: {},
 		previewContainerIds: [],
 		thumbnailContainerIds: [],
+		peripheralDeviceSettings: {
+			playoutDevices: wrapDefaultObject({}),
+			ingestDevices: wrapDefaultObject({}),
+			inputDevices: wrapDefaultObject({}),
+		},
 		_rundownVersionHash: '',
 		lastBlueprintConfig: undefined,
 	}

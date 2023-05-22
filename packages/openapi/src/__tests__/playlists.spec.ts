@@ -4,11 +4,14 @@ import { checkServer } from '../checkServer'
 import Logging from '../httpLogging'
 
 const httpLogging = false
-const testServer = process.env.SERVER_TYPE === 'TEST'
+let testServer = false
+if (process.env.SERVER_TYPE === 'TEST') {
+	testServer = true
+}
 
 describe('Network client', () => {
 	const config = new Configuration({
-		basePath: process.env.ACTIONS_URL,
+		basePath: process.env.SERVER_URL,
 		middleware: [new Logging(httpLogging)],
 	})
 
@@ -21,9 +24,10 @@ describe('Network client', () => {
 		expect(playlists.status).toBe(200)
 		expect(playlists).toHaveProperty('result')
 		expect(playlists.result.length).toBeGreaterThanOrEqual(1)
-		playlists.result.forEach((id) => {
-			expect(typeof id).toBe('string')
-			playlistIds.push(id)
+		playlists.result.forEach((playlist) => {
+			expect(typeof playlist).toBe('object')
+			expect(typeof playlist.id).toBe('string')
+			playlistIds.push(playlist.id)
 		})
 	})
 

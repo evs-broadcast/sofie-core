@@ -1,9 +1,9 @@
 import { SYSTEM_ID, parseVersion, GENESIS_SYSTEM_VERSION } from '../../lib/collections/CoreSystem'
-import { getCurrentTime, MeteorStartupAsync } from '../../lib/lib'
+import { getCurrentTime, MeteorStartupAsync, stringifyError } from '../../lib/lib'
 import { Meteor } from 'meteor/meteor'
 import { prepareMigration, runMigration } from '../migration/databaseMigration'
 import { CURRENT_SYSTEM_VERSION } from '../migration/currentSystemVersion'
-import { Blueprints, CoreSystem, ShowStyleBases, ShowStyleVariants, Studios } from '../collections'
+import { Blueprints, CoreSystem } from '../collections'
 import { getEnvLogLevel, logger, LogLevel, setLogLevel } from '../logging'
 const PackageInfo = require('../../package.json')
 import Agent from 'meteor/julusian:meteor-elastic-apm'
@@ -12,10 +12,9 @@ import { TMP_TSR_VERSION } from '@sofie-automation/blueprints-integration'
 import { getAbsolutePath } from '../lib'
 import * as fs from 'fs/promises'
 import path from 'path'
-import { queueCheckBlueprintsConfig } from './checkBlueprintsConfig'
 import { checkDatabaseVersions } from './checkDatabaseVersions'
 import PLazy from 'p-lazy'
-import { getCoreSystem, getCoreSystemAsync, getCoreSystemCursor } from './collection'
+import { getCoreSystemAsync } from './collection'
 
 export { PackageInfo }
 
@@ -67,17 +66,16 @@ async function initializeCoreSystem() {
 
 		if (!isRunningInJest()) {
 			// Check what migration has to provide:
-			const migration = prepareMigration(true)
+			const migration = await prepareMigration(true)
 			if (migration.migrationNeeded && migration.manualStepCount === 0 && migration.chunks.length <= 1) {
 				// Since we've determined that the migration can be done automatically, and we have a fresh system, just do the migration automatically:
-				runMigration(migration.chunks, migration.hash, [])
+				await runMigration(migration.chunks, migration.hash, [])
 			}
 		}
 	}
 
 	// Monitor database changes:
-	const systemCursor = getCoreSystemCursor()
-	systemCursor.observeChanges({
+	CoreSystem.observeChanges(SYSTEM_ID, {
 		added: onCoreSystemChanged,
 		changed: onCoreSystemChanged,
 		removed: onCoreSystemChanged,
@@ -85,43 +83,26 @@ async function initializeCoreSystem() {
 
 	const observeBlueprintChanges = () => {
 		checkDatabaseVersions()
-		queueCheckBlueprintsConfig()
 	}
 
-	const blueprintsCursor = Blueprints.find({}, { fields: { code: 0 } })
-	blueprintsCursor.observeChanges({
-		added: observeBlueprintChanges,
-		changed: observeBlueprintChanges,
-		removed: observeBlueprintChanges,
-	})
-
-	const studiosCursor = Studios.find({})
-	studiosCursor.observeChanges({
-		added: queueCheckBlueprintsConfig,
-		changed: queueCheckBlueprintsConfig,
-		removed: queueCheckBlueprintsConfig,
-	})
-
-	const showStyleBaseCursor = ShowStyleBases.find({})
-	showStyleBaseCursor.observeChanges({
-		added: queueCheckBlueprintsConfig,
-		changed: queueCheckBlueprintsConfig,
-		removed: queueCheckBlueprintsConfig,
-	})
-
-	const showStyleVariantCursor = ShowStyleVariants.find({})
-	showStyleVariantCursor.observeChanges({
-		added: queueCheckBlueprintsConfig,
-		changed: queueCheckBlueprintsConfig,
-		removed: queueCheckBlueprintsConfig,
-	})
+	Blueprints.observeChanges(
+		{},
+		{
+			added: observeBlueprintChanges,
+			changed: observeBlueprintChanges,
+			removed: observeBlueprintChanges,
+		},
+		{ fields: { code: 0 } }
+	)
 
 	checkDatabaseVersions()
 }
 
 function onCoreSystemChanged() {
 	checkDatabaseVersions()
-	updateLoggerLevel(false)
+	updateLoggerLevel(false).catch((e) => {
+		logger.error(`Failed to update logger level: ${stringifyError(e)}`)
+	})
 }
 
 export const RelevantSystemVersions = PLazy.from(async () => {
@@ -172,7 +153,7 @@ async function startupMessage() {
 		}
 
 		const versions = await RelevantSystemVersions
-		for (const [name, version] of Object.entries(versions)) {
+		for (const [name, version] of Object.entries<string>(versions)) {
 			logger.info(`Core package ${name} version: "${version}"`)
 		}
 	}
@@ -208,9 +189,9 @@ async function startInstrumenting() {
 		})
 	}
 }
-function updateLoggerLevel(startup: boolean) {
+async function updateLoggerLevel(startup: boolean) {
 	if (Meteor.isTest) return // ignore this when running in tests
-	const coreSystem = getCoreSystem()
+	const coreSystem = await getCoreSystemAsync()
 
 	if (coreSystem) {
 		setLogLevel(coreSystem.logLevel ?? getEnvLogLevel() ?? LogLevel.SILLY, startup)
@@ -222,7 +203,7 @@ function updateLoggerLevel(startup: boolean) {
 MeteorStartupAsync(async () => {
 	if (Meteor.isServer) {
 		await startupMessage()
-		updateLoggerLevel(true)
+		await updateLoggerLevel(true)
 		await initializeCoreSystem()
 		await startInstrumenting()
 

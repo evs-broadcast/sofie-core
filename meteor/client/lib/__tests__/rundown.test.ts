@@ -28,7 +28,7 @@ describe('client/lib/rundown', () => {
 	let playlistId: RundownPlaylistId
 	beforeEach(async () => {
 		env = await setupDefaultStudioEnvironment()
-		playlistId = setupDefaultRundownPlaylist(env).playlistId
+		playlistId = (await setupDefaultRundownPlaylist(env)).playlistId
 	})
 	describe('RundownUtils.getResolvedSegment', () => {
 		testInFiber('Basic Segment resolution', () => {
@@ -341,7 +341,10 @@ describe('client/lib/rundown', () => {
 
 				mockRundownPlaylistsCollection.update(playlistId, {
 					$set: {
-						currentPartInstanceId: mockCurrentPartInstance._id,
+						currentPartInfo: {
+							partInstanceId: mockCurrentPartInstance._id,
+							rundownId: mockCurrentPartInstance.rundownId,
+						},
 					},
 				})
 

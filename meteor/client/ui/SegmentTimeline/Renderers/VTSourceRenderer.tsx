@@ -17,13 +17,15 @@ import { VTContent } from '@sofie-automation/blueprints-integration'
 import { PieceStatusIcon } from '../../../lib/ui/PieceStatusIcon'
 import { NoticeLevel, getNoticeLevelForPieceStatus } from '../../../../lib/notifications/notifications'
 import { VTFloatingInspector } from '../../FloatingInspectors/VTFloatingInspector'
-import { ScanInfoForPackages } from '../../../../lib/mediaObjects'
+import { ScanInfoForPackage, ScanInfoForPackages } from '../../../../lib/mediaObjects'
 import { clone } from '../../../../lib/lib'
 import { RundownUtils } from '../../../lib/rundown'
 import { FreezeFrameIcon } from '../../../lib/ui/icons/freezeFrame'
 import StudioContext from '../../RundownView/StudioContext'
 import { Settings } from '../../../../lib/Settings'
 import { UIStudio } from '../../../../lib/api/studios'
+import { PieceStatusCode } from '@sofie-automation/corelib/dist/dataModel/Piece'
+import { HourglassIconSmall } from '../../../lib/ui/icons/notifications'
 
 interface IProps extends ICustomLayerItemProps {
 	studio: UIStudio | undefined
@@ -311,7 +313,7 @@ export class VTSourceRendererBase extends CustomLayerItemRenderer<IProps & WithT
 			const piece = this.props.piece
 			if (piece.contentPackageInfos) {
 				// TODO: support multiple packages:
-				const contentPackageInfos = Object.values(piece.contentPackageInfos)
+				const contentPackageInfos = Object.values<ScanInfoForPackage>(piece.contentPackageInfos)
 				if (contentPackageInfos[0]?.deepScan?.scenes) {
 					return _.compact(contentPackageInfos[0].deepScan.scenes.map((i) => i * 1000)) // convert into milliseconds
 				}
@@ -336,7 +338,7 @@ export class VTSourceRendererBase extends CustomLayerItemRenderer<IProps & WithT
 				let items: Array<PackageInfo.Anomaly> = []
 				// add freezes
 				// TODO: support multiple packages:
-				const contentPackageInfos = Object.values(piece.contentPackageInfos)
+				const contentPackageInfos = Object.values<ScanInfoForPackage>(piece.contentPackageInfos)
 				if (contentPackageInfos[0]?.deepScan?.freezes?.length) {
 					items = contentPackageInfos[0].deepScan.freezes.map((i): PackageInfo.Anomaly => {
 						return { start: i.start * 1000, end: i.end * 1000, duration: i.duration * 1000 }
@@ -369,7 +371,7 @@ export class VTSourceRendererBase extends CustomLayerItemRenderer<IProps & WithT
 				let items: Array<PackageInfo.Anomaly> = []
 				// add blacks
 				// TODO: support multiple packages:
-				const contentPackageInfos = Object.values(piece.contentPackageInfos)
+				const contentPackageInfos = Object.values<ScanInfoForPackage>(piece.contentPackageInfos)
 				if (contentPackageInfos[0]?.deepScan?.blacks) {
 					items = [
 						...items,
@@ -407,6 +409,11 @@ export class VTSourceRendererBase extends CustomLayerItemRenderer<IProps & WithT
 		return !this.props.piece.hasOriginInPreceedingPart || this.props.isLiveLine ? (
 			<span className="segment-timeline__piece__label" ref={this.setLeftLabelRef} style={this.getItemLabelOffsetLeft()}>
 				{noticeLevel !== null && <PieceStatusIcon noticeLevel={noticeLevel} />}
+				{this.props.piece.instance.piece.status === PieceStatusCode.SOURCE_NOT_READY && (
+					<div className="piece__status-icon type-hourglass">
+						<HourglassIconSmall />
+					</div>
+				)}
 				<span
 					className={ClassNames('segment-timeline__piece__label', {
 						'with-duration': !!duration,

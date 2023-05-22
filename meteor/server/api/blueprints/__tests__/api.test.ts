@@ -10,6 +10,7 @@ import { MeteorCall, MethodContext } from '../../../../lib/api/methods'
 import '../../../../__mocks__/_extendJest'
 import { Blueprints, CoreSystem } from '../../../collections'
 import { SupressLogMessages } from '../../../../__mocks__/suppressLogging'
+import { JSONBlobStringify } from '@sofie-automation/shared-lib/dist/lib/JSONBlob'
 
 // we don't want the deviceTriggers observer to start up at this time
 jest.mock('../../deviceTriggers/observer')
@@ -35,11 +36,11 @@ describe('Test blueprint management api', () => {
 		await setupDefaultStudioEnvironment()
 	})
 
-	function getCurrentBlueprintIds() {
-		return _.pluck(Blueprints.find().fetch(), '_id')
+	async function getCurrentBlueprintIds() {
+		return _.pluck(await Blueprints.findFetchAsync({}), '_id')
 	}
-	function ensureSystemBlueprint() {
-		const existingBp = Blueprints.findOne({ blueprintType: BlueprintManifestType.SYSTEM })
+	async function ensureSystemBlueprint() {
+		const existingBp = await Blueprints.findOneAsync({ blueprintType: BlueprintManifestType.SYSTEM })
 		if (existingBp) {
 			return existingBp
 		} else {
@@ -56,8 +57,8 @@ describe('Test blueprint management api', () => {
 				blueprintType: BlueprintManifestType.SYSTEM,
 				blueprintHash: getRandomId(),
 
-				studioConfigManifest: [],
-				showStyleConfigManifest: [],
+				studioConfigSchema: JSONBlobStringify({}),
+				showStyleConfigSchema: JSONBlobStringify({}),
 
 				databaseVersion: {
 					showStyle: {},
@@ -69,20 +70,20 @@ describe('Test blueprint management api', () => {
 				integrationVersion: '',
 				TSRVersion: '',
 			}
-			Blueprints.insert(blueprint)
+			await Blueprints.insertAsync(blueprint)
 			return blueprint
 		}
 	}
 
 	describe('assignSystemBlueprint', () => {
-		function getActiveSystemBlueprintId() {
-			const core = CoreSystem.findOne(SYSTEM_ID) as ICoreSystem
+		async function getActiveSystemBlueprintId() {
+			const core = (await CoreSystem.findOneAsync(SYSTEM_ID)) as ICoreSystem
 			expect(core).toBeTruthy()
 			return core.blueprintId
 		}
 
 		testInFiber('empty id', async () => {
-			const initialBlueprintId = getActiveSystemBlueprintId()
+			const initialBlueprintId = await getActiveSystemBlueprintId()
 
 			SupressLogMessages.suppressLogMessage(/Blueprint not found/i)
 			await expect(MeteorCall.blueprint.assignSystemBlueprint(protectString(''))).rejects.toThrowMeteor(
@@ -90,45 +91,47 @@ describe('Test blueprint management api', () => {
 				'Blueprint not found'
 			)
 
-			expect(getActiveSystemBlueprintId()).toEqual(initialBlueprintId)
+			expect(await getActiveSystemBlueprintId()).toEqual(initialBlueprintId)
 		})
 		testInFiber('unknown id', async () => {
-			const blueprint = ensureSystemBlueprint()
-			const initialBlueprintId = getActiveSystemBlueprintId()
+			const blueprint = await ensureSystemBlueprint()
+			const initialBlueprintId = await getActiveSystemBlueprintId()
 
 			SupressLogMessages.suppressLogMessage(/Blueprint not found/i)
 			await expect(
 				MeteorCall.blueprint.assignSystemBlueprint(protectString(blueprint._id + '_no'))
 			).rejects.toThrowMeteor(404, 'Blueprint not found')
 
-			expect(getActiveSystemBlueprintId()).toEqual(initialBlueprintId)
+			expect(await getActiveSystemBlueprintId()).toEqual(initialBlueprintId)
 		})
 		testInFiber('good', async () => {
-			const blueprint = ensureSystemBlueprint()
+			const blueprint = await ensureSystemBlueprint()
 
 			// Ensure starts off 'wrong'
-			expect(getActiveSystemBlueprintId()).not.toEqual(blueprint._id)
+			expect(await getActiveSystemBlueprintId()).not.toEqual(blueprint._id)
 
 			await MeteorCall.blueprint.assignSystemBlueprint(blueprint._id)
 
 			// Ensure ends up good
-			expect(getActiveSystemBlueprintId()).toEqual(blueprint._id)
+			expect(await getActiveSystemBlueprintId()).toEqual(blueprint._id)
 		})
 		testInFiber('unassign', async () => {
 			// Ensure starts off 'wrong'
-			expect(getActiveSystemBlueprintId()).toBeTruthy()
+			expect(await getActiveSystemBlueprintId()).toBeTruthy()
 
 			await MeteorCall.blueprint.assignSystemBlueprint()
 
 			// Ensure ends up good
-			expect(getActiveSystemBlueprintId()).toBeFalsy()
+			expect(await getActiveSystemBlueprintId()).toBeFalsy()
 		})
 		testInFiber('wrong type', async () => {
-			const blueprint = Blueprints.findOne({ blueprintType: BlueprintManifestType.SHOWSTYLE }) as Blueprint
+			const blueprint = (await Blueprints.findOneAsync({
+				blueprintType: BlueprintManifestType.SHOWSTYLE,
+			})) as Blueprint
 			expect(blueprint).toBeTruthy()
 
 			// Ensure starts off 'wrong'
-			const initialBlueprintId = getActiveSystemBlueprintId()
+			const initialBlueprintId = await getActiveSystemBlueprintId()
 			expect(initialBlueprintId).not.toEqual(blueprint._id)
 
 			SupressLogMessages.suppressLogMessage(/Blueprint not of type SYSTEM/i)
@@ -138,7 +141,7 @@ describe('Test blueprint management api', () => {
 			)
 
 			// Ensure ends up good
-			expect(getActiveSystemBlueprintId()).toEqual(initialBlueprintId)
+			expect(await getActiveSystemBlueprintId()).toEqual(initialBlueprintId)
 		})
 	})
 
@@ -162,29 +165,29 @@ describe('Test blueprint management api', () => {
 			await MeteorCall.blueprint.removeBlueprint(protectString('not_a_real_blueprint'))
 		})
 		testInFiber('good', async () => {
-			const blueprint = ensureSystemBlueprint()
-			expect(Blueprints.findOne(blueprint._id)).toBeTruthy()
+			const blueprint = await ensureSystemBlueprint()
+			expect(await Blueprints.findOneAsync(blueprint._id)).toBeTruthy()
 
 			await MeteorCall.blueprint.removeBlueprint(blueprint._id)
 
-			expect(Blueprints.findOne(blueprint._id)).toBeFalsy()
+			expect(await Blueprints.findOneAsync(blueprint._id)).toBeFalsy()
 		})
 	})
 
 	describe('insertBlueprint', () => {
 		testInFiber('no params', async () => {
-			const initialBlueprints = getCurrentBlueprintIds()
+			const initialBlueprints = await getCurrentBlueprintIds()
 
 			const newId = await MeteorCall.blueprint.insertBlueprint()
 			expect(newId).toBeTruthy()
 
-			const finalBlueprints = getCurrentBlueprintIds()
+			const finalBlueprints = await getCurrentBlueprintIds()
 			expect(finalBlueprints).toContain(newId)
 
 			expect(finalBlueprints).toEqual(initialBlueprints.concat(newId))
 
 			// Check some props
-			const blueprint = Blueprints.findOne(newId) as Blueprint
+			const blueprint = (await Blueprints.findOneAsync(newId)) as Blueprint
 			expect(blueprint).toBeTruthy()
 			expect(blueprint.name).toBeTruthy()
 			expect(blueprint.blueprintType).toBeFalsy()
@@ -195,7 +198,7 @@ describe('Test blueprint management api', () => {
 			expect(newId).toBeTruthy()
 
 			// Check some props
-			const blueprint = Blueprints.findOne(newId) as Blueprint
+			const blueprint = (await Blueprints.findOneAsync(newId)) as Blueprint
 			expect(blueprint).toBeTruthy()
 			expect(blueprint.name).toEqual(rawName)
 			expect(blueprint.blueprintType).toBeFalsy()
@@ -206,7 +209,7 @@ describe('Test blueprint management api', () => {
 			expect(newId).toBeTruthy()
 
 			// Check some props
-			const blueprint = Blueprints.findOne(newId) as Blueprint
+			const blueprint = (await Blueprints.findOneAsync(newId)) as Blueprint
 			expect(blueprint).toBeTruthy()
 			expect(blueprint.name).toBeTruthy()
 			expect(blueprint.blueprintType).toEqual(type)
@@ -272,9 +275,9 @@ describe('Test blueprint management api', () => {
 				}
 			)
 
-			const existingBlueprint = Blueprints.findOne({
+			const existingBlueprint = (await Blueprints.findOneAsync({
 				blueprintType: BlueprintManifestType.SHOWSTYLE,
-			}) as Blueprint
+			})) as Blueprint
 			expect(existingBlueprint).toBeTruthy()
 
 			await expect(uploadBlueprint(DEFAULT_CONTEXT, existingBlueprint._id, blueprintStr)).rejects.toThrowMeteor(
@@ -295,8 +298,8 @@ describe('Test blueprint management api', () => {
 						blueprintVersion: '0.1.0',
 						integrationVersion: '0.2.0',
 						TSRVersion: '0.3.0',
-						showStyleConfigManifest: ['show1'],
-						studioConfigManifest: ['studio1'],
+						showStyleConfigSchema: JSON.stringify({ show1: true }) as any,
+						studioConfigSchema: JSON.stringify({ studio1: true }) as any,
 					}
 				}
 			)
@@ -313,12 +316,12 @@ describe('Test blueprint management api', () => {
 					blueprintVersion: '0.1.0',
 					integrationVersion: '0.2.0',
 					TSRVersion: '0.3.0',
-					showStyleConfigManifest: ['show1'] as any,
-					studioConfigManifest: [],
+					showStyleConfigSchema: JSON.stringify({ show1: true }) as any,
 					hasCode: !!blueprintStr,
 					code: blueprintStr,
 				})
 			)
+			expect(blueprint.studioConfigSchema).toBeUndefined()
 		})
 		testInFiber('success - studio', async () => {
 			const BLUEPRINT_TYPE = BlueprintManifestType.STUDIO
@@ -332,8 +335,8 @@ describe('Test blueprint management api', () => {
 						blueprintVersion: '0.1.0',
 						integrationVersion: '0.2.0',
 						TSRVersion: '0.3.0',
-						showStyleConfigManifest: ['show1'],
-						studioConfigManifest: ['studio1'],
+						showStyleConfigSchema: JSON.stringify({ show1: true }) as any,
+						studioConfigSchema: JSON.stringify({ studio1: true }) as any,
 					}
 				}
 			)
@@ -355,12 +358,12 @@ describe('Test blueprint management api', () => {
 					blueprintVersion: '0.1.0',
 					integrationVersion: '0.2.0',
 					TSRVersion: '0.3.0',
-					showStyleConfigManifest: [],
-					studioConfigManifest: ['studio1'] as any,
+					studioConfigSchema: JSONBlobStringify({ studio1: true } as any),
 					hasCode: !!blueprintStr,
 					code: blueprintStr,
 				})
 			)
+			expect(blueprint.showStyleConfigSchema).toBeUndefined()
 		})
 		testInFiber('success - system', async () => {
 			const BLUEPRINT_TYPE = BlueprintManifestType.SYSTEM
@@ -375,8 +378,8 @@ describe('Test blueprint management api', () => {
 						blueprintVersion: '0.1.0',
 						integrationVersion: '0.2.0',
 						TSRVersion: '0.3.0',
-						showStyleConfigManifest: ['show1'],
-						studioConfigManifest: ['studio1'],
+						showStyleConfigSchema: JSON.stringify({ show1: true }) as any,
+						studioConfigSchema: JSON.stringify({ studio1: true }) as any,
 					}
 				}
 			)
@@ -398,12 +401,12 @@ describe('Test blueprint management api', () => {
 					blueprintVersion: '0.1.0',
 					integrationVersion: '0.2.0',
 					TSRVersion: '0.3.0',
-					showStyleConfigManifest: [],
-					studioConfigManifest: [],
 					hasCode: !!blueprintStr,
 					code: blueprintStr,
 				})
 			)
+			expect(blueprint.showStyleConfigSchema).toBeUndefined()
+			expect(blueprint.studioConfigSchema).toBeUndefined()
 		})
 		testInFiber('update - studio', async () => {
 			const BLUEPRINT_TYPE = BlueprintManifestType.STUDIO
@@ -417,13 +420,15 @@ describe('Test blueprint management api', () => {
 						blueprintVersion: '0.1.0',
 						integrationVersion: '0.2.0',
 						TSRVersion: '0.3.0',
-						showStyleConfigManifest: ['show1'],
-						studioConfigManifest: ['studio1'],
+						showStyleConfigSchema: JSON.stringify({ show1: true }) as any,
+						studioConfigSchema: JSON.stringify({ studio1: true }) as any,
 					}
 				}
 			)
 
-			const existingBlueprint = Blueprints.findOne({ blueprintType: BlueprintManifestType.STUDIO }) as Blueprint
+			const existingBlueprint = (await Blueprints.findOneAsync({
+				blueprintType: BlueprintManifestType.STUDIO,
+			})) as Blueprint
 			expect(existingBlueprint).toBeTruthy()
 			expect(existingBlueprint.blueprintId).toBeFalsy()
 
@@ -439,12 +444,12 @@ describe('Test blueprint management api', () => {
 					blueprintVersion: '0.1.0',
 					integrationVersion: '0.2.0',
 					TSRVersion: '0.3.0',
-					showStyleConfigManifest: [],
-					studioConfigManifest: ['studio1'] as any,
+					studioConfigSchema: JSONBlobStringify({ studio1: true } as any),
 					hasCode: !!blueprintStr,
 					code: blueprintStr,
 				})
 			)
+			expect(blueprint.showStyleConfigSchema).toBeUndefined()
 		})
 		testInFiber('update - matching blueprintId', async () => {
 			const BLUEPRINT_TYPE = BlueprintManifestType.SHOWSTYLE
@@ -459,16 +464,16 @@ describe('Test blueprint management api', () => {
 						blueprintVersion: '0.1.0',
 						integrationVersion: '0.2.0',
 						TSRVersion: '0.3.0',
-						showStyleConfigManifest: ['show1'],
-						studioConfigManifest: ['studio1'],
+						showStyleConfigSchema: JSON.stringify({ show1: true }) as any,
+						studioConfigSchema: JSON.stringify({ studio1: true }) as any,
 					}
 				}
 			)
 
-			const existingBlueprint = Blueprints.findOne({
+			const existingBlueprint = (await Blueprints.findOneAsync({
 				blueprintType: BlueprintManifestType.SHOWSTYLE,
 				blueprintId: 'ss1',
-			}) as Blueprint
+			})) as Blueprint
 			expect(existingBlueprint).toBeTruthy()
 			expect(existingBlueprint.blueprintId).toBeTruthy()
 
@@ -484,12 +489,12 @@ describe('Test blueprint management api', () => {
 					blueprintVersion: '0.1.0',
 					integrationVersion: '0.2.0',
 					TSRVersion: '0.3.0',
-					showStyleConfigManifest: ['show1'] as any,
-					studioConfigManifest: [],
+					showStyleConfigSchema: JSONBlobStringify({ show1: true } as any),
 					hasCode: !!blueprintStr,
 					code: blueprintStr,
 				})
 			)
+			expect(blueprint.studioConfigSchema).toBeUndefined()
 		})
 		testInFiber('update - change blueprintId', async () => {
 			const BLUEPRINT_TYPE = BlueprintManifestType.SHOWSTYLE
@@ -504,16 +509,16 @@ describe('Test blueprint management api', () => {
 						blueprintVersion: '0.1.0',
 						integrationVersion: '0.2.0',
 						TSRVersion: '0.3.0',
-						showStyleConfigManifest: ['show1'],
-						studioConfigManifest: ['studio1'],
+						showStyleConfigSchema: JSON.stringify({ show1: true }) as any,
+						studioConfigSchema: JSON.stringify({ studio1: true }) as any,
 					}
 				}
 			)
 
-			const existingBlueprint = Blueprints.findOne({
+			const existingBlueprint = (await Blueprints.findOneAsync({
 				blueprintType: BlueprintManifestType.SHOWSTYLE,
 				blueprintId: 'ss1',
-			}) as Blueprint
+			})) as Blueprint
 			expect(existingBlueprint).toBeTruthy()
 			expect(existingBlueprint.blueprintId).toBeTruthy()
 
@@ -534,16 +539,16 @@ describe('Test blueprint management api', () => {
 						blueprintVersion: '0.1.0',
 						integrationVersion: '0.2.0',
 						TSRVersion: '0.3.0',
-						showStyleConfigManifest: ['show1'],
-						studioConfigManifest: ['studio1'],
+						showStyleConfigSchema: JSON.stringify({ show1: true }) as any,
+						studioConfigSchema: JSON.stringify({ studio1: true }) as any,
 					}
 				}
 			)
 
-			const existingBlueprint = Blueprints.findOne({
+			const existingBlueprint = (await Blueprints.findOneAsync({
 				blueprintType: BlueprintManifestType.SHOWSTYLE,
 				blueprintId: 'ss1',
-			}) as Blueprint
+			})) as Blueprint
 			expect(existingBlueprint).toBeTruthy()
 			expect(existingBlueprint.blueprintId).toBeTruthy()
 

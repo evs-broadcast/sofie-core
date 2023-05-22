@@ -1,10 +1,16 @@
+/**
+ * This file spins up a mock of the Sofie API and runs tests against it to verify that the generated Client and Server
+ * 	speak the same language. The tests in this package must be run against either a mock or a real Sofie server, so this
+ *  file should be used when running against a mock is desired.
+ */
+
 import { exec } from 'child_process'
 import { exit } from 'process'
 import { join } from 'path'
 import { createServer } from 'http'
 import { expressAppConfig } from './server/node_modules/oas3-tools/dist/index.js'
 
-const serverPort = 8080
+const serverPort = 3000
 const testTimeout = 120000
 
 async function startServer() {
@@ -14,8 +20,8 @@ async function startServer() {
 
 	const server = createServer(app)
 	return new Promise((resolve, reject) => {
-		server.listen(serverPort, function () {
-			console.log(`\nTest server is listening on port ${serverPort}`)
+		server.listen(() => {
+			console.log(`\nTest server is listening on port ${server.address().port}`)
 			resolve(server)
 		})
 
@@ -26,13 +32,13 @@ async function startServer() {
 					console.log('Address in use, retrying...')
 					server.close()
 					setTimeout(() => {
-						server.listen(serverPort, function () {
-							console.log(`\nTest server is listening on port ${serverPort}`)
+						server.listen(function () {
+							console.log(`\nTest server is listening on port ${server.address().port}`)
 							resolve(server)
 						})
 					}, 1000)
 				} else {
-					reject(new Error(`Failed to connect - port ${serverPort} is already in use`))
+					reject(new Error(`Failed to connect - server did not start`))
 				}
 				numRetries++
 			} else reject(e)
@@ -49,17 +55,27 @@ startServer()
 		}, testTimeout)
 
 		console.log('\nRunning tests against test server.')
-		exec('yarn unit', { timeout: testTimeout }, (error, stdout, stderr) => {
-			testServer.close()
-			if (error) {
-				console.error(`Test error: ${error}`)
-				exit(1)
+		exec(
+			'yarn unit:no-server',
+			{
+				timeout: testTimeout,
+				env: {
+					...process.env,
+					SERVER_PORT: `${testServer.address().port}`,
+				},
+			},
+			(error, stdout, stderr) => {
+				testServer.close()
+				if (error) {
+					console.error(`Test error: ${error}`)
+					exit(1)
+				}
+				console.log(stdout)
+				console.log('Warning:', stderr)
+				console.log('Tests complete')
+				exit()
 			}
-			console.log(stdout)
-			console.log('Warning:', stderr)
-			console.log('Tests complete')
-			exit()
-		})
+		)
 	})
 	.catch((err) => {
 		console.error(err)

@@ -1,5 +1,4 @@
 import { ActionUserData, IBlueprintActionManifest } from './action'
-import { ConfigManifestEntry } from './config'
 import {
 	IActionExecutionContext,
 	ISyncIngestUpdateToPartInstanceContext,
@@ -15,10 +14,11 @@ import {
 	IStudioBaselineContext,
 	IGetRundownContext,
 	IDataStoreActionExecutionContext,
+	IRundownActivationContext,
 } from './context'
 import { IngestAdlib, ExtendedIngestRundown, IngestSegment } from './ingest'
 import { IBlueprintExternalMessageQueueObj } from './message'
-import { MigrationStep } from './migrations'
+import { MigrationStepShowStyle, MigrationStepStudio, MigrationStepSystem } from './migrations'
 import {
 	IBlueprintAdLibPiece,
 	IBlueprintPart,
@@ -43,6 +43,8 @@ import { ITranslatableMessage } from './translations'
 import { NoteSeverity } from './lib'
 import { BlueprintMappings } from './studio'
 import { IBlueprintTriggeredActions } from './triggers'
+import { JSONSchema } from '@sofie-automation/shared-lib/dist/lib/JSONSchemaTypes'
+import { JSONBlob } from '@sofie-automation/shared-lib/dist/lib/JSONBlob'
 
 export enum BlueprintManifestType {
 	SYSTEM = 'system',
@@ -78,7 +80,7 @@ export interface SystemBlueprintManifest extends BlueprintManifestBase {
 	blueprintType: BlueprintManifestType.SYSTEM
 
 	/** A list of Migration steps related to the Core system */
-	coreMigrations: MigrationStep[]
+	coreMigrations: MigrationStepSystem[]
 
 	/** Translations connected to the studio (as stringified JSON) */
 	translations?: string
@@ -89,9 +91,9 @@ export interface StudioBlueprintManifest<TRawConfig = IBlueprintConfig, TProcess
 	blueprintType: BlueprintManifestType.STUDIO
 
 	/** A list of config items this blueprint expects to be available on the Studio */
-	studioConfigManifest: ConfigManifestEntry[]
+	studioConfigSchema: JSONBlob<JSONSchema>
 	/** A list of Migration steps related to a Studio */
-	studioMigrations: MigrationStep[]
+	studioMigrations: MigrationStepStudio[]
 
 	/** The config presets exposed by this blueprint */
 	configPresets: Record<string, IStudioConfigPreset<TRawConfig>>
@@ -146,9 +148,9 @@ export interface ShowStyleBlueprintManifest<TRawConfig = IBlueprintConfig, TProc
 	blueprintType: BlueprintManifestType.SHOWSTYLE
 
 	/** A list of config items this blueprint expects to be available on the ShowStyle */
-	showStyleConfigManifest: ConfigManifestEntry[]
+	showStyleConfigSchema: JSONBlob<JSONSchema>
 	/** A list of Migration steps related to a ShowStyle */
-	showStyleMigrations: MigrationStep[]
+	showStyleMigrations: MigrationStepShowStyle[]
 
 	/** The config presets exposed by this blueprint */
 	configPresets: Record<string, IShowStyleConfigPreset<TRawConfig>>
@@ -239,9 +241,9 @@ export interface ShowStyleBlueprintManifest<TRawConfig = IBlueprintConfig, TProc
 
 	// Events
 
-	onRundownActivate?: (context: IRundownContext) => Promise<void>
+	onRundownActivate?: (context: IRundownActivationContext, wasActive: boolean) => Promise<void>
 	onRundownFirstTake?: (context: IPartEventContext) => Promise<void>
-	onRundownDeActivate?: (context: IRundownContext) => Promise<void>
+	onRundownDeActivate?: (context: IRundownActivationContext) => Promise<void>
 
 	/** Called after a Take action */
 	onPreTake?: (context: IPartEventContext) => Promise<void>
@@ -354,6 +356,7 @@ export interface BlueprintResultRundownPlaylist {
 
 export interface BlueprintConfigCoreConfig {
 	hostUrl: string
+	frameRate: number
 }
 
 export interface IConfigMessage {
@@ -361,8 +364,20 @@ export interface IConfigMessage {
 	message: ITranslatableMessage
 }
 
+/**
+ * Blueprint defined default values for various Studio configuration.
+ * Note: The user is able to override values from these in the UI, as well as add their own entries and disable ones which are defined here
+ */
 export interface BlueprintResultApplyStudioConfig {
+	/** Playout Mappings */
 	mappings: BlueprintMappings
+
+	/** Playout-gateway subdevices */
+	playoutDevices: Record<string, TSR.DeviceOptionsAny>
+	/** Ingest-gateway subdevices, the types here depend on the gateway you use */
+	ingestDevices: Record<string, unknown>
+	/** Input-gateway subdevices */
+	inputDevices: Record<string, unknown>
 }
 
 export interface BlueprintResultApplyShowStyleConfig {
