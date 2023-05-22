@@ -9,7 +9,7 @@ info:
 
 servers:
   development:
-    url: localhost
+    url: localhost:8080
     description: Server available without authorisation
     protocol: ws
     protocolVersion: '13'
