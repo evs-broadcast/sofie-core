@@ -10,7 +10,7 @@
 	},
 	"main": "dist/index.js",
 	"scripts": {
-		"prepare": "run -T genserver && run -T genclient:ts",
+		"postinstall": "run -T genserver && run -T genclient:ts",
 		"build": "run -T rimraf dist && run genclient:ts && run build:main",
 		"build:main": "run -T tsc -p tsconfig.build.json",
 		"cov": "run unit && open-cli coverage/lcov-report/index.html",
