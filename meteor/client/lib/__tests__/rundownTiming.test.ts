@@ -114,7 +114,6 @@ describe('rundown Timing Calculator', () => {
 				isLowResolution: false,
 				asDisplayedPlaylistDuration: 0,
 				asPlayedPlaylistDuration: 0,
-				currentPartInstanceId: null,
 				currentPartWillAutoNext: false,
 				currentTime: 0,
 				rundownExpectedDurations: {},
@@ -178,7 +177,6 @@ describe('rundown Timing Calculator', () => {
 				isLowResolution: false,
 				asDisplayedPlaylistDuration: 4000,
 				asPlayedPlaylistDuration: 4000,
-				currentPartInstanceId: null,
 				currentPartWillAutoNext: false,
 				currentTime: 0,
 				rundownExpectedDurations: {
@@ -281,7 +279,6 @@ describe('rundown Timing Calculator', () => {
 				isLowResolution: false,
 				asDisplayedPlaylistDuration: 4000,
 				asPlayedPlaylistDuration: 4000,
-				currentPartInstanceId: null,
 				currentPartWillAutoNext: false,
 				currentTime: 0,
 				rundownExpectedDurations: {
@@ -386,7 +383,6 @@ describe('rundown Timing Calculator', () => {
 				isLowResolution: false,
 				asDisplayedPlaylistDuration: 4000,
 				asPlayedPlaylistDuration: 4000,
-				currentPartInstanceId: null,
 				currentPartWillAutoNext: false,
 				currentTime: 0,
 				rundownExpectedDurations: {
@@ -515,7 +511,6 @@ describe('rundown Timing Calculator', () => {
 				isLowResolution: false,
 				asDisplayedPlaylistDuration: 4000,
 				asPlayedPlaylistDuration: 4000,
-				currentPartInstanceId: null,
 				currentPartWillAutoNext: false,
 				currentTime: 0,
 				rundownExpectedDurations: {
@@ -875,7 +870,6 @@ describe('rundown Timing Calculator', () => {
 				isLowResolution: false,
 				asDisplayedPlaylistDuration: 4000,
 				asPlayedPlaylistDuration: 8000,
-				currentPartInstanceId: null,
 				currentPartWillAutoNext: false,
 				currentTime: 0,
 				rundownExpectedDurations: {
