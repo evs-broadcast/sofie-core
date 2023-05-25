@@ -7,5 +7,6 @@ const version = packageFile.version
 packageFile.dependencies['@sofie-automation/blueprints-integration'] = `npm:@evs/blueprints-integration@${version}`
 packageFile.dependencies['@sofie-automation/server-core-integration'] = `npm:@evs/server-core-integration@${version}`
 packageFile.dependencies['@sofie-automation/shared-lib'] = `npm:@evs/sofie-shared-lib@${version}`
+packageFile.dependencies['@sofie-automation/corelib'] = `npm:@evs/sofie-corelib@${version}`
 
 fs.writeFileSync('package.json', JSON.stringify(packageFile, null, 4))
