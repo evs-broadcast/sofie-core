@@ -10,3 +10,4 @@ RUN apt install -y curl openjdk-11-jdk \
   && nvm install 18 \
   && nvm alias default 18 \
   && nvm use default
+  && corepack enable
