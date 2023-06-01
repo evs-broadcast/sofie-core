@@ -11,4 +11,5 @@ RUN apt install -y curl openjdk-11-jdk build-essential \
   && nvm alias default 18 \
   && nvm use default \
   && corepack enable \
-  && curl https://install.meteor.com/ | sh
+  && curl https://install.meteor.com/ | sh \
+  && meteor npm install -g yarn
