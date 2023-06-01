@@ -7,3 +7,5 @@ echo "//${NPM_REGISTRY_SNAPSHOT}/:_password=${NPM_ENCODED_PASSWORD}" >> $HOME/.n
 echo "//${NPM_REGISTRY_SNAPSHOT}/:username=${NPM_USER}" >> $HOME/.npmrc
 echo "//${NPM_REGISTRY_SNAPSHOT}/:email=${NPM_USER}@evs.com" >> $HOME/.npmrc
 echo "//${NPM_REGISTRY_SNAPSHOT}/:always-auth=true" >> $HOME/.npmrc
+
+npm config fix
