@@ -40,6 +40,8 @@ $segment-timeline-padding: $segment-header-height 0 1.5em;
 $segment-layer-height: 1.5em;
 $segment-layer-separator-color: transparentize(#000, 0.5);
 
+$break-width: 35rem;
+
 // A utility mix-in, to add an interactive collapse triangle on an item
 @mixin collapse-triangle {
 	&::before {
@@ -445,8 +447,15 @@ svg.icon {
 	display: grid;
 	grid-column-gap: 0;
 	grid-row-gap: 0;
+
 	grid-template-columns: [segment-name] ($segment-header-width / 2) [duration-onAirIn-split] ($segment-header-width / 2) [segment-group-controls] $segment-group-controls-width [timeline] auto [end]; // 120px [future-timeline-end]
 	grid-template-rows: [header] $segment-header-height [main-view] auto [zoom-area] auto [end];
+
+	@media screen and (max-width: $break-width) {
+		grid-template-columns: [start] $segment-group-controls-width [timeline] auto [toggle-view] 30px [end];
+		grid-template-rows: [header] $segment-header-height [title] auto [timeline-header] $segment-header-height [output-layers] auto [zoom-area] auto [end];
+	}
+
 	overflow: hidden;
 	user-select: none;
 	-moz-user-select: none;
@@ -483,6 +492,10 @@ svg.icon {
 
 		grid-column: segment-name / segment-group-controls;
 		grid-row: main-view / end;
+		@media screen and (max-width: $break-width) {
+			grid-column: start / end;
+			grid-row: title / timeline-header;
+		}
 
 		transition: $output-layer-group-collapse-animation-duration opacity,
 			$output-layer-group-collapse-animation-duration visibility 0s;
@@ -656,6 +669,10 @@ svg.icon {
 
 		grid-column: segment-name / duration-onAirIn-split;
 		grid-row: header / main-view;
+		@media screen and (max-width: $break-width) {
+			grid-column: start / timeline;
+			grid-row: header / title;
+		}
 
 		padding-right: 0px;
 		margin-right: 0em;
@@ -698,6 +715,10 @@ svg.icon {
 
 	.segment-timeline__timeUntil {
 		grid-column: duration-onAirIn-split / segment-group-controls;
+		@media screen and (max-width: $break-width) {
+			grid-column: timeline / toggle-view;
+		}
+
 		color: #888;
 		cursor: pointer;
 	}
@@ -717,6 +738,11 @@ svg.icon {
 .segment-timeline__switch-view-mode-button {
 	grid-row: header / main-view;
 	grid-column: timeline / end;
+	@media screen and (max-width: $break-width) {
+		grid-column: toggle-view / end;
+		grid-row: header / title;
+	}
+
 	justify-self: end;
 	align-self: start;
 	z-index: 1;
@@ -757,8 +783,15 @@ svg.icon {
 	.segment-timeline__timeline-zoom-buttons {
 		position: relative;
 		display: grid;
+
 		grid-column: segment-group-controls / timeline;
 		grid-row: header / end;
+
+		@media screen and (max-width: $break-width) {
+			grid-column: start / timeline;
+			grid-row: zoom-area / end;
+		}
+
 		align-self: end;
 		grid-template-columns: 1fr 1fr 1fr;
 		padding: 0 1.2em 0.05em;
@@ -842,6 +875,10 @@ svg.icon {
 	.segment-timeline__zoom-area-container {
 		grid-column: timeline / end;
 		grid-row: zoom-area / end;
+		@media screen and (max-width: $break-width) {
+			grid-column: timeline / end;
+			grid-row: zoom-area / end;
+		}
 
 		transition: 1s opacity, 0s visibility;
 
@@ -1028,6 +1065,11 @@ svg.icon {
 	.segment-timeline__timeline-background {
 		grid-column: timeline / end;
 		grid-row: main-view / zoom-area;
+		@media screen and (max-width: $break-width) {
+			grid-column: timeline / end;
+			grid-row: output-layers / zoom-area;
+		}
+
 		min-width: 0;
 		overflow: hidden;
 		background: $segment-timeline-background-color;
@@ -1042,6 +1084,11 @@ svg.icon {
 	.segment-timeline__timeline-grid {
 		grid-column: timeline / end;
 		grid-row: header / zoom-area;
+		@media screen and (max-width: $break-width) {
+			grid-column: timeline / end;
+			grid-row: timeline-header / zoom-area;
+		}
+
 		min-width: 0;
 		overflow: hidden;
 		margin-bottom: 1.15em;
@@ -1065,6 +1112,11 @@ svg.icon {
 	.segment-timeline__timeline-container {
 		grid-column: timeline / end;
 		grid-row: header / zoom-area;
+		@media screen and (max-width: $break-width) {
+			grid-column: timeline / end;
+			grid-row: timeline-header / zoom-area;
+		}
+
 		min-width: 0;
 		min-height: 0;
 
@@ -2217,6 +2269,10 @@ svg.icon {
 	.segment-timeline__output-layers {
 		grid-column: segment-group-controls / timeline;
 		grid-row: header / zoom-area;
+		@media screen and (max-width: $break-width) {
+			grid-column: start / timeline;
+			grid-row: timeline-header / zoom-area;
+		}
 
 		transition: $output-layer-group-collapse-animation-duration padding ease-in-out;
 
