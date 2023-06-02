@@ -1,1 +1,1 @@
-yarn config set --json npmScopes "{\"evs\": { \"npmRegistryServer\": \"${EVS_NPM_REGISTRY_SNAPSHOT}/\" }}"
+yarn config set --json npmScopes "{\"evs\": { \"npmRegistryServer\": \"${NPM_REGISTRY_SNAPSHOT}/\" }}"
