@@ -52,6 +52,7 @@ export enum UserErrorMessage {
 	DeviceAlreadyAttachedToStudio = 37,
 	ShowStyleBaseNotFound = 38,
 	NoMigrationsToApply = 39,
+	ValidationFailed = 40,
 }
 
 const UserErrorMessagesTranslations: { [key in UserErrorMessage]: string } = {
@@ -103,6 +104,7 @@ const UserErrorMessagesTranslations: { [key in UserErrorMessage]: string } = {
 	[UserErrorMessage.DeviceAlreadyAttachedToStudio]: t(`Device is already attached to another studio.`),
 	[UserErrorMessage.ShowStyleBaseNotFound]: t(`ShowStyleBase not found!`),
 	[UserErrorMessage.NoMigrationsToApply]: t(`No migrations to apply`),
+	[UserErrorMessage.ValidationFailed]: t('Validation failed!'),
 }
 
 export class UserError {
