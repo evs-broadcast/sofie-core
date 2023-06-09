@@ -4,7 +4,6 @@ import {
 	ConductorOptions,
 	TimelineTriggerTimeResult,
 	DeviceOptionsAny,
-	DeviceContainer,
 	TSRTimelineObj,
 	TSRTimeline,
 	TSRTimelineContent,
@@ -28,16 +27,7 @@ import { Logger } from 'winston'
 import { disableAtemUpload } from './config'
 import Debug from 'debug'
 import { FinishedTrace, sendTrace } from './influxdb'
-import { PeripheralDeviceAPIMethods } from '@sofie-automation/shared-lib/dist/peripheralDevice/methodsAPI'
-import {
-	PartPlaybackCallbackData,
-	PiecePlaybackCallbackData,
-	PlayoutChangedResults,
-	PlayoutChangedType,
-	PeripheralDeviceStatusObject,
-} from '@sofie-automation/shared-lib/dist/peripheralDevice/peripheralDeviceAPI'
-import { assertNever } from '@sofie-automation/shared-lib/dist/lib/lib'
-import { protectString, unprotectObject, unprotectString } from '@sofie-automation/shared-lib/dist/lib/protectedString'
+
 import { StudioId, TimelineHash } from '@sofie-automation/shared-lib/dist/core/model/Ids'
 import {
 	deserializeTimelineBlob,
@@ -45,13 +35,21 @@ import {
 	RoutedTimeline,
 	TimelineObjGeneric,
 } from '@sofie-automation/shared-lib/dist/core/model/Timeline'
-import {
-	PeripheralDevicePublic,
-	PlayoutDeviceSettings,
-} from '@sofie-automation/shared-lib/dist/core/model/peripheralDevice'
 import { DBTimelineDatastoreEntry } from '@sofie-automation/shared-lib/dist/core/model/TimelineDatastore'
-import { ConfigManifestEntry, TableConfigManifestEntry } from '@sofie-automation/server-core-integration'
 import { PLAYOUT_DEVICE_CONFIG } from './configManifest'
+import { PlayoutGatewayConfig } from './generated/options'
+import {
+	assertNever,
+	getSchemaDefaultValues,
+	JSONBlobParse,
+	PeripheralDeviceAPI,
+	PeripheralDeviceForDevice,
+	protectString,
+	SubdeviceManifest,
+	unprotectObject,
+	unprotectString,
+} from '@sofie-automation/server-core-integration'
+import { BaseRemoteDeviceIntegration } from 'timeline-state-resolver/dist/service/remoteDeviceInstance'
 
 const debug = Debug('playout-gateway')
 
@@ -106,7 +104,6 @@ export class TSRHandler {
 	private _initialized = false
 	private _multiThreaded: boolean | null = null
 	private _reportAllCommands: boolean | null = null
-	private _errorReporting: boolean | null = null
 
 	private _updateDevicesIsRunning = false
 	private _lastReportedObjHashes: string[] = []
@@ -129,9 +126,10 @@ export class TSRHandler {
 		this.logger.info('TSRHandler init')
 
 		const peripheralDevice = await coreHandler.core.getPeripheralDevice()
-		const settings: PlayoutDeviceSettings = peripheralDevice.settings as PlayoutDeviceSettings
+		const settings: PlayoutGatewayConfig = peripheralDevice.deviceSettings as PlayoutGatewayConfig
+		const devices = peripheralDevice.playoutDevices
 
-		this.logger.info('Devices', settings.devices)
+		this.logger.info('Devices', devices)
 		const c: ConductorOptions = {
 			getCurrentTime: (): number => {
 				return this._coreHandler.core.getCurrentTime()
@@ -229,23 +227,15 @@ export class TSRHandler {
 	}
 
 	private loadSubdeviceConfigurations(): { [deviceType: string]: Record<string, any> } {
-		const playoutGatewayDevicesConfig: ConfigManifestEntry | undefined = PLAYOUT_DEVICE_CONFIG.deviceConfig.find(
-			(deviceConfig: ConfigManifestEntry) => deviceConfig.id === 'devices'
-		)
-		if (!playoutGatewayDevicesConfig) {
-			return {}
-		}
-		const tableConfig: TableConfigManifestEntry = playoutGatewayDevicesConfig as TableConfigManifestEntry
 		const defaultDeviceOptions: { [deviceType: string]: Record<string, any> } = {}
-		for (const deviceType in tableConfig.config) {
-			const configEntries = tableConfig.config[deviceType]
-				.filter((configManifestEntry: ConfigManifestEntry) => configManifestEntry.defaultVal)
-				.map((configManifestEntry: ConfigManifestEntry) => [
-					configManifestEntry.id.replace('options.', ''),
-					configManifestEntry.defaultVal,
-				])
-			defaultDeviceOptions[deviceType] = Object.fromEntries(configEntries)
+
+		for (const [deviceType, deviceManifest] of Object.entries<SubdeviceManifest[0]>(
+			PLAYOUT_DEVICE_CONFIG.subdeviceManifest
+		)) {
+			const schema = JSONBlobParse(deviceManifest.configSchema)
+			defaultDeviceOptions[deviceType] = getSchemaDefaultValues(schema)
 		}
+
 		return defaultDeviceOptions
 	}
 
@@ -283,7 +273,7 @@ export class TSRHandler {
 		}
 		this._observers.push(mappingsObserver)
 
-		const deviceObserver = this._coreHandler.core.observe('peripheralDevices')
+		const deviceObserver = this._coreHandler.core.observe('peripheralDeviceForDevice')
 		deviceObserver.added = () => {
 			debug('triggerUpdateDevices from deviceObserver added')
 			this._triggerUpdateDevices()
@@ -359,11 +349,6 @@ export class TSRHandler {
 			this.tsr.logDebug = this._coreHandler.logDebug
 		}
 
-		if (this._errorReporting !== this._coreHandler.errorReporting) {
-			this._errorReporting = this._coreHandler.errorReporting
-
-			this.logger.info('ErrorReporting: ' + this._multiThreaded)
-		}
 		if (this.tsr.estimateResolveTimeMultiplier !== this._coreHandler.estimateResolveTimeMultiplier) {
 			this.tsr.estimateResolveTimeMultiplier = this._coreHandler.estimateResolveTimeMultiplier
 			this.logger.info('estimateResolveTimeMultiplier: ' + this._coreHandler.estimateResolveTimeMultiplier)
@@ -429,8 +414,9 @@ export class TSRHandler {
 		this.tsr.timelineHash = unprotectString(timeline.timelineHash)
 		this.tsr.setTimelineAndMappings(transformedTimeline, unprotectObject(mappingsObject.mappings))
 	}
-	private _getPeripheralDevice(): PeripheralDevicePublic {
-		const peripheralDevices = this._coreHandler.core.getCollection<PeripheralDevicePublic>('peripheralDevices')
+	private _getPeripheralDevice(): PeripheralDeviceForDevice {
+		const peripheralDevices =
+			this._coreHandler.core.getCollection<PeripheralDeviceForDevice>('peripheralDeviceForDevice')
 		const doc = peripheralDevices.findOne(this._coreHandler.core.deviceId)
 		if (!doc) throw new Error('Missing PeripheralDevice document!')
 		return doc
@@ -503,17 +489,20 @@ export class TSRHandler {
 		const deviceOptions = new Map<string, DeviceOptionsAny>()
 
 		if (peripheralDevice) {
-			const settings: PlayoutDeviceSettings = peripheralDevice.settings as PlayoutDeviceSettings
+			const devices = peripheralDevice.playoutDevices
 
-			for (const [deviceId, device0] of Object.entries(settings.devices)) {
-				const device = device0 as DeviceOptionsAny
+			for (const [deviceId, device0] of Object.entries<DeviceOptionsAny>(devices)) {
+				const device = device0
 				if (!device.disable) {
 					deviceOptions.set(deviceId, device)
 				}
 			}
 
 			for (const [deviceId, orgDeviceOptions] of deviceOptions.entries()) {
-				const oldDevice: DeviceContainer<DeviceOptionsAny> | undefined = this.tsr.getDevice(deviceId, true)
+				const oldDevice: BaseRemoteDeviceIntegration<DeviceOptionsAny> | undefined = this.tsr.getDevice(
+					deviceId,
+					true
+				)
 
 				const deviceOptions = _.extend(
 					{
@@ -584,7 +573,9 @@ export class TSRHandler {
 					const keys = Object.keys(promiseOperations)
 					if (keys.length) {
 						this.logger.warn(
-							`Timeout in _updateDevices: ${Object.values(promiseOperations)
+							`Timeout in _updateDevices: ${Object.values<{ deviceId: string; operation: DeviceAction }>(
+								promiseOperations
+							)
 								.map((op) => op.deviceId)
 								.join(',')}`
 						)
@@ -594,7 +585,7 @@ export class TSRHandler {
 						// At this point in time, promiseOperations contains the promises that have timed out.
 						// If we tried to add or re-add a device, that apparently failed so we should remove the device in order to
 						// give it another chance next time _updateDevices() is called.
-						Object.values(promiseOperations)
+						Object.values<{ deviceId: string; operation: DeviceAction }>(promiseOperations)
 							.filter((op) => op.operation === DeviceAction.ADD || op.operation === DeviceAction.READD)
 							.map(async (op) =>
 								// the device was never added, should retry next round
@@ -604,7 +595,9 @@ export class TSRHandler {
 						.catch((e) => {
 							this.logger.error(
 								`Error when trying to remove unsuccessfully initialized devices: ${stringifyIds(
-									Object.values(promiseOperations).map((op) => op.deviceId)
+									Object.values<{ deviceId: string; operation: DeviceAction }>(promiseOperations).map(
+										(op) => op.deviceId
+									)
 								)}`,
 								e
 							)
@@ -667,8 +660,8 @@ export class TSRHandler {
 	}
 
 	private populateDefaultValuesIfMissing(deviceOptions: DeviceOptionsAny): DeviceOptionsAny {
-		const options = Object.fromEntries(
-			Object.entries({ ...deviceOptions.options }).filter(([_key, value]) => value !== '')
+		const options = Object.fromEntries<any>(
+			Object.entries<any>({ ...deviceOptions.options }).filter(([_key, value]) => value !== '')
 		)
 		deviceOptions.options = { ...this.defaultDeviceOptions[deviceOptions.type], ...options }
 		return deviceOptions
@@ -749,7 +742,10 @@ export class TSRHandler {
 				throw new Error(`There is already a _coreTsrHandlers for deviceId "${deviceId}"!`)
 			}
 
-			const devicePr: Promise<DeviceContainer<DeviceOptionsAny>> = this.tsr.createDevice(deviceId, options)
+			const devicePr: Promise<BaseRemoteDeviceIntegration<DeviceOptionsAny>> = this.tsr.createDevice(
+				deviceId,
+				options
+			)
 
 			const coreTsrHandler = new CoreTSRDeviceHandler(this._coreHandler, devicePr, deviceId, this)
 
@@ -767,7 +763,7 @@ export class TSRHandler {
 			const deviceType = device.deviceType
 
 			const onDeviceStatusChanged = (connectedOrStatus: Partial<DeviceStatus>) => {
-				let deviceStatus: Partial<PeripheralDeviceStatusObject>
+				let deviceStatus: Partial<PeripheralDeviceAPI.PeripheralDeviceStatusObject>
 				if (_.isBoolean(connectedOrStatus)) {
 					// for backwards compability, to be removed later
 					if (connectedOrStatus) {
@@ -976,7 +972,7 @@ export class TSRHandler {
 	 * // @todo: proper atem media management
 	 * /Balte - 22-08
 	 */
-	private uploadFilesToAtem(device: DeviceContainer<DeviceOptionsAny>, files: AtemMediaPoolAsset[]) {
+	private uploadFilesToAtem(device: BaseRemoteDeviceIntegration<DeviceOptionsAny>, files: AtemMediaPoolAsset[]) {
 		if (!device || device.deviceType !== DeviceType.ATEM) {
 			return
 		}
@@ -1039,7 +1035,7 @@ export class TSRHandler {
 
 		await Promise.all(
 			_.map(this.tsr.getDevices(), async (container) => {
-				if (!(await container.device.supportsExpectedPlayoutItems)) {
+				if (!container.details.supportsExpectedPlayoutItems) {
 					return
 				}
 				await container.device.handleExpectedPlayoutItems(
@@ -1095,7 +1091,7 @@ export class TSRHandler {
 
 		// Go through all objects:
 		const transformedTimeline: Array<TSRTimelineObj<TSRTimelineContent>> = []
-		for (const obj of Object.values(objects)) {
+		for (const obj of Object.values<TimelineContentObjectTmp<TSRTimelineContent>>(objects)) {
 			if (!obj.inGroup) {
 				// Add object to timeline
 				delete obj.inGroup
@@ -1117,11 +1113,7 @@ export class TSRHandler {
 		return transformedTimeline
 	}
 
-	public getDebugStates(): Map<string, object> {
-		return this._debugStates
-	}
-
-	private changedResults: PlayoutChangedResults | undefined = undefined
+	private changedResults: PeripheralDeviceAPI.PlayoutChangedResults | undefined = undefined
 	private sendCallbacksTimeout: NodeJS.Timer | undefined = undefined
 
 	private sendChangedResults = (): void => {
@@ -1138,15 +1130,15 @@ export class TSRHandler {
 		time: number,
 		objId: string,
 		callbackName0: string,
-		data: PartPlaybackCallbackData | PiecePlaybackCallbackData
+		data: PeripheralDeviceAPI.PartPlaybackCallbackData | PeripheralDeviceAPI.PiecePlaybackCallbackData
 	): void {
 		if (
 			![
-				PlayoutChangedType.PART_PLAYBACK_STARTED,
-				PlayoutChangedType.PART_PLAYBACK_STOPPED,
-				PlayoutChangedType.PIECE_PLAYBACK_STARTED,
-				PlayoutChangedType.PIECE_PLAYBACK_STOPPED,
-			].includes(callbackName0 as PlayoutChangedType)
+				PeripheralDeviceAPI.PlayoutChangedType.PART_PLAYBACK_STARTED,
+				PeripheralDeviceAPI.PlayoutChangedType.PART_PLAYBACK_STOPPED,
+				PeripheralDeviceAPI.PlayoutChangedType.PIECE_PLAYBACK_STARTED,
+				PeripheralDeviceAPI.PlayoutChangedType.PIECE_PLAYBACK_STOPPED,
+			].includes(callbackName0 as PeripheralDeviceAPI.PlayoutChangedType)
 		) {
 			// @ts-expect-error Untyped bunch of methods
 			const method = PeripheralDeviceAPIMethods[callbackName]
@@ -1168,7 +1160,7 @@ export class TSRHandler {
 				})
 			return
 		}
-		const callbackName = callbackName0 as PlayoutChangedType
+		const callbackName = callbackName0 as PeripheralDeviceAPI.PlayoutChangedType
 		// debounce
 		if (this.changedResults && this.changedResults.rundownPlaylistId !== data.rundownPlaylistId) {
 			// The playlistId changed. Send what we have right away and reset:
@@ -1185,26 +1177,26 @@ export class TSRHandler {
 		}
 
 		switch (callbackName) {
-			case PlayoutChangedType.PART_PLAYBACK_STARTED:
-			case PlayoutChangedType.PART_PLAYBACK_STOPPED:
+			case PeripheralDeviceAPI.PlayoutChangedType.PART_PLAYBACK_STARTED:
+			case PeripheralDeviceAPI.PlayoutChangedType.PART_PLAYBACK_STOPPED:
 				this.changedResults.changes.push({
 					type: callbackName,
 					objId,
 					data: {
 						time,
-						partInstanceId: (data as PartPlaybackCallbackData).partInstanceId,
+						partInstanceId: (data as PeripheralDeviceAPI.PartPlaybackCallbackData).partInstanceId,
 					},
 				})
 				break
-			case PlayoutChangedType.PIECE_PLAYBACK_STARTED:
-			case PlayoutChangedType.PIECE_PLAYBACK_STOPPED:
+			case PeripheralDeviceAPI.PlayoutChangedType.PIECE_PLAYBACK_STARTED:
+			case PeripheralDeviceAPI.PlayoutChangedType.PIECE_PLAYBACK_STOPPED:
 				this.changedResults.changes.push({
 					type: callbackName,
 					objId,
 					data: {
 						time,
-						partInstanceId: (data as PiecePlaybackCallbackData).partInstanceId,
-						pieceInstanceId: (data as PiecePlaybackCallbackData).pieceInstanceId,
+						partInstanceId: (data as PeripheralDeviceAPI.PiecePlaybackCallbackData).partInstanceId,
+						pieceInstanceId: (data as PeripheralDeviceAPI.PiecePlaybackCallbackData).pieceInstanceId,
 					},
 				})
 				break
@@ -1217,6 +1209,10 @@ export class TSRHandler {
 		if (!this.sendCallbacksTimeout) {
 			this.sendCallbacksTimeout = setTimeout(this.sendChangedResults, 20)
 		}
+	}
+
+	public getDebugStates(): Map<string, object> {
+		return this._debugStates
 	}
 }
 

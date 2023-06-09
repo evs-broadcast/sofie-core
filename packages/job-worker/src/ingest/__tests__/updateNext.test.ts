@@ -10,24 +10,24 @@ import { MockJobContext, setupDefaultJobEnvironment } from '../../__mocks__/cont
 import { runJobWithPlayoutCache } from '../../playout/lock'
 
 jest.mock('../../playout/setNext')
-import { setNextPartInner } from '../../playout/setNext'
-type TsetNextPartInner = jest.MockedFunction<typeof setNextPartInner>
-const setNextPartInnerMock = setNextPartInner as TsetNextPartInner
-setNextPartInnerMock.mockImplementation(async () => Promise.resolve()) // Default mock
+import { setNextPart } from '../../playout/setNext'
+type TsetNextPart = jest.MockedFunction<typeof setNextPart>
+const setNextPartMock = setNextPart as TsetNextPart
+setNextPartMock.mockImplementation(async () => Promise.resolve()) // Default mock
 
 const rundownId: RundownId = protectString('mock_ro')
 const rundownPlaylistId: RundownPlaylistId = protectString('mock_rpl')
 async function createMockRO(context: MockJobContext): Promise<RundownId> {
-	await context.directCollections.RundownPlaylists.insertOne({
+	await context.mockCollections.RundownPlaylists.insertOne({
 		_id: rundownPlaylistId,
 		externalId: 'mock_rpl',
 		name: 'Mock',
 		studioId: context.studioId,
 		created: 0,
 		modified: 0,
-		currentPartInstanceId: null,
-		nextPartInstanceId: null,
-		previousPartInstanceId: null,
+		currentPartInfo: null,
+		nextPartInfo: null,
+		previousPartInfo: null,
 		activationId: protectString('active'),
 		timing: {
 			type: 'none' as any,
@@ -36,7 +36,7 @@ async function createMockRO(context: MockJobContext): Promise<RundownId> {
 		rundownIdsInOrder: [rundownId],
 	})
 
-	await context.directCollections.Rundowns.insertOne({
+	await context.mockCollections.Rundowns.insertOne({
 		_id: rundownId,
 		externalId: 'mock_ro',
 		name: 'Mock',
@@ -58,6 +58,7 @@ async function createMockRO(context: MockJobContext): Promise<RundownId> {
 	await saveIntoDb(
 		context,
 		context.directCollections.Segments,
+		null,
 		{
 			rundownId: rundownId,
 		},
@@ -290,6 +291,7 @@ async function createMockRO(context: MockJobContext): Promise<RundownId> {
 	await saveIntoDb(
 		context,
 		context.directCollections.PartInstances,
+		null,
 		{
 			rundownId: rundownId,
 		},
@@ -298,6 +300,7 @@ async function createMockRO(context: MockJobContext): Promise<RundownId> {
 	await saveIntoDb(
 		context,
 		context.directCollections.Parts,
+		null,
 		{
 			rundownId: rundownId,
 		},
@@ -321,12 +324,25 @@ describe('ensureNextPartIsValid', () => {
 		nextPartInstanceId: string | PartInstanceId | null,
 		nextPartManual?: boolean
 	) {
-		await context.directCollections.RundownPlaylists.update(rundownPlaylistId, {
+		await context.mockCollections.RundownPlaylists.update(rundownPlaylistId, {
 			$set: {
-				nextPartInstanceId: nextPartInstanceId as any,
-				currentPartInstanceId: currentPartInstanceId as any,
-				previousPartInstanceId: null,
-				nextPartManual: nextPartManual || false,
+				nextPartInfo: nextPartInstanceId
+					? {
+							partInstanceId: nextPartInstanceId as any,
+							rundownId,
+							manuallySelected: nextPartManual || false,
+							consumesNextSegmentId: false,
+					  }
+					: null,
+				currentPartInfo: currentPartInstanceId
+					? {
+							partInstanceId: currentPartInstanceId as any,
+							rundownId,
+							manuallySelected: false,
+							consumesNextSegmentId: false,
+					  }
+					: null,
+				previousPartInfo: null,
 			},
 		})
 	}
@@ -341,11 +357,12 @@ describe('ensureNextPartIsValid', () => {
 
 		await ensureNextPartIsValid()
 
-		expect(setNextPartInnerMock).toHaveBeenCalledTimes(1)
-		expect(setNextPartInnerMock).toHaveBeenCalledWith(
+		expect(setNextPartMock).toHaveBeenCalledTimes(1)
+		expect(setNextPartMock).toHaveBeenCalledWith(
 			context,
 			expect.objectContaining({ PlaylistId: rundownPlaylistId }),
-			expect.objectContaining({ _id: 'mock_part1' })
+			expect.objectContaining({ part: expect.objectContaining({ _id: 'mock_part1' }) }),
+			false
 		)
 	})
 	test('Missing next PartInstance', async () => {
@@ -353,11 +370,12 @@ describe('ensureNextPartIsValid', () => {
 
 		await ensureNextPartIsValid()
 
-		expect(setNextPartInnerMock).toHaveBeenCalledTimes(1)
-		expect(setNextPartInnerMock).toHaveBeenCalledWith(
+		expect(setNextPartMock).toHaveBeenCalledTimes(1)
+		expect(setNextPartMock).toHaveBeenCalledWith(
 			context,
 			expect.objectContaining({ PlaylistId: rundownPlaylistId }),
-			expect.objectContaining({ _id: 'mock_part4' })
+			expect.objectContaining({ part: expect.objectContaining({ _id: 'mock_part4' }) }),
+			false
 		)
 
 		// expectNextPartId('mock_part4')
@@ -367,18 +385,19 @@ describe('ensureNextPartIsValid', () => {
 
 		await ensureNextPartIsValid()
 
-		expect(setNextPartInnerMock).toHaveBeenCalledTimes(0)
+		expect(setNextPartMock).toHaveBeenCalledTimes(0)
 	})
 	test('Missing current and next PartInstance', async () => {
 		await resetPartIds('fake_part', 'not_real_either')
 
 		await ensureNextPartIsValid()
 
-		expect(setNextPartInnerMock).toHaveBeenCalledTimes(1)
-		expect(setNextPartInnerMock).toHaveBeenCalledWith(
+		expect(setNextPartMock).toHaveBeenCalledTimes(1)
+		expect(setNextPartMock).toHaveBeenCalledWith(
 			context,
 			expect.objectContaining({ PlaylistId: rundownPlaylistId }),
-			expect.objectContaining({ _id: 'mock_part1' })
+			expect.objectContaining({ part: expect.objectContaining({ _id: 'mock_part1' }) }),
+			false
 		)
 	})
 	test('Ensure correct PartInstance doesnt change', async () => {
@@ -386,25 +405,26 @@ describe('ensureNextPartIsValid', () => {
 
 		await ensureNextPartIsValid()
 
-		expect(setNextPartInnerMock).not.toHaveBeenCalled()
+		expect(setNextPartMock).not.toHaveBeenCalled()
 	})
 	test('Ensure manual PartInstance doesnt change', async () => {
 		await resetPartIds('mock_part_instance3', 'mock_part_instance5', true)
 
 		await ensureNextPartIsValid()
 
-		expect(setNextPartInnerMock).not.toHaveBeenCalled()
+		expect(setNextPartMock).not.toHaveBeenCalled()
 	})
 	test('Ensure non-manual PartInstance does change', async () => {
 		await resetPartIds('mock_part_instance3', 'mock_part_instance5', false)
 
 		await ensureNextPartIsValid()
 
-		expect(setNextPartInnerMock).toHaveBeenCalledTimes(1)
-		expect(setNextPartInnerMock).toHaveBeenCalledWith(
+		expect(setNextPartMock).toHaveBeenCalledTimes(1)
+		expect(setNextPartMock).toHaveBeenCalledWith(
 			context,
 			expect.objectContaining({ PlaylistId: rundownPlaylistId }),
-			expect.objectContaining({ _id: 'mock_part4' })
+			expect.objectContaining({ part: expect.objectContaining({ _id: 'mock_part4' }) }),
+			false
 		)
 	})
 	test('Ensure manual but missing PartInstance does change', async () => {
@@ -412,11 +432,12 @@ describe('ensureNextPartIsValid', () => {
 
 		await ensureNextPartIsValid()
 
-		expect(setNextPartInnerMock).toHaveBeenCalledTimes(1)
-		expect(setNextPartInnerMock).toHaveBeenCalledWith(
+		expect(setNextPartMock).toHaveBeenCalledTimes(1)
+		expect(setNextPartMock).toHaveBeenCalledWith(
 			context,
 			expect.objectContaining({ PlaylistId: rundownPlaylistId }),
-			expect.objectContaining({ _id: 'mock_part4' })
+			expect.objectContaining({ part: expect.objectContaining({ _id: 'mock_part4' }) }),
+			false
 		)
 	})
 	test('Ensure manual but floated PartInstance does change', async () => {
@@ -424,11 +445,12 @@ describe('ensureNextPartIsValid', () => {
 
 		await ensureNextPartIsValid()
 
-		expect(setNextPartInnerMock).toHaveBeenCalledTimes(1)
-		expect(setNextPartInnerMock).toHaveBeenCalledWith(
+		expect(setNextPartMock).toHaveBeenCalledTimes(1)
+		expect(setNextPartMock).toHaveBeenCalledWith(
 			context,
 			expect.objectContaining({ PlaylistId: rundownPlaylistId }),
-			expect.objectContaining({ _id: 'mock_part9' })
+			expect.objectContaining({ part: expect.objectContaining({ _id: 'mock_part9' }) }),
+			false
 		)
 	})
 	test('Ensure floated PartInstance does change', async () => {
@@ -436,17 +458,18 @@ describe('ensureNextPartIsValid', () => {
 
 		await ensureNextPartIsValid()
 
-		expect(setNextPartInnerMock).toHaveBeenCalledTimes(1)
-		expect(setNextPartInnerMock).toHaveBeenCalledWith(
+		expect(setNextPartMock).toHaveBeenCalledTimes(1)
+		expect(setNextPartMock).toHaveBeenCalledWith(
 			context,
 			expect.objectContaining({ PlaylistId: rundownPlaylistId }),
-			expect.objectContaining({ _id: 'mock_part9' })
+			expect.objectContaining({ part: expect.objectContaining({ _id: 'mock_part9' }) }),
+			false
 		)
 	})
 	test('Next part instance is orphaned: "deleted"', async () => {
 		// Insert a temporary instance
 		const instanceId: PartInstanceId = protectString('orphaned_first_part')
-		await context.directCollections.PartInstances.insertOne(
+		await context.mockCollections.PartInstances.insertOne(
 			literal<DBPartInstance>({
 				_id: instanceId,
 				rundownId: rundownId,
@@ -472,17 +495,18 @@ describe('ensureNextPartIsValid', () => {
 
 		await ensureNextPartIsValid()
 
-		expect(setNextPartInnerMock).toHaveBeenCalledTimes(1)
-		expect(setNextPartInnerMock).toHaveBeenCalledWith(
+		expect(setNextPartMock).toHaveBeenCalledTimes(1)
+		expect(setNextPartMock).toHaveBeenCalledWith(
 			context,
 			expect.objectContaining({ PlaylistId: rundownPlaylistId }),
-			expect.objectContaining({ _id: 'mock_part1' })
+			expect.objectContaining({ part: expect.objectContaining({ _id: 'mock_part1' }) }),
+			false
 		)
 	})
 	test('Next part instance is orphaned: "deleted" and manually set', async () => {
 		// Insert a temporary instance
 		const instanceId: PartInstanceId = protectString('orphaned_first_part')
-		await context.directCollections.PartInstances.insertOne(
+		await context.mockCollections.PartInstances.insertOne(
 			literal<DBPartInstance>({
 				_id: instanceId,
 				rundownId: rundownId,
@@ -508,11 +532,12 @@ describe('ensureNextPartIsValid', () => {
 
 		await ensureNextPartIsValid()
 
-		expect(setNextPartInnerMock).toHaveBeenCalledTimes(1)
-		expect(setNextPartInnerMock).toHaveBeenCalledWith(
+		expect(setNextPartMock).toHaveBeenCalledTimes(1)
+		expect(setNextPartMock).toHaveBeenCalledWith(
 			context,
 			expect.objectContaining({ PlaylistId: rundownPlaylistId }),
-			expect.objectContaining({ _id: 'mock_part1' })
+			expect.objectContaining({ part: expect.objectContaining({ _id: 'mock_part1' }) }),
+			false
 		)
 	})
 	test('Next part is invalid, but instance is not', async () => {
@@ -527,7 +552,7 @@ describe('ensureNextPartIsValid', () => {
 			title: 'Orphan 1',
 			expectedDurationWithPreroll: undefined,
 		})
-		await context.directCollections.PartInstances.insertOne(
+		await context.mockCollections.PartInstances.insertOne(
 			literal<DBPartInstance>({
 				_id: instanceId,
 				rundownId: rundownId,
@@ -539,7 +564,7 @@ describe('ensureNextPartIsValid', () => {
 				part: part,
 			})
 		)
-		await context.directCollections.Parts.insertOne({
+		await context.mockCollections.Parts.insertOne({
 			...part,
 			invalid: true,
 		})
@@ -548,7 +573,7 @@ describe('ensureNextPartIsValid', () => {
 
 		await ensureNextPartIsValid()
 
-		expect(setNextPartInnerMock).toHaveBeenCalledTimes(0)
+		expect(setNextPartMock).toHaveBeenCalledTimes(0)
 	})
 	test('Next part is last in rundown and gets deleted', async () => {
 		// Insert a temporary instance
@@ -562,7 +587,7 @@ describe('ensureNextPartIsValid', () => {
 			title: 'Tmp Part 1',
 			expectedDurationWithPreroll: undefined,
 		})
-		await context.directCollections.PartInstances.insertOne(
+		await context.mockCollections.PartInstances.insertOne(
 			literal<DBPartInstance>({
 				_id: instanceId,
 				rundownId: rundownId,
@@ -574,18 +599,19 @@ describe('ensureNextPartIsValid', () => {
 				part: part,
 			})
 		)
-		await context.directCollections.Parts.insertOne(part)
+		await context.mockCollections.Parts.insertOne(part)
 
 		try {
 			// make sure it finds the part we expect
 			await resetPartIds('mock_part_instance9', null, false)
 			await ensureNextPartIsValid()
 
-			expect(setNextPartInnerMock).toHaveBeenCalledTimes(1)
-			expect(setNextPartInnerMock).toHaveBeenCalledWith(
+			expect(setNextPartMock).toHaveBeenCalledTimes(1)
+			expect(setNextPartMock).toHaveBeenCalledWith(
 				expect.objectContaining({}),
 				expect.objectContaining({ PlaylistId: rundownPlaylistId }),
-				expect.objectContaining({ _id: 'tmp_part_1' })
+				expect.objectContaining({ part: expect.objectContaining({ _id: 'tmp_part_1' }) }),
+				false
 			)
 			jest.clearAllMocks()
 
@@ -593,21 +619,22 @@ describe('ensureNextPartIsValid', () => {
 			await resetPartIds('mock_part_instance9', instanceId, false)
 
 			// remove the last part
-			await context.directCollections.Parts.remove(part._id)
+			await context.mockCollections.Parts.remove(part._id)
 
 			// make sure the next part gets cleared
 			await ensureNextPartIsValid()
 
-			expect(setNextPartInnerMock).toHaveBeenCalledTimes(1)
-			expect(setNextPartInnerMock).toHaveBeenCalledWith(
+			expect(setNextPartMock).toHaveBeenCalledTimes(1)
+			expect(setNextPartMock).toHaveBeenCalledWith(
 				expect.objectContaining({}),
 				expect.objectContaining({ PlaylistId: rundownPlaylistId }),
-				null
+				null,
+				false
 			)
 		} finally {
 			// Cleanup to not mess with other tests
-			await context.directCollections.PartInstances.remove(instanceId)
-			await context.directCollections.Parts.remove(part._id)
+			await context.mockCollections.PartInstances.remove(instanceId)
+			await context.mockCollections.Parts.remove(part._id)
 		}
 	})
 })

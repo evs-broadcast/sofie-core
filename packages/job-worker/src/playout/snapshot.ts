@@ -22,12 +22,18 @@ import _ = require('underscore')
 import { JobContext } from '../jobs'
 import { runWithPlaylistLock } from './lock'
 import { CoreRundownPlaylistSnapshot } from '@sofie-automation/corelib/dist/snapshots'
-import { unprotectString, ProtectedString, protectStringArray } from '@sofie-automation/corelib/dist/protectedString'
+import {
+	unprotectString,
+	ProtectedString,
+	protectStringArray,
+	protectString,
+} from '@sofie-automation/corelib/dist/protectedString'
 import { saveIntoDb } from '../db/changes'
 import { getPartId, getSegmentId } from '../ingest/lib'
 import { assertNever, getRandomId, literal } from '@sofie-automation/corelib/dist/lib'
 import { logger } from '../logging'
 import { JSONBlobParse, JSONBlobStringify } from '@sofie-automation/shared-lib/dist/lib/JSONBlob'
+import { DBRundownPlaylist } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
 
 /**
  * Generate the Playlist owned portions of a Playlist snapshot
@@ -232,12 +238,14 @@ export async function handleRestorePlaylistSnapshot(
 
 		partIdMap.set(oldId, part._id)
 	}
+	const partInstanceOldRundownIdMap = new Map<PartInstanceId, RundownId>()
 	const partInstanceIdMap = new Map<PartInstanceId, PartInstanceId>()
 	for (const partInstance of snapshot.partInstances) {
 		const oldId = partInstance._id
 		partInstance._id = getRandomId()
 		partInstanceIdMap.set(oldId, partInstance._id)
 		partInstance.part._id = partIdMap.get(partInstance.part._id) || getRandomId()
+		partInstanceOldRundownIdMap.set(oldId, partInstance.rundownId)
 	}
 	const segmentIdMap = new Map<SegmentId, SegmentId>()
 	for (const segment of snapshot.segments) {
@@ -281,18 +289,21 @@ export async function handleRestorePlaylistSnapshot(
 		}
 	}
 
-	if (snapshot.playlist.currentPartInstanceId) {
-		snapshot.playlist.currentPartInstanceId =
-			partInstanceIdMap.get(snapshot.playlist.currentPartInstanceId) || snapshot.playlist.currentPartInstanceId
-	}
-	if (snapshot.playlist.nextPartInstanceId) {
-		snapshot.playlist.nextPartInstanceId =
-			partInstanceIdMap.get(snapshot.playlist.nextPartInstanceId) || snapshot.playlist.nextPartInstanceId
-	}
-	if (snapshot.playlist.previousPartInstanceId) {
-		snapshot.playlist.previousPartInstanceId =
-			partInstanceIdMap.get(snapshot.playlist.previousPartInstanceId) || snapshot.playlist.previousPartInstanceId
-	}
+	fixupImportedSelectedPartInstanceIds(
+		snapshot,
+		rundownIdMap,
+		partInstanceIdMap,
+		partInstanceOldRundownIdMap,
+		'current'
+	)
+	fixupImportedSelectedPartInstanceIds(snapshot, rundownIdMap, partInstanceIdMap, partInstanceOldRundownIdMap, 'next')
+	fixupImportedSelectedPartInstanceIds(
+		snapshot,
+		rundownIdMap,
+		partInstanceIdMap,
+		partInstanceOldRundownIdMap,
+		'previous'
+	)
 
 	for (const expectedPackage of snapshot.expectedPackages) {
 		switch (expectedPackage.fromPieceType) {
@@ -374,94 +385,112 @@ export async function handleRestorePlaylistSnapshot(
 		return (objs || []).map((obj) => updateIds(obj))
 	}
 
-	await Promise.all([
-		saveIntoDb(context, context.directCollections.RundownPlaylists, { _id: playlistId }, [snapshot.playlist]),
-		saveIntoDb(context, context.directCollections.Rundowns, { playlistId }, snapshot.rundowns),
-		saveIntoDb(
-			context,
-			context.directCollections.IngestDataCache,
-			{ rundownId: { $in: rundownIds } },
-			updateItemIds(snapshot.ingestData, true)
-		),
-		saveIntoDb(
-			context,
-			context.directCollections.RundownBaselineObjects,
-			{ rundownId: { $in: rundownIds } },
-			updateItemIds(snapshot.baselineObjs, true)
-		),
-		saveIntoDb(
-			context,
-			context.directCollections.RundownBaselineAdLibPieces,
-			{ rundownId: { $in: rundownIds } },
-			updateItemIds(snapshot.baselineAdlibs, true)
-		),
-		saveIntoDb(
-			context,
-			context.directCollections.RundownBaselineAdLibActions,
-			{ rundownId: { $in: rundownIds } },
-			updateItemIds(snapshot.baselineAdLibActions, true)
-		),
-		saveIntoDb(
-			context,
-			context.directCollections.Segments,
-			{ rundownId: { $in: rundownIds } },
-			updateItemIds(snapshot.segments, false)
-		),
-		saveIntoDb(
-			context,
-			context.directCollections.Parts,
-			{ rundownId: { $in: rundownIds } },
-			updateItemIds(snapshot.parts, false)
-		),
-		saveIntoDb(
-			context,
-			context.directCollections.PartInstances,
-			{ rundownId: { $in: rundownIds } },
-			updateItemIds(snapshot.partInstances, false)
-		),
-		saveIntoDb(
-			context,
-			context.directCollections.Pieces,
-			{ rundownId: { $in: rundownIds } },
-			updateItemIds(snapshot.pieces, false)
-		),
-		saveIntoDb(
-			context,
-			context.directCollections.PieceInstances,
-			{ rundownId: { $in: rundownIds } },
-			updateItemIds(snapshot.pieceInstances, false)
-		),
-		saveIntoDb(
-			context,
-			context.directCollections.AdLibPieces,
-			{ rundownId: { $in: rundownIds } },
-			updateItemIds(snapshot.adLibPieces, true)
-		),
-		saveIntoDb(
-			context,
-			context.directCollections.AdLibActions,
-			{ rundownId: { $in: rundownIds } },
-			updateItemIds(snapshot.adLibActions, true)
-		),
-		saveIntoDb(
-			context,
-			context.directCollections.ExpectedMediaItems,
-			{ partId: { $in: protectStringArray(_.keys(partIdMap)) } },
-			updateItemIds(snapshot.expectedMediaItems, true)
-		),
-		saveIntoDb(
-			context,
-			context.directCollections.ExpectedPlayoutItems,
-			{ rundownId: { $in: rundownIds } },
-			updateItemIds(snapshot.expectedPlayoutItems || [], false)
-		),
-		saveIntoDb(
-			context,
-			context.directCollections.ExpectedPackages,
-			{ rundownId: { $in: rundownIds } },
-			updateItemIds(snapshot.expectedPackages || [], false)
-		),
-	])
+	await context.directCollections.runInTransaction(async (transaction) => {
+		await Promise.all([
+			saveIntoDb(context, context.directCollections.RundownPlaylists, transaction, { _id: playlistId }, [
+				snapshot.playlist,
+			]),
+			saveIntoDb(context, context.directCollections.Rundowns, transaction, { playlistId }, snapshot.rundowns),
+			saveIntoDb(
+				context,
+				context.directCollections.IngestDataCache,
+				transaction,
+				{ rundownId: { $in: rundownIds } },
+				updateItemIds(snapshot.ingestData, true)
+			),
+			saveIntoDb(
+				context,
+				context.directCollections.RundownBaselineObjects,
+				transaction,
+				{ rundownId: { $in: rundownIds } },
+				updateItemIds(snapshot.baselineObjs, true)
+			),
+			saveIntoDb(
+				context,
+				context.directCollections.RundownBaselineAdLibPieces,
+				transaction,
+				{ rundownId: { $in: rundownIds } },
+				updateItemIds(snapshot.baselineAdlibs, true)
+			),
+			saveIntoDb(
+				context,
+				context.directCollections.RundownBaselineAdLibActions,
+				transaction,
+				{ rundownId: { $in: rundownIds } },
+				updateItemIds(snapshot.baselineAdLibActions, true)
+			),
+			saveIntoDb(
+				context,
+				context.directCollections.Segments,
+				transaction,
+				{ rundownId: { $in: rundownIds } },
+				updateItemIds(snapshot.segments, false)
+			),
+			saveIntoDb(
+				context,
+				context.directCollections.Parts,
+				transaction,
+				{ rundownId: { $in: rundownIds } },
+				updateItemIds(snapshot.parts, false)
+			),
+			saveIntoDb(
+				context,
+				context.directCollections.PartInstances,
+				transaction,
+				{ rundownId: { $in: rundownIds } },
+				updateItemIds(snapshot.partInstances, false)
+			),
+			saveIntoDb(
+				context,
+				context.directCollections.Pieces,
+				transaction,
+				{ rundownId: { $in: rundownIds } },
+				updateItemIds(snapshot.pieces, false)
+			),
+			saveIntoDb(
+				context,
+				context.directCollections.PieceInstances,
+				transaction,
+				{ rundownId: { $in: rundownIds } },
+				updateItemIds(snapshot.pieceInstances, false)
+			),
+			saveIntoDb(
+				context,
+				context.directCollections.AdLibPieces,
+				transaction,
+				{ rundownId: { $in: rundownIds } },
+				updateItemIds(snapshot.adLibPieces, true)
+			),
+			saveIntoDb(
+				context,
+				context.directCollections.AdLibActions,
+				transaction,
+				{ rundownId: { $in: rundownIds } },
+				updateItemIds(snapshot.adLibActions, true)
+			),
+			saveIntoDb(
+				context,
+				context.directCollections.ExpectedMediaItems,
+				transaction,
+				{ partId: { $in: protectStringArray(_.keys(partIdMap)) } },
+				updateItemIds(snapshot.expectedMediaItems, true)
+			),
+			saveIntoDb(
+				context,
+				context.directCollections.ExpectedPlayoutItems,
+				transaction,
+				{ rundownId: { $in: rundownIds } },
+				updateItemIds(snapshot.expectedPlayoutItems || [], false)
+			),
+			saveIntoDb(
+				context,
+				context.directCollections.ExpectedPackages,
+				transaction,
+				{ rundownId: { $in: rundownIds } },
+				updateItemIds(snapshot.expectedPackages || [], false)
+			),
+		])
+	})
 
 	logger.info(`Restore done`)
 	return {
@@ -472,4 +501,35 @@ export async function handleRestorePlaylistSnapshot(
 function getRandomIdAndWarn<T extends ProtectedString<any>>(name: string): T {
 	logger.warn(`Couldn't find "${name}" when restoring snapshot`)
 	return getRandomId<T>()
+}
+
+function fixupImportedSelectedPartInstanceIds(
+	snapshot: CoreRundownPlaylistSnapshot,
+	rundownIdMap: Map<RundownId, RundownId>,
+	partInstanceIdMap: Map<PartInstanceId, PartInstanceId>,
+	partInstanceOldRundownIdMap: Map<PartInstanceId, RundownId>,
+	property: 'current' | 'next' | 'previous'
+) {
+	const fullOldKey = `${property}PartInstanceId`
+	if (fullOldKey in snapshot.playlist) {
+		const oldId = (snapshot.playlist as any)[fullOldKey] as PartInstanceId
+		snapshot.playlist.currentPartInfo = {
+			partInstanceId: oldId,
+			rundownId: partInstanceOldRundownIdMap.get(oldId) || protectString(''),
+			manuallySelected: false,
+			consumesNextSegmentId: false,
+		}
+	}
+
+	const fullNewKey: keyof DBRundownPlaylist = `${property}PartInfo`
+
+	const snapshotInfo = snapshot.playlist[fullNewKey]
+	if (snapshotInfo) {
+		snapshot.playlist[fullNewKey] = {
+			partInstanceId: partInstanceIdMap.get(snapshotInfo.partInstanceId) || snapshotInfo.partInstanceId,
+			rundownId: rundownIdMap.get(snapshotInfo.rundownId) || snapshotInfo.rundownId,
+			manuallySelected: snapshotInfo.manuallySelected,
+			consumesNextSegmentId: snapshotInfo.consumesNextSegmentId,
+		}
+	}
 }

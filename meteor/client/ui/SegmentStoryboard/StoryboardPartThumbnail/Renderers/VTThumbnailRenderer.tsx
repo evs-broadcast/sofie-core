@@ -17,13 +17,14 @@ export function VTThumbnailRenderer({
 	partId,
 	pieceInstance,
 	partAutoNext,
+	partPlannedStoppedPlayback,
 	isLive,
-	isFinished,
 	hovering,
 	hoverScrubTimePosition,
 	originPosition,
 	studio,
 	layer,
+	height,
 }: IProps): JSX.Element {
 	const mediaPreviewUrl = studio.settings.mediaPreviewsUrl
 
@@ -43,10 +44,12 @@ export function VTThumbnailRenderer({
 				showMiniInspector={hovering}
 				timePosition={hoverScrubTimePosition}
 				content={vtContent}
-				floatingInspectorStyle={{
-					top: originPosition.top + 'px',
-					left: originPosition.left + 'px',
-					transform: 'translate(0, -100%)',
+				position={{
+					top: originPosition.top,
+					left: originPosition.left,
+					height,
+					anchor: 'start',
+					position: 'top-start',
 				}}
 				typeClass={layer && RundownUtils.getSourceLayerClassName(layer.type)}
 				itemElement={null}
@@ -64,6 +67,7 @@ export function VTThumbnailRenderer({
 					partPlayed: timingContext.partPlayed && timingContext.partPlayed[unprotectString(partId)],
 					partDisplayDurations:
 						timingContext.partDisplayDurations && timingContext.partDisplayDurations[unprotectString(partId)],
+					currentTime: timingContext.currentTime,
 				})}
 			>
 				{(timingContext) => {
@@ -76,6 +80,11 @@ export function VTThumbnailRenderer({
 					const contentLeft = contentEnd - partPlayed
 
 					const partExpectedDuration = timingContext.partDisplayDurations[unprotectString(partId)]
+
+					const isFinished =
+						!!partPlannedStoppedPlayback &&
+						!!timingContext.currentTime &&
+						partPlannedStoppedPlayback < timingContext.currentTime
 
 					const partLeft = partExpectedDuration - partPlayed
 

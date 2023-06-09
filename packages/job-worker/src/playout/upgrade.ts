@@ -1,6 +1,11 @@
-import { BlueprintMappings } from '@sofie-automation/blueprints-integration'
-import { MappingsExt } from '@sofie-automation/corelib/dist/dataModel/Studio'
-import { clone } from '@sofie-automation/corelib/dist/lib'
+import { BlueprintMapping, BlueprintMappings, TSR } from '@sofie-automation/blueprints-integration'
+import {
+	MappingsExt,
+	StudioIngestDevice,
+	StudioInputDevice,
+	StudioPlayoutDevice,
+} from '@sofie-automation/corelib/dist/dataModel/Studio'
+import { Complete, clone, literal } from '@sofie-automation/corelib/dist/lib'
 import { protectString } from '@sofie-automation/corelib/dist/protectedString'
 import { applyAndValidateOverrides } from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
 import { wrapTranslatableMessageFromBlueprints } from '@sofie-automation/corelib/dist/TranslatableMessage'
@@ -28,26 +33,61 @@ export async function handleBlueprintUpgradeForStudio(context: JobContext, _data
 	const result = blueprint.blueprint.applyConfig(
 		blueprintContext,
 		clone(rawBlueprintConfig),
-		compileCoreConfigValues()
+		compileCoreConfigValues(context.studio.settings)
 	)
 
-	await context.directCollections.Studios.update(context.studioId, {
-		$set: {
-			'mappingsWithOverrides.defaults': translateMappings(result.mappings),
-			lastBlueprintConfig: {
-				blueprintHash: blueprint.blueprintDoc.blueprintHash,
-				blueprintId: blueprint.blueprintId,
-				blueprintConfigPresetId: context.studio.blueprintConfigPresetId,
-				config: rawBlueprintConfig,
+	const playoutDevices = Object.fromEntries(
+		Object.entries<TSR.DeviceOptionsAny>(result.playoutDevices ?? {}).map((dev) => [
+			dev[0],
+			literal<Complete<StudioPlayoutDevice>>({
+				peripheralDeviceId: undefined,
+				options: dev[1],
+			}),
+		])
+	)
+	const ingestDevices = Object.fromEntries(
+		Object.entries<unknown>(result.ingestDevices ?? {}).map((dev) => [
+			dev[0],
+			literal<Complete<StudioIngestDevice>>({
+				peripheralDeviceId: undefined,
+				options: dev[1],
+			}),
+		])
+	)
+	const inputDevices = Object.fromEntries(
+		Object.entries<unknown>(result.inputDevices ?? {}).map((dev) => [
+			dev[0],
+			literal<Complete<StudioInputDevice>>({
+				peripheralDeviceId: undefined,
+				options: dev[1],
+			}),
+		])
+	)
+
+	await context.directCollections.Studios.update(
+		context.studioId,
+		{
+			$set: {
+				'mappingsWithOverrides.defaults': translateMappings(result.mappings),
+				'peripheralDeviceSettings.playoutDevices.defaults': playoutDevices,
+				'peripheralDeviceSettings.ingestDevices.defaults': ingestDevices,
+				'peripheralDeviceSettings.inputDevices.defaults': inputDevices,
+				lastBlueprintConfig: {
+					blueprintHash: blueprint.blueprintDoc.blueprintHash,
+					blueprintId: blueprint.blueprintId,
+					blueprintConfigPresetId: context.studio.blueprintConfigPresetId,
+					config: rawBlueprintConfig,
+				},
 			},
 		},
-	})
+		null // Single operation
+	)
 }
 
 function translateMappings(rawMappings: BlueprintMappings): MappingsExt {
 	const mappings: MappingsExt = {}
 
-	for (const [id, mapping] of Object.entries(rawMappings)) {
+	for (const [id, mapping] of Object.entries<BlueprintMapping>(rawMappings)) {
 		mappings[id] = {
 			...mapping,
 			deviceId: protectString(mapping.deviceId),

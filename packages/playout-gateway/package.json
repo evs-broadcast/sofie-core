@@ -1,6 +1,6 @@
 {
 	"name": "playout-gateway",
-	"version": "1.49.5",
+	"version": "1.50.0",
 	"private": true,
 	"description": "Connect to Core, play stuff",
 	"license": "MIT",
@@ -20,23 +20,24 @@
 	},
 	"contributors": [],
 	"scripts": {
-		"build": "rimraf dist && yarn build:main",
-		"buildstart": "yarn build && yarn dev",
-		"buildinspect": "yarn build && yarn inspect",
-		"build:main": "tsc -p tsconfig.build.json",
-		"lint:raw": "eslint --ext .ts --ext .js --ignore-pattern dist",
-		"lint": "yarn lint:raw .",
-		"unit": "jest",
-		"test": "yarn lint && yarn unit",
-		"watch": "jest --watch",
-		"cov": "jest; open-cli coverage/lcov-report/index.html",
+		"build": "run -T rimraf dist && run build:main",
+		"buildstart": "run build && run dev",
+		"buildinspect": "run build && run inspect",
+		"build:main": "run -T tsc -p tsconfig.build.json",
+		"lint:raw": "run -T eslint --ext .ts --ext .js --ignore-pattern dist",
+		"lint": "run lint:raw .",
+		"unit": "run -T jest",
+		"test": "run lint && run unit",
+		"watch": "run -T jest --watch",
+		"cov": "run -T jest; run -T open-cli coverage/lcov-report/index.html",
 		"cov-open": "open-cli coverage/lcov-report/index.html",
-		"ci": "yarn test",
-		"inspect": "node --experimental-fetch --inspect dist/index.js",
-		"start": "node --experimental-fetch dist/index.js",
-		"validate:dependencies": "yarn audit --groups dependencies && yarn license-validate",
-		"validate:dev-dependencies": "yarn audit --groups devDependencies",
-		"license-validate": "yarn sofie-licensecheck",
+		"ci": "run test",
+		"inspect": "node --inspect dist/index.js",
+		"start": "node dist/index.js",
+		"dev": "run start -id localDevPg",
+		"validate:dependencies": "yarn npm audit --environment production && run license-validate",
+		"validate:dev-dependencies": "yarn npm audit --environment development",
+		"license-validate": "run -T sofie-licensecheck",
 		"evs-rename:dependency": "node rename-deps.mjs"
 	},
 	"engines": {
@@ -56,21 +57,22 @@
 		"production"
 	],
 	"dependencies": {
-		"@sofie-automation/server-core-integration": "1.49.5",
-		"@sofie-automation/shared-lib": "1.49.5",
+		"@sofie-automation/server-core-integration": "1.50.0",
+		"@sofie-automation/shared-lib": "1.50.0",
 		"debug": "^4.3.3",
 		"influx": "^5.9.3",
-		"timeline-state-resolver": "npm:@evs/timeline-state-resolver@8.0.2",
+		"timeline-state-resolver": "npm:@evs/timeline-state-resolver@8.0.2-CER-3900-merge-r50.321",
 		"tslib": "^2.4.0",
 		"underscore": "^1.13.4",
 		"winston": "^3.8.2"
 	},
 	"lint-staged": {
 		"*.{css,json,md,scss}": [
-			"prettier"
+			"yarn run -T prettier"
 		],
 		"*.{ts,tsx,js,jsx}": [
 			"yarn lint:raw"
 		]
-	}
+	},
+	"packageManager": "yarn@3.5.0"
 }

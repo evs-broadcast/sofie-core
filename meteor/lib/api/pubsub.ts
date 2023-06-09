@@ -1,5 +1,6 @@
 import { IngestDataCacheObj } from '@sofie-automation/corelib/dist/dataModel/IngestDataCache'
 import {
+	BucketId,
 	ExpectedPackageId,
 	PeripheralDeviceId,
 	RundownId,
@@ -29,7 +30,6 @@ import { MediaWorkFlowStep } from '../collections/MediaWorkFlowSteps'
 import { DBOrganization } from '../collections/Organization'
 import { PackageContainerPackageStatusDB } from '../collections/PackageContainerPackageStatus'
 import { PackageContainerStatusDB } from '../collections/PackageContainerStatus'
-import { PackageInfoDB } from '../collections/PackageInfos'
 import { PartInstance } from '../collections/PartInstances'
 import { DBPart } from '../collections/Parts'
 import { PeripheralDeviceCommand } from '../collections/PeripheralDeviceCommands'
@@ -53,11 +53,12 @@ import { UserActionsLogItem } from '../collections/UserActionsLog'
 import { DBUser } from '../collections/Users'
 import { DBObj } from '../lib'
 import { MongoQuery } from '../typings/meteor'
-import { UIPieceContentStatus, UISegmentPartNote } from './rundownNotifications'
+import { UIBucketContentStatus, UIPieceContentStatus, UISegmentPartNote } from './rundownNotifications'
 import { UIShowStyleBase } from './showStyles'
 import { UIStudio } from './studios'
 import { UIDeviceTriggerPreview } from '../../server/publications/deviceTriggersPreview'
 import { DeviceTriggerMountedAction, PreviewWrappedAdLib } from './triggers/MountedTriggers'
+import { PeripheralDeviceForDevice } from '@sofie-automation/shared-lib/dist/core/model/peripheralDevice'
 
 /**
  * Ids of possible DDP subscriptions
@@ -111,6 +112,7 @@ export enum PubSub {
 	expectedPackages = 'expectedPackages',
 	expectedPackageWorkStatuses = 'expectedPackageWorkStatuses',
 	packageContainerPackageStatuses = 'packageContainerPackageStatuses',
+	packageContainerPackageStatusesSimple = 'packageContainerPackageStatusesSimple',
 	packageContainerStatuses = 'packageContainerStatuses',
 	packageInfos = 'packageInfos',
 
@@ -118,6 +120,7 @@ export enum PubSub {
 	rundownsForDevice = 'rundownsForDevice',
 
 	// custom publications:
+	peripheralDeviceForDevice = 'peripheralDeviceForDevice',
 	mappingsForDevice = 'mappingsForDevice',
 	timelineForDevice = 'timelineForDevice',
 	timelineDatastoreForDevice = 'timelineDatastoreForDevice',
@@ -135,6 +138,7 @@ export enum PubSub {
 
 	uiSegmentPartNotes = 'uiSegmentPartNotes',
 	uiPieceContentStatuses = 'uiPieceContentStatuses',
+	uiBucketContentStatuses = 'uiBucketContentStatuses',
 }
 
 /**
@@ -154,10 +158,7 @@ export interface PubSubTypes {
 	[PubSub.mediaObjects]: (studioId: StudioId, selector: MongoQuery<MediaObject>, token?: string) => MediaObject
 	[PubSub.peripheralDeviceCommands]: (deviceId: PeripheralDeviceId, token?: string) => PeripheralDeviceCommand
 	[PubSub.peripheralDevices]: (selector: MongoQuery<PeripheralDevice>, token?: string) => PeripheralDevice
-	[PubSub.peripheralDevicesAndSubDevices]: (
-		selector: MongoQuery<PeripheralDevice>,
-		token?: string
-	) => PeripheralDevice
+	[PubSub.peripheralDevicesAndSubDevices]: (selector: MongoQuery<PeripheralDevice>) => PeripheralDevice
 	[PubSub.rundownBaselineAdLibPieces]: (
 		selector: MongoQuery<RundownBaselineAdLibItem>,
 		token?: string
@@ -205,7 +206,7 @@ export interface PubSubTypes {
 	[PubSub.loggedInUser]: (token?: string) => DBUser
 	[PubSub.usersInOrganization]: (selector: MongoQuery<DBUser>, token?: string) => DBUser
 	[PubSub.organization]: (selector: MongoQuery<DBOrganization>, token?: string) => DBOrganization
-	[PubSub.buckets]: (selector: MongoQuery<Bucket>, token?: string) => Bucket
+	[PubSub.buckets]: (studioId: StudioId, bucketId: BucketId | null, token?: string) => Bucket
 	[PubSub.bucketAdLibPieces]: (selector: MongoQuery<BucketAdLib>, token?: string) => BucketAdLib
 	[PubSub.bucketAdLibActions]: (selector: MongoQuery<BucketAdLibAction>, token?: string) => BucketAdLibAction
 	[PubSub.translationsBundles]: (selector: MongoQuery<TranslationsBundle>, token?: string) => TranslationsBundle
@@ -219,16 +220,21 @@ export interface PubSubTypes {
 		containerId?: string | null,
 		packageId?: ExpectedPackageId | null
 	) => PackageContainerPackageStatusDB
+	[PubSub.packageContainerPackageStatusesSimple]: (
+		studioId: StudioId,
+		containerId?: string | null,
+		packageId?: ExpectedPackageId | null
+	) => Omit<PackageContainerPackageStatusDB, 'modified'>
 	[PubSub.packageContainerStatuses]: (
 		selector: MongoQuery<PackageContainerStatusDB>,
 		token?: string
 	) => PackageContainerStatusDB
-	[PubSub.packageInfos]: (selector: MongoQuery<PackageInfoDB>, token?: string) => PackageInfoDB
 
 	// For a PeripheralDevice
 	[PubSub.rundownsForDevice]: (deviceId: PeripheralDeviceId, token: string) => DBRundown
 
 	// custom publications:
+	[PubSub.peripheralDeviceForDevice]: (deviceId: PeripheralDeviceId, token?: string) => PeripheralDeviceForDevice
 	[PubSub.mappingsForDevice]: (deviceId: PeripheralDeviceId, token?: string) => RoutedMappings
 	[PubSub.timelineForDevice]: (deviceId: PeripheralDeviceId, token?: string) => RoutedTimeline
 	[PubSub.timelineDatastoreForDevice]: (deviceId: PeripheralDeviceId, token?: string) => DBTimelineDatastoreEntry
@@ -254,12 +260,14 @@ export interface PubSubTypes {
 
 	[PubSub.uiSegmentPartNotes]: (playlistId: RundownPlaylistId | null) => UISegmentPartNote
 	[PubSub.uiPieceContentStatuses]: (rundownPlaylistId: RundownPlaylistId | null) => UIPieceContentStatus
+	[PubSub.uiBucketContentStatuses]: (studioId: StudioId, bucketId: BucketId) => UIBucketContentStatus
 }
 
 /**
  * Ids of possible Custom collections, populated by DDP subscriptions
  */
 export enum CustomCollectionName {
+	PeripheralDeviceForDevice = 'peripheralDeviceForDevice',
 	StudioMappings = 'studioMappings',
 	StudioTimeline = 'studioTimeline',
 	ExpectedPackagesForDevice = 'deviceExpectedPackages',
@@ -271,6 +279,7 @@ export enum CustomCollectionName {
 	MountedTriggersPreviews = 'mountedTriggersPreviews',
 	UISegmentPartNotes = 'uiSegmentPartNotes',
 	UIPieceContentStatuses = 'uiPieceContentStatuses',
+	UIBucketContentStatuses = 'uiBucketContentStatuses',
 }
 
 /**
@@ -278,6 +287,7 @@ export enum CustomCollectionName {
  * All the CustomCollectionName ids must be present here, or they will produce type errors when used
  */
 export type CustomCollectionType = {
+	[CustomCollectionName.PeripheralDeviceForDevice]: PeripheralDeviceForDevice
 	[CustomCollectionName.StudioMappings]: RoutedMappings
 	[CustomCollectionName.StudioTimeline]: RoutedTimeline
 	[CustomCollectionName.ExpectedPackagesForDevice]: DBObj
@@ -289,6 +299,7 @@ export type CustomCollectionType = {
 	[CustomCollectionName.MountedTriggersPreviews]: PreviewWrappedAdLib
 	[CustomCollectionName.UISegmentPartNotes]: UISegmentPartNote
 	[CustomCollectionName.UIPieceContentStatuses]: UIPieceContentStatus
+	[CustomCollectionName.UIBucketContentStatuses]: UIBucketContentStatus
 }
 
 /**

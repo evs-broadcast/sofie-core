@@ -8,6 +8,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { PieceLifespan, VTContent } from '@sofie-automation/blueprints-integration'
 import { OffsetPosition } from '../../../utils/positions'
 import { CalculateTimingsPiece } from '@sofie-automation/corelib/dist/playout/timings'
+import { IFloatingInspectorPosition } from '../../FloatingInspectors/IFloatingInspectorPosition'
 
 export type SourceDurationLabelAlignment = 'left' | 'right'
 
@@ -50,7 +51,7 @@ export interface ISourceLayerItemState {}
 export class CustomLayerItemRenderer<
 	IProps extends ICustomLayerItemProps,
 	IState extends ISourceLayerItemState
-> extends React.Component<ICustomLayerItemProps & IProps, ISourceLayerItemState & IState> {
+> extends React.Component<React.PropsWithChildren<ICustomLayerItemProps & IProps>, ISourceLayerItemState & IState> {
 	protected getSourceDurationLabelAlignment(): SourceDurationLabelAlignment {
 		return (
 			(this.props.getSourceDurationLabelAlignment &&
@@ -76,10 +77,12 @@ export class CustomLayerItemRenderer<
 		}
 	}
 
-	protected getFloatingInspectorStyle(): React.CSSProperties {
+	protected getFloatingInspectorStyle(): IFloatingInspectorPosition {
 		return {
-			left: (this.props.elementPosition.left + this.props.cursorPosition.left).toString() + 'px',
-			top: this.props.elementPosition.top + 'px',
+			left: this.props.elementPosition.left + this.props.cursorPosition.left,
+			top: this.props.elementPosition.top,
+			anchor: 'start',
+			position: 'top-start',
 		}
 	}
 

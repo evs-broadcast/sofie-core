@@ -1,7 +1,12 @@
 import { Meteor } from 'meteor/meteor'
 import { CustomCollectionName, PubSub } from '../../lib/api/pubsub'
 import { PeripheralDeviceReadAccess } from '../security/peripheralDevice'
-import { MappingsExtWithPackage, routeExpectedPackages, Studio } from '../../lib/collections/Studios'
+import {
+	MappingsExtWithPackage,
+	routeExpectedPackages,
+	Studio,
+	StudioPackageContainer,
+} from '../../lib/collections/Studios'
 import { setUpOptimizedObserverArray, TriggerUpdate, meteorCustomPublish } from '../lib/customPublication'
 import { ExpectedPackageDB, getSideEffect } from '../../lib/collections/ExpectedPackages'
 import _ from 'underscore'
@@ -70,18 +75,18 @@ type RundownPlaylistFields =
 	| '_id'
 	| 'activationId'
 	| 'rehearsal'
-	| 'currentPartInstanceId'
-	| 'nextPartInstanceId'
-	| 'previousPartInstanceId'
+	| 'currentPartInfo'
+	| 'nextPartInfo'
+	| 'previousPartInfo'
 	| 'rundownIdsInOrder'
 const rundownPlaylistFieldSpecifier = literal<IncludeAllMongoFieldSpecifier<RundownPlaylistFields>>({
 	// It should be enough to watch these fields for changes
 	_id: 1,
 	activationId: 1,
 	rehearsal: 1,
-	currentPartInstanceId: 1, // So that it invalidates when the current changes
-	nextPartInstanceId: 1, // So that it invalidates when the next changes
-	previousPartInstanceId: 1,
+	currentPartInfo: 1, // So that it invalidates when the current changes
+	nextPartInfo: 1, // So that it invalidates when the next changes
+	previousPartInfo: 1,
 	rundownIdsInOrder: 1,
 })
 
@@ -91,49 +96,60 @@ async function setupExpectedPackagesPublicationObservers(
 ): Promise<Meteor.LiveQueryHandle[]> {
 	// Set up observers:
 	return [
-		Studios.find(args.studioId, {
-			fields: {
-				// mappingsHash gets updated when either of these omitted fields changes
-				...omit(studioFieldSpecifier, 'mappingsWithOverrides', 'routeSets'),
-				mappingsHash: 1,
+		Studios.observeChanges(
+			args.studioId,
+			{
+				added: () => triggerUpdate({ invalidateStudio: true }),
+				changed: () => triggerUpdate({ invalidateStudio: true }),
+				removed: () => triggerUpdate({ invalidateStudio: true }),
 			},
-		}).observeChanges({
-			added: () => triggerUpdate({ invalidateStudio: true }),
-			changed: () => triggerUpdate({ invalidateStudio: true }),
-			removed: () => triggerUpdate({ invalidateStudio: true }),
-		}),
-		PeripheralDevices.find(
-			{ studioId: args.studioId },
+			{
+				fields: {
+					// mappingsHash gets updated when either of these omitted fields changes
+					...omit(studioFieldSpecifier, 'mappingsWithOverrides', 'routeSets'),
+					mappingsHash: 1,
+				},
+			}
+		),
+		PeripheralDevices.observeChanges(
+			{
+				studioId: args.studioId,
+			},
+			{
+				added: () => triggerUpdate({ invalidatePeripheralDevices: true }),
+				changed: () => triggerUpdate({ invalidatePeripheralDevices: true }),
+				removed: () => triggerUpdate({ invalidatePeripheralDevices: true }),
+			},
 			{
 				fields: {
 					// Only monitor settings
 					settings: 1,
 				},
 			}
-		).observeChanges({
-			added: () => triggerUpdate({ invalidatePeripheralDevices: true }),
-			changed: () => triggerUpdate({ invalidatePeripheralDevices: true }),
-			removed: () => triggerUpdate({ invalidatePeripheralDevices: true }),
-		}),
-		ExpectedPackages.find({
-			studioId: args.studioId,
-		}).observeChanges({
-			added: () => triggerUpdate({ invalidateExpectedPackages: true }),
-			changed: () => triggerUpdate({ invalidateExpectedPackages: true }),
-			removed: () => triggerUpdate({ invalidateExpectedPackages: true }),
-		}),
-		RundownPlaylists.find(
+		),
+		ExpectedPackages.observeChanges(
 			{
 				studioId: args.studioId,
 			},
 			{
+				added: () => triggerUpdate({ invalidateExpectedPackages: true }),
+				changed: () => triggerUpdate({ invalidateExpectedPackages: true }),
+				removed: () => triggerUpdate({ invalidateExpectedPackages: true }),
+			}
+		),
+		RundownPlaylists.observeChanges(
+			{
+				studioId: args.studioId,
+			},
+			{
+				added: () => triggerUpdate({ invalidateRundownPlaylist: true }),
+				changed: () => triggerUpdate({ invalidateRundownPlaylist: true }),
+				removed: () => triggerUpdate({ invalidateRundownPlaylist: true }),
+			},
+			{
 				fields: rundownPlaylistFieldSpecifier,
 			}
-		).observeChanges({
-			added: () => triggerUpdate({ invalidateRundownPlaylist: true }),
-			changed: () => triggerUpdate({ invalidateRundownPlaylist: true }),
-			removed: () => triggerUpdate({ invalidateRundownPlaylist: true }),
-		}),
+		),
 	]
 }
 
@@ -201,15 +217,15 @@ async function manipulateExpectedPackagesPublicationData(
 			).map((rd) => rd._id)
 
 			const [nextPartInstance, currentPartInstance] = await Promise.all([
-				activePlaylist.nextPartInstanceId &&
+				activePlaylist.nextPartInfo &&
 					PartInstances.findOneAsync({
-						_id: activePlaylist.nextPartInstanceId,
+						_id: activePlaylist.nextPartInfo.partInstanceId,
 						rundownId: { $in: validRundownIds },
 						reset: { $ne: true },
 					}),
-				activePlaylist.currentPartInstanceId &&
+				activePlaylist.currentPartInfo &&
 					PartInstances.findOneAsync({
-						_id: activePlaylist.currentPartInstanceId,
+						_id: activePlaylist.currentPartInfo.partInstanceId,
 						rundownId: { $in: validRundownIds },
 						reset: { $ne: true },
 					}),
@@ -313,7 +329,9 @@ async function manipulateExpectedPackagesPublicationData(
 	}
 
 	const packageContainers: { [containerId: string]: PackageContainer } = {}
-	for (const [containerId, studioPackageContainer] of Object.entries(studio.packageContainers)) {
+	for (const [containerId, studioPackageContainer] of Object.entries<StudioPackageContainer>(
+		studio.packageContainers
+	)) {
 		packageContainers[containerId] = studioPackageContainer.container
 	}
 
@@ -367,7 +385,7 @@ meteorCustomPublish(
 		token: string | undefined
 	) {
 		if (await PeripheralDeviceReadAccess.peripheralDeviceContent(deviceId, { userId: this.userId, token })) {
-			const peripheralDevice = PeripheralDevices.findOne(deviceId)
+			const peripheralDevice = await PeripheralDevices.findOneAsync(deviceId)
 
 			if (!peripheralDevice) throw new Meteor.Error('PeripheralDevice "' + deviceId + '" not found')
 
@@ -487,7 +505,9 @@ function generateExpectedPackages(
 				const mappingDeviceId = unprotectString(mapping.deviceId)
 
 				let packageContainerId: string | undefined
-				for (const [containerId, packageContainer] of Object.entries(studio.packageContainers)) {
+				for (const [containerId, packageContainer] of Object.entries<StudioPackageContainer>(
+					studio.packageContainers
+				)) {
 					if (packageContainer.deviceIds.includes(mappingDeviceId)) {
 						// TODO: how to handle if a device has multiple containers?
 						packageContainerId = containerId

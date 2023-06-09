@@ -131,6 +131,7 @@
 		display: inline-grid;
 		grid-column: -1;
 		grid-template-columns: 1fr 1fr;
+		align-items: center;
 
 		.rundown-list-item__action {
 			all: unset; // unset button styles
@@ -253,11 +254,11 @@
 					content: ' ';
 					display: block;
 					position: absolute;
-					width: 100%;
+					right: 0%;
 					left: 2.5em;
 					height: 10px;
 					background: linear-gradient(to bottom, rgba(0, 0, 0, 0.1), transparent);
-					z-index: 3;
+					z-index: 1;
 					pointer-events: none;
 				}
 

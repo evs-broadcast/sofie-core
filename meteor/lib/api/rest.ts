@@ -15,10 +15,12 @@ import {
 	StudioId,
 } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import { Meteor } from 'meteor/meteor'
-import { PeripheralDevice, PeripheralDeviceType } from '../collections/PeripheralDevices'
-import { assertNever, unprotectString } from '../lib'
-import { IOutputLayer, StatusCode } from '@sofie-automation/blueprints-integration'
-import { Blueprint } from '../collections/Blueprints'
+
+/* *************************************************************************
+This file contains types and interfaces that are used by the REST API.
+When making changes to these types, you should be aware of any breaking changes
+and update packages/openapi accordingly if needed.
+************************************************************************* */
 
 export interface RestAPI {
 	/**
@@ -30,7 +32,10 @@ export interface RestAPI {
 	 * @param connection Connection data including client and header details
 	 * @param event User event string
 	 */
-	getAllRundownPlaylists(connection: Meteor.Connection, event: string): Promise<ClientAPI.ClientResponse<string[]>>
+	getAllRundownPlaylists(
+		connection: Meteor.Connection,
+		event: string
+	): Promise<ClientAPI.ClientResponse<Array<{ id: string }>>>
 	/**
 	 * Activates a Playlist.
 	 *
@@ -84,7 +89,7 @@ export interface RestAPI {
 	 * Moves the next point by `delta` places. Negative values are allowed to move "backwards" in the script.
 	 *
 	 * Throws if the target Playlist is not active.
-	 * Throws if no next Part could be set (e.g. Playlist is empty, delta is too high and overflows the bounds of the Playlist)
+	 * Throws if there is both no current or next Part.
 	 * If delta results in an index that is greater than the number of Parts available, no action will be taken.
 	 * @param connection Connection data including client and header details
 	 * @param event User event string
@@ -101,7 +106,7 @@ export interface RestAPI {
 	 * Moves the next Segment point by `delta` places. Negative values are allowed to move "backwards" in the script.
 	 *
 	 * Throws if the target Playlist is not active.
-	 * Throws if there is not next Part set (e.g. Playlist is empty)
+	 * Throws if there is both no current or next Part.
 	 * If delta results in an index that is greater than the number of Segments available, no action will be taken.
 	 * @param connection Connection data including client and header details
 	 * @param event User event string
@@ -248,7 +253,10 @@ export interface RestAPI {
 	 * @param connection Connection data including client and header details
 	 * @param event User event string
 	 */
-	getPeripheralDevices(connection: Meteor.Connection, event: string): Promise<ClientAPI.ClientResponse<Array<string>>>
+	getPeripheralDevices(
+		connection: Meteor.Connection,
+		event: string
+	): Promise<ClientAPI.ClientResponse<Array<{ id: string }>>>
 	/**
 	 * Get a specific device.
 	 *
@@ -290,13 +298,16 @@ export interface RestAPI {
 		connection: Meteor.Connection,
 		event: string,
 		studioId: StudioId
-	): Promise<ClientAPI.ClientResponse<Array<string>>>
+	): Promise<ClientAPI.ClientResponse<Array<{ id: string }>>>
 	/*
 	 * Gets all available Blueprints.
 	 * @param connection Connection data including client and header details
 	 * @param event User event string
 	 */
-	getAllBlueprints(connection: Meteor.Connection, event: string): Promise<ClientAPI.ClientResponse<string[]>>
+	getAllBlueprints(
+		connection: Meteor.Connection,
+		event: string
+	): Promise<ClientAPI.ClientResponse<Array<{ id: string }>>>
 	/**
 	 * Gets a specific Blueprint.
 	 *
@@ -367,7 +378,10 @@ export interface RestAPI {
 	 * @param connection Connection data including client and header details
 	 * @param event User event string
 	 */
-	getShowStyleBases(connection: Meteor.Connection, event: string): Promise<ClientAPI.ClientResponse<string[]>>
+	getShowStyleBases(
+		connection: Meteor.Connection,
+		event: string
+	): Promise<ClientAPI.ClientResponse<Array<{ id: string }>>>
 	/**
 	 * Adds a ShowStyleBase, returning the newly created Id.
 	 *
@@ -433,7 +447,7 @@ export interface RestAPI {
 		connection: Meteor.Connection,
 		event: string,
 		showStyleBaseId: ShowStyleBaseId
-	): Promise<ClientAPI.ClientResponse<string[]>>
+	): Promise<ClientAPI.ClientResponse<Array<{ id: string }>>>
 	/**
 	 * Adds a ShowStyleVariant to a specified ShowStyleBase.
 	 *
@@ -503,7 +517,7 @@ export interface RestAPI {
 	 * @param connection Connection data including client and header details
 	 * @param event User event string
 	 */
-	getStudios(connection: Meteor.Connection, event: string): Promise<ClientAPI.ClientResponse<string[]>>
+	getStudios(connection: Meteor.Connection, event: string): Promise<ClientAPI.ClientResponse<Array<{ id: string }>>>
 	/**
 	 * Adds a new Studio, returns the Id of the newly created Studio.
 	 *
@@ -614,23 +628,6 @@ export interface RestAPI {
 	): Promise<ClientAPI.ClientResponse<void>>
 }
 
-export enum RestAPIMethods {
-	'index' = 'restAPI.index',
-	'playlists' = 'restAPI.playlists',
-	'activate' = 'restAPI.activate',
-	'deactivate' = 'restAPI.deactivate',
-	'executeAction' = 'restAPI.executeAction',
-	'executeAdLib' = 'restAPI.executeAdLib',
-	'moveNextPart' = 'restAPI.moveNextPart',
-	'moveNextSegment' = 'restAPI.moveNextSegment',
-	'reloadPlaylist' = 'restAPI.reloadPlaylist',
-	'resetPlaylist' = 'restAPI.resetPlaylist',
-	'setNextPart' = 'restAPI.setNextPart',
-	'setNextSegment' = 'restAPI.setNextSegment',
-	'take' = 'restAPI.take',
-	'switchRouteSet' = 'restAPI.switchRouteSet',
-}
-
 // This interface should be auto-generated in future
 export interface APIPeripheralDevice {
 	id: string
@@ -648,71 +645,6 @@ export interface APIPeripheralDevice {
 		| 'live_status'
 		| 'input'
 	connected: boolean
-}
-
-export function APIPeripheralDeviceFrom(device: PeripheralDevice): APIPeripheralDevice {
-	let status: APIPeripheralDevice['status'] = 'unknown'
-	switch (device.status.statusCode) {
-		case StatusCode.BAD:
-			status = 'bad'
-			break
-		case StatusCode.FATAL:
-			status = 'fatal'
-			break
-		case StatusCode.GOOD:
-			status = 'good'
-			break
-		case StatusCode.WARNING_MAJOR:
-			status = 'warning_major'
-			break
-		case StatusCode.WARNING_MINOR:
-			status = 'marning_minor'
-			break
-		case StatusCode.UNKNOWN:
-			status = 'unknown'
-			break
-		default:
-			assertNever(device.status.statusCode)
-	}
-
-	let deviceType: APIPeripheralDevice['deviceType'] = 'unknown'
-	switch (device.type) {
-		case PeripheralDeviceType.INEWS:
-			deviceType = 'inews'
-			break
-		case PeripheralDeviceType.LIVE_STATUS:
-			deviceType = 'live_status'
-			break
-		case PeripheralDeviceType.MEDIA_MANAGER:
-			deviceType = 'media_manager'
-			break
-		case PeripheralDeviceType.MOS:
-			deviceType = 'mos'
-			break
-		case PeripheralDeviceType.PACKAGE_MANAGER:
-			deviceType = 'package_manager'
-			break
-		case PeripheralDeviceType.PLAYOUT:
-			deviceType = 'playout'
-			break
-		case PeripheralDeviceType.SPREADSHEET:
-			deviceType = 'spreadsheet'
-			break
-		case PeripheralDeviceType.INPUT:
-			deviceType = 'input'
-			break
-		default:
-			assertNever(device.type)
-	}
-
-	return {
-		id: unprotectString(device._id),
-		name: device.name,
-		status,
-		messages: device.status.messages ?? [],
-		deviceType,
-		connected: device.connected,
-	}
 }
 
 export enum PeripheralDeviceActionType {
@@ -764,17 +696,6 @@ export interface APIBlueprint {
 	blueprintVersion: string
 }
 
-export function APIBlueprintFrom(blueprint: Blueprint): APIBlueprint | undefined {
-	if (!blueprint.blueprintType) return undefined
-
-	return {
-		id: unprotectString(blueprint._id),
-		name: blueprint.name,
-		blueprintType: blueprint.blueprintType,
-		blueprintVersion: blueprint.blueprintVersion,
-	}
-}
-
 export interface APIShowStyleBase {
 	name: string
 	blueprintId: string
@@ -796,15 +717,6 @@ export interface APIOutputLayer {
 	name: string
 	rank: number
 	isPgm: boolean
-}
-
-export function APIOutputLayerFrom(outputLayer: IOutputLayer): APIOutputLayer {
-	return {
-		id: outputLayer._id,
-		name: outputLayer.name,
-		rank: outputLayer._rank,
-		isPgm: outputLayer.isPGM,
-	}
 }
 
 export interface APISourceLayer {

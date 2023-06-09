@@ -28,10 +28,10 @@ interface IProps {
 }
 
 const supportedSourceLayerTypes = new Set(
-	Object.values(SourceLayerType).filter(
+	Object.values<SourceLayerType>(SourceLayerType as any).filter(
 		// Support all types, apart from TRANSITION and also filter out the inverse-enum strings
 		(val) => typeof val !== 'string' && val !== SourceLayerType.TRANSITION
-	) as SourceLayerType[]
+	)
 )
 
 function findMainPiece(pieces: PieceExtended[], original?: boolean) {
@@ -111,8 +111,6 @@ export const LinePartTimeline: React.FC<IProps> = function LinePartTimeline({
 					piece={piece}
 					timelineBase={timelineBase}
 					partDuration={partDuration}
-					partId={part.partId}
-					partInstanceId={part.instance._id}
 					onClick={onPieceClick}
 					onDoubleClick={onPieceDoubleClick}
 				/>
@@ -134,7 +132,7 @@ export const LinePartTimeline: React.FC<IProps> = function LinePartTimeline({
 				</StudioContext.Consumer>
 			)}
 			{part.instance.part.invalid && !part.instance.part.gap && (
-				<InvalidPartCover className="segment-opl__main-piece invalid" part={part.instance.part} align="left" />
+				<InvalidPartCover className="segment-opl__main-piece invalid" part={part.instance.part} align="start" />
 			)}
 			{!isLive && !isInvalid && <TakeLine isNext={isNext} autoNext={willAutoNextIntoThisPart} />}
 			{transitionPiece && <LinePartTransitionPiece piece={transitionPiece} />}

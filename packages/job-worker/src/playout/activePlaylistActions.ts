@@ -5,17 +5,16 @@ import _ = require('underscore')
 import { JobContext } from '../jobs'
 import { logger } from '../logging'
 import { CacheForPlayout, getOrderedSegmentsAndPartsFromPlayoutCache, getSelectedPartInstancesFromCache } from './cache'
-import { resetRundownPlaylist, selectNextPart } from './lib'
+import { resetRundownPlaylist } from './lib'
+import { selectNextPart } from './selectNextPart'
 import { setNextPart } from './setNext'
 import { updateStudioTimeline, updateTimeline } from './timeline/generate'
-import { RundownEventContext } from '../blueprints/context'
 import { getCurrentTime } from '../lib'
 import { RundownHoldState } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
-import { PeripheralDeviceType } from '@sofie-automation/corelib/dist/dataModel/PeripheralDevice'
-import { executePeripheralDeviceFunction } from '../peripheralDevice'
 import { EventsJobs } from '@sofie-automation/corelib/dist/worker/events'
 import { RundownPlaylistActivationId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import { cleanTimelineDatastore } from './datastore'
+import { RundownActivationContext } from '../blueprints/context/RundownActivationContext'
 
 export async function activateRundownPlaylist(
 	context: JobContext,
@@ -25,6 +24,7 @@ export async function activateRundownPlaylist(
 	logger.info('Activating rundown ' + cache.Playlist.doc._id + (rehearsal ? ' (Rehearsal)' : ''))
 
 	rehearsal = !!rehearsal
+	const wasActive = !!cache.Playlist.doc.activationId
 
 	const anyOtherActiveRundowns = await getActiveRundownPlaylistsInStudioFromDb(
 		context,
@@ -57,9 +57,9 @@ export async function activateRundownPlaylist(
 	const { currentPartInstance } = getSelectedPartInstancesFromCache(cache)
 	if (!currentPartInstance || currentPartInstance.reset) {
 		cache.Playlist.update((p) => {
-			p.currentPartInstanceId = null
-			p.nextPartInstanceId = null
-			p.previousPartInstanceId = null
+			p.currentPartInfo = null
+			p.nextPartInfo = null
+			p.previousPartInfo = null
 			return p
 		})
 
@@ -71,14 +71,18 @@ export async function activateRundownPlaylist(
 			null,
 			getOrderedSegmentsAndPartsFromPlayoutCache(cache)
 		)
-		await setNextPart(context, cache, firstPart)
+		await setNextPart(context, cache, firstPart, false)
+
+		if (firstPart) {
+			rundown = cache.Rundowns.findOne(firstPart.part.rundownId)
+		}
 	} else {
 		// Otherwise preserve the active partInstances
 		const partInstancesToPreserve = new Set(
 			_.compact([
-				cache.Playlist.doc.nextPartInstanceId,
-				cache.Playlist.doc.currentPartInstanceId,
-				cache.Playlist.doc.previousPartInstanceId,
+				cache.Playlist.doc.nextPartInfo?.partInstanceId,
+				cache.Playlist.doc.currentPartInfo?.partInstanceId,
+				cache.Playlist.doc.previousPartInfo?.partInstanceId,
 			])
 		)
 		cache.PartInstances.updateAll((p) => {
@@ -98,10 +102,10 @@ export async function activateRundownPlaylist(
 			}
 		})
 
-		if (cache.Playlist.doc.nextPartInstanceId) {
-			const nextPartInstance = cache.PartInstances.findOne(cache.Playlist.doc.nextPartInstanceId)
+		if (cache.Playlist.doc.nextPartInfo) {
+			const nextPartInstance = cache.PartInstances.findOne(cache.Playlist.doc.nextPartInfo.partInstanceId)
 			if (!nextPartInstance)
-				throw new Error(`Could not find nextPartInstance "${cache.Playlist.doc.nextPartInstanceId}"`)
+				throw new Error(`Could not find nextPartInstance "${cache.Playlist.doc.nextPartInfo.partInstanceId}"`)
 			rundown = cache.Rundowns.findOne(nextPartInstance.rundownId)
 			if (!rundown) throw new Error(`Could not find rundown "${nextPartInstance.rundownId}"`)
 		}
@@ -109,22 +113,16 @@ export async function activateRundownPlaylist(
 
 	await updateTimeline(context, cache)
 
-	cache.defer(async () => {
+	cache.deferBeforeSave(async () => {
 		if (!rundown) return // if the proper rundown hasn't been found, there's little point doing anything else
 		const showStyle = await context.getShowStyleCompound(rundown.showStyleVariantId, rundown.showStyleBaseId)
 		const blueprint = await context.getShowStyleBlueprint(showStyle._id)
 
 		try {
 			if (blueprint.blueprint.onRundownActivate) {
-				const context2 = new RundownEventContext(
-					context.studio,
-					context.getStudioBlueprintConfig(),
-					showStyle,
-					context.getShowStyleBlueprintConfig(showStyle),
-					rundown
-				)
+				const context2 = new RundownActivationContext(context, cache, showStyle, rundown)
 
-				await blueprint.blueprint.onRundownActivate(context2)
+				await blueprint.blueprint.onRundownActivate(context2, wasActive)
 			}
 		} catch (err) {
 			logger.error(`Error in showStyleBlueprint.onRundownActivate: ${stringifyError(err)}`)
@@ -136,23 +134,19 @@ export async function deactivateRundownPlaylist(context: JobContext, cache: Cach
 
 	await updateStudioTimeline(context, cache)
 
-	await cleanTimelineDatastore(context, cache)
+	cache.deferDuringSaveTransaction(async (transaction) => {
+		await cleanTimelineDatastore(context, cache, transaction)
+	})
 
-	cache.defer(async () => {
+	cache.deferBeforeSave(async () => {
 		if (rundown) {
 			const showStyle = await context.getShowStyleCompound(rundown.showStyleVariantId, rundown.showStyleBaseId)
 			const blueprint = await context.getShowStyleBlueprint(showStyle._id)
 
 			try {
 				if (blueprint.blueprint.onRundownDeActivate) {
-					const context2 = new RundownEventContext(
-						context.studio,
-						context.getStudioBlueprintConfig(),
-						showStyle,
-						context.getShowStyleBlueprintConfig(showStyle),
-						rundown
-					)
-					await blueprint.blueprint.onRundownDeActivate(context2)
+					const blueprintContext = new RundownActivationContext(context, cache, showStyle, rundown)
+					await blueprint.blueprint.onRundownDeActivate(blueprintContext)
 				}
 			} catch (err) {
 				logger.error(`Error in showStyleBlueprint.onRundownDeActivate: ${stringifyError(err)}`)
@@ -189,8 +183,8 @@ export async function deactivateRundownPlaylistInner(
 	}
 
 	cache.Playlist.update((p) => {
-		p.previousPartInstanceId = null
-		p.currentPartInstanceId = null
+		p.previousPartInfo = null
+		p.currentPartInfo = null
 		p.holdState = RundownHoldState.NONE
 
 		delete p.activationId
@@ -198,7 +192,7 @@ export async function deactivateRundownPlaylistInner(
 
 		return p
 	})
-	await setNextPart(context, cache, null)
+	await setNextPart(context, cache, null, false)
 
 	if (currentPartInstance) {
 		// Set the current PartInstance as stopped
@@ -218,58 +212,4 @@ export async function deactivateRundownPlaylistInner(
 
 	if (span) span.end()
 	return rundown
-}
-/**
- * Prepares studio before a broadcast is about to start
- * @param studio
- * @param okToDestoryStuff true if we're not ON AIR, things might flicker on the output
- */
-export async function prepareStudioForBroadcast(
-	context: JobContext,
-	cache: CacheForPlayout,
-	okToDestoryStuff: boolean
-): Promise<void> {
-	const rundownPlaylistToBeActivated = cache.Playlist.doc
-	logger.info('prepareStudioForBroadcast ' + context.studio._id)
-
-	const playoutDevices = cache.PeripheralDevices.findAll((p) => p.type === PeripheralDeviceType.PLAYOUT)
-
-	for (const device of playoutDevices) {
-		// Fire the command and don't wait for the result
-		executePeripheralDeviceFunction(context, device._id, null, 'devicesMakeReady', [
-			okToDestoryStuff,
-			rundownPlaylistToBeActivated._id,
-		])
-			.then(() => {
-				logger.info(`devicesMakeReady: "${device._id}" OK`)
-			})
-			.catch((err) => {
-				logger.error(`devicesMakeReady: "${device._id} Fail: ${stringifyError(err)}"`)
-			})
-	}
-}
-/**
- * Makes a studio "stand down" after a broadcast
- * @param studio
- * @param okToDestoryStuff true if we're not ON AIR, things might flicker on the output
- */
-export async function standDownStudio(
-	context: JobContext,
-	cache: CacheForPlayout,
-	okToDestoryStuff: boolean
-): Promise<void> {
-	logger.info('standDownStudio ' + context.studio._id)
-
-	const playoutDevices = cache.PeripheralDevices.findAll((p) => p.type === PeripheralDeviceType.PLAYOUT)
-
-	for (const device of playoutDevices) {
-		// Fire the command and don't wait for the result
-		executePeripheralDeviceFunction(context, device._id, null, 'devicesStandDown', [okToDestoryStuff])
-			.then(() => {
-				logger.info(`devicesStandDown: "${device._id}" OK`)
-			})
-			.catch((err) => {
-				logger.error(`devicesStandDown: "${device._id} Fail: ${stringifyError(err)}"`)
-			})
-	}
 }

@@ -1,0 +1,18 @@
+# syntax=docker/dockerfile:1
+
+FROM ubuntu:22.04
+
+ENV TZ=Europe/Brussels
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+RUN apt-get update
+RUN apt-get install -y --fix-missing curl openjdk-11-jdk build-essential zip git expect \
+  && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash - \
+  && export NVM_DIR="$HOME/.nvm" \
+  && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" \
+  && nvm install 18 \
+  && nvm alias default 18 \
+  && nvm use default \
+  && corepack enable \
+  && curl https://install.meteor.com/ | sh \
+  && meteor npm install -g yarn

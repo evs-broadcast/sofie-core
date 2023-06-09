@@ -2,10 +2,10 @@ import { Meteor } from 'meteor/meteor'
 import { Mongo } from 'meteor/mongo'
 import { MongoModifier, MongoQuery } from '../typings/meteor'
 import { ProtectedString, protectString } from '../lib'
-import type { Collection as RawCollection, Db as RawDb, CreateIndexesOptions } from 'mongodb'
+import type { Collection as RawCollection, Db as RawDb } from 'mongodb'
 import { CollectionName } from '@sofie-automation/corelib/dist/dataModel/Collections'
 import { MongoFieldSpecifier, SortSpecifier } from '@sofie-automation/corelib/dist/mongo'
-import { CustomCollectionType } from '../api/pubsub'
+import { CustomCollectionName, CustomCollectionType } from '../api/pubsub'
 
 export const ClientCollections = new Map<CollectionName, MongoCollection<any> | WrappedMongoReadOnlyCollection<any>>()
 function registerClientCollection(
@@ -15,6 +15,8 @@ function registerClientCollection(
 	if (ClientCollections.has(name)) throw new Meteor.Error(`Cannot re-register collection "${name}"`)
 	ClientCollections.set(name, collection)
 }
+
+export const PublicationCollections = new Map<CustomCollectionName, WrappedMongoReadOnlyCollection<any>>()
 
 /**
  * Map of current collection objects.
@@ -97,8 +99,12 @@ export function createSyncCustomPublicationMongoCollection<K extends keyof Custo
 	name: K
 ): MongoReadOnlyCollection<CustomCollectionType[K]> {
 	const collection = new Mongo.Collection<CustomCollectionType[K]>(name)
+	const wrapped = new WrappedMongoReadOnlyCollection<CustomCollectionType[K]>(collection, name)
 
-	return new WrappedMongoReadOnlyCollection<CustomCollectionType[K]>(collection, name)
+	if (PublicationCollections.has(name)) throw new Meteor.Error(`Cannot re-register collection "${name}"`)
+	PublicationCollections.set(name, wrapped)
+
+	return wrapped
 }
 
 class WrappedMongoReadOnlyCollection<DBInterface extends { _id: ProtectedString<any> }>
@@ -202,29 +208,6 @@ export class WrappedMongoCollection<DBInterface extends { _id: ProtectedString<a
 			this.wrapMongoError(e)
 		}
 	}
-
-	createIndex(index: IndexSpecifier<DBInterface> | string, options?: CreateIndexesOptions): void {
-		try {
-			return this._collection.createIndex(index as any, options)
-		} catch (e) {
-			this.wrapMongoError(e)
-		}
-	}
-
-	_ensureIndex(keys: IndexSpecifier<DBInterface> | string, options?: CreateIndexesOptions): void {
-		try {
-			return this._collection._ensureIndex(keys as any, options)
-		} catch (e) {
-			this.wrapMongoError(e)
-		}
-	}
-	_dropIndex(...args: Parameters<MongoCollection<DBInterface>['_dropIndex']>): void {
-		try {
-			return this._collection._dropIndex(...args)
-		} catch (e) {
-			this.wrapMongoError(e)
-		}
-	}
 }
 
 export interface MongoReadOnlyCollection<DBInterface extends { _id: ProtectedString<any> }> {
@@ -301,19 +284,6 @@ export interface MongoCollection<DBInterface extends { _id: ProtectedString<any>
 		numberAffected?: number
 		insertedId?: DBInterface['_id']
 	}
-
-	/**
-	 * Creates the specified index on the collection.
-	 * @param index A document that contains the field and value pairs where the field is the index key and the value describes the type of index for that field.
-	 * For an ascending index on a field, specify a value of 1; for descending index, specify a value of -1. Use text for text indexes.
-	 * @param options
-	 */
-	createIndex(index: IndexSpecifier<DBInterface> | string, options?: CreateIndexesOptions): void
-
-	/** @deprecated - use createIndex */
-	_ensureIndex(keys: IndexSpecifier<DBInterface> | string, options?: CreateIndexesOptions): void
-
-	_dropIndex(indexName: string): void
 }
 
 export interface UpdateOptions {

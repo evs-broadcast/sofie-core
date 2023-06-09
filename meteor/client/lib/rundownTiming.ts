@@ -50,11 +50,6 @@ export class RundownTimingCalculator {
 
 	private linearParts: Array<[PartId, number | null]> = []
 
-	// this.previousPartInstanceId is used to check if the previousPart has changed since last iteration.
-	// this is used to track takes and simulate the take timing for the previousPart
-	private previousPartInstanceId: PartInstanceId | null = null
-	// this is the "simulated" take time of previousPartInstanceId (or real one, if available)
-	private lastTakeAt: number | undefined = undefined
 	// we need to keep the nextSegmentId here for the brief moment when the next partinstance can't be found
 	private nextSegmentId: SegmentId | undefined = undefined
 
@@ -154,7 +149,7 @@ export class RundownTimingCalculator {
 				breakIsLastRundown = breakProps.breakIsLastRundown
 			}
 
-			if (!playlist.nextPartInstanceId) {
+			if (!playlist.nextPartInfo) {
 				this.nextSegmentId = undefined
 			}
 
@@ -193,10 +188,10 @@ export class RundownTimingCalculator {
 				const aIndex = this.linearParts.push([partInstance.part._id, waitAccumulator]) - 1
 
 				// if this is next Part, clear previous countdowns and clear accumulator
-				if (playlist.nextPartInstanceId === partInstance._id) {
+				if (playlist.nextPartInfo?.partInstanceId === partInstance._id) {
 					nextAIndex = aIndex
 					this.nextSegmentId = partInstance.segmentId
-				} else if (playlist.currentPartInstanceId === partInstance._id) {
+				} else if (playlist.currentPartInfo?.partInstanceId === partInstance._id) {
 					currentAIndex = aIndex
 					liveSegmentId = partInstance.segmentId
 				}
@@ -339,8 +334,11 @@ export class RundownTimingCalculator {
 						0,
 						(partInstance.timings?.duration && partInstance.timings?.duration + playOffset) ||
 							displayDurationFromGroup ||
-							calculatePartInstanceExpectedDurationWithPreroll(partInstance, piecesForPart) ||
-							defaultDuration
+							ensureMinimumDefaultDurationIfNotAuto(
+								partInstance,
+								calculatePartInstanceExpectedDurationWithPreroll(partInstance, piecesForPart),
+								defaultDuration
+							)
 					)
 					partDisplayDuration = partDisplayDurationNoPlayback
 					this.partPlayed[unprotectString(partInstance.part._id)] =
@@ -412,7 +410,7 @@ export class RundownTimingCalculator {
 				}
 
 				// the part is the current part but has not yet started playback
-				if (playlist.currentPartInstanceId === partInstance._id && !lastStartedPlayback) {
+				if (playlist.currentPartInfo?.partInstanceId === partInstance._id && !lastStartedPlayback) {
 					currentRemaining = partDisplayDuration
 				}
 
@@ -432,27 +430,6 @@ export class RundownTimingCalculator {
 				) {
 					this.displayDurationGroups[partInstance.part.displayDurationGroup] =
 						this.displayDurationGroups[partInstance.part.displayDurationGroup] - partDisplayDuration
-				}
-
-				// specially handle the previous part as it is being taken out
-				if (playlist.previousPartInstanceId === partInstance._id) {
-					if (this.previousPartInstanceId !== playlist.previousPartInstanceId) {
-						// it is possible that this.previousPartInstanceId !== playlist.previousPartInstanceId, because
-						// this is in fact the first iteration. If that's the case, it's more than likely that the
-						// previous part has already good "lastTake" information that we can use, in plannedStoppedPlayback,
-						// if there was no User Action.
-						// Finally, if this is undefined, we use "now", since what has happened
-						// is that user has taken out this part, but we're still waiting for timing and "now"
-						// is the best approximation of the take time we have.
-						this.lastTakeAt = partInstance.timings?.plannedStoppedPlayback || now
-						this.previousPartInstanceId = playlist.previousPartInstanceId
-					}
-					// a simulated display duration, created using the "lastTakeAt" value
-					const virtualDuration =
-						this.lastTakeAt && lastStartedPlayback
-							? this.lastTakeAt - lastStartedPlayback
-							: partDisplayDuration
-					partDisplayDuration = virtualDuration
 				}
 
 				const partInstancePartId = unprotectString(partInstance.part._id)
@@ -502,7 +479,7 @@ export class RundownTimingCalculator {
 					} else if (
 						lastStartedPlayback &&
 						!partInstance.timings?.duration &&
-						playlist.currentPartInstanceId === partInstance._id &&
+						playlist.currentPartInfo?.partInstanceId === partInstance._id &&
 						lastStartedPlayback + partExpectedDuration > now &&
 						!partIsUntimed
 					) {
@@ -615,7 +592,7 @@ export class RundownTimingCalculator {
 		}
 
 		return literal<RundownTimingContext>({
-			currentPartInstanceId: playlist?.currentPartInstanceId,
+			currentPartInstanceId: playlist ? playlist.currentPartInfo?.partInstanceId ?? null : undefined,
 			totalPlaylistDuration: totalRundownDuration,
 			remainingPlaylistDuration: remainingRundownDuration,
 			asDisplayedPlaylistDuration: asDisplayedRundownDuration,
@@ -835,4 +812,16 @@ export function getPlaylistTimingDiff(
 	}
 
 	return diff
+}
+
+function ensureMinimumDefaultDurationIfNotAuto(
+	partInstance: PartInstance,
+	incomingDuration: number | undefined,
+	defaultDuration: number
+): number {
+	if (incomingDuration === undefined || !Number.isFinite(incomingDuration)) return defaultDuration
+
+	if (partInstance.part.autoNext) return incomingDuration
+
+	return Math.max(incomingDuration, defaultDuration)
 }

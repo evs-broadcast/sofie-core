@@ -22,7 +22,7 @@ import { PieceLifespan, IBlueprintPieceType } from '@sofie-automation/blueprints
 import { SourceLayers } from '@sofie-automation/corelib/dist/dataModel/ShowStyleBase'
 import { logger } from 'elastic-apm-node'
 import { updatePartInstanceRanksAfterAdlib } from '../rundown'
-import { selectNextPart } from './lib'
+import { selectNextPart } from './selectNextPart'
 import { setNextPart } from './setNext'
 import { calculateNowOffsetLatency } from './timeline/multi-gateway'
 
@@ -147,11 +147,11 @@ export async function innerFindLastScriptedPieceOnLayer(
 
 	// TODO - this should throw instead of return more?
 
-	if (!playlist.currentPartInstanceId || !playlist.activationId) {
+	if (!playlist.currentPartInfo || !playlist.activationId) {
 		return
 	}
 
-	const currentPartInstance = cache.PartInstances.findOne(playlist.currentPartInstanceId)
+	const currentPartInstance = cache.PartInstances.findOne(playlist.currentPartInfo.partInstanceId)
 
 	if (!currentPartInstance) {
 		return
@@ -260,7 +260,7 @@ export async function innerStartQueuedAdLib(
 		cache.PieceInstances.insert(pieceInstance)
 	}
 
-	await setNextPart(context, cache, newPartInstance)
+	await setNextPart(context, cache, newPartInstance, false)
 
 	if (span) span.end()
 }

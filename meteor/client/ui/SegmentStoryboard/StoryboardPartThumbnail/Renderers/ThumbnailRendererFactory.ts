@@ -15,15 +15,16 @@ export interface IProps {
 	partId: PartId
 	partInstanceId: PartInstanceId
 	partAutoNext: boolean
+	partPlannedStoppedPlayback: number | undefined
 	studio: UIStudio
 	pieceInstance: PieceUi
 	hoverScrubTimePosition: number
+	height: number
 	hovering: boolean
 	originPosition: OffsetPosition
 	layer: ISourceLayer | undefined
 	isLive: boolean
 	isNext: boolean
-	isFinished: boolean
 }
 
 export default function renderThumbnail(props: IProps): JSX.Element {

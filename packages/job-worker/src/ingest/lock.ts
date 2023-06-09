@@ -1,6 +1,5 @@
 import { SegmentId, PartId, RundownId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import { ReadOnlyCache } from '../cache/CacheBase'
-import { getRundownsSegmentsAndPartsFromCache } from '../playout/lib'
 import { clone } from 'underscore'
 import { CacheForIngest } from './cache'
 import { BeforePartMap, CommitIngestOperation } from './commit'
@@ -11,6 +10,8 @@ import { IngestPropsBase } from '@sofie-automation/corelib/dist/worker/ingest'
 import { DBRundown } from '@sofie-automation/corelib/dist/dataModel/Rundown'
 import { RundownLock } from '../jobs/lock'
 import { groupByToMap } from '@sofie-automation/corelib/dist/lib'
+import { UserError } from '@sofie-automation/corelib/dist/error'
+import { getOrderedSegmentsAndPartsFromCacheCollections } from '../cache/utils'
 
 /**
  * The result of the initial stage of an Ingest operation
@@ -30,6 +31,9 @@ export interface CommitIngestData {
 
 	/** Set to true if the rundown should be removed or orphaned */
 	removeRundown: boolean
+
+	/** Whether to return an error if the rundown is unable to be removed */
+	returnRemoveFailure?: boolean
 }
 
 export enum UpdateIngestRundownAction {
@@ -90,6 +94,8 @@ export async function runIngestJob(
 		// Start saving the ingest data
 		const pSaveIngestChanges = ingestObjCache.saveToDatabase()
 
+		let resultingError: UserError | void
+
 		try {
 			const ingestCache = await pIngestCache
 
@@ -104,7 +110,13 @@ export async function runIngestJob(
 			if (commitData) {
 				const span = context.startSpan('ingest.commit')
 				// The change is accepted. Perform some playout calculations and save it all
-				await CommitIngestOperation(context, ingestCache, beforeRundown, beforePartMap, commitData)
+				resultingError = await CommitIngestOperation(
+					context,
+					ingestCache,
+					beforeRundown,
+					beforePartMap,
+					commitData
+				)
 				span?.end()
 			} else {
 				// Should be no changes
@@ -116,6 +128,8 @@ export async function runIngestJob(
 
 			span?.end()
 		}
+
+		if (resultingError) throw resultingError
 	})
 }
 
@@ -168,10 +182,9 @@ function generatePartMap(cache: ReadOnlyCache<CacheForIngest>): BeforePartMap {
 	const rundown = cache.Rundown.doc
 	if (!rundown) return new Map()
 
-	const segmentsAndParts = getRundownsSegmentsAndPartsFromCache(cache.Parts, cache.Segments, {
-		// Feed fake data because we only care about the single rundown
-		rundownIdsInOrder: [cache.RundownId],
-	})
+	const segmentsAndParts = getOrderedSegmentsAndPartsFromCacheCollections(cache.Parts, cache.Segments, [
+		cache.RundownId,
+	])
 	const existingRundownParts = groupByToMap(segmentsAndParts.parts, 'segmentId')
 
 	const res = new Map<SegmentId, Array<{ id: PartId; rank: number }>>()

@@ -21,8 +21,9 @@ resources:
                   result:
                     type: array
                     items:
-                      type: string
-                    example: ['OKAgZmZ0Buc99lE_2uPPSKVbMrQ_']
+                      $ref: '#/components/schemas/playlistItem'
+                    example:
+                      - id: 'OKAgZmZ0Buc99lE_2uPPSKVbMrQ_'
         500:
           $ref: '#/components/responses/internalServerError'
   activate:
@@ -183,7 +184,7 @@ resources:
         404:
           $ref: '#/components/responses/playlistNotFound'
         412:
-          description: Specified Playlist is not active or no next Part could be set (e.g. Playlist is empty, delta is too high and overflows the bounds of the Playlist)
+          description: Specified Playlist is not active or there is both no current or next Part.
           content:
             application/json:
               schema:
@@ -239,7 +240,7 @@ resources:
         404:
           $ref: '#/components/responses/playlistNotFound'
         412:
-          description: Specified Playlist is not active or there is no next Part set (e.g. Playlist is empty).
+          description: Specified Playlist is not active or there is both no current or next Part.
           content:
             application/json:
               schema:
@@ -479,7 +480,7 @@ resources:
         500:
           $ref: '#/components/responses/internalServerError'
     sticky:
-      put:
+      post:
         operationId: recallSticky
         tags:
           - sourceLayers
@@ -519,6 +520,15 @@ resources:
             $ref: '#/components/responses/internalServerError'
 
 components:
+  schemas:
+    playlistItem:
+      type: object
+      properties:
+        id:
+          type: string
+      required:
+        - id
+      additionalProperties: false
   responses:
     putSuccess:
       description: Action successfully sent

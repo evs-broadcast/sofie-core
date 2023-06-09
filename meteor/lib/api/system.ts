@@ -26,9 +26,11 @@ export interface SystemAPI {
 	cleanupIndexes(actuallyRemoveOldIndexes: boolean): Promise<any>
 	cleanupOldData(actuallyRemoveOldData: boolean): Promise<CollectionCleanupResult | string>
 
+	runCronjob(): Promise<void>
 	doSystemBenchmark(): Promise<SystemBenchmarkResults>
 
 	getTranslationBundle(bundleId: TranslationsBundleId): Promise<ClientAPI.ClientResponse<TranslationsBundle>>
+	generateSingleUseToken(): Promise<ClientAPI.ClientResponse<string>>
 }
 
 export enum SystemAPIMethods {
@@ -37,4 +39,5 @@ export enum SystemAPIMethods {
 	'runCronjob' = 'system.runCronjob',
 	'doSystemBenchmark' = 'system.doSystemBenchmark',
 	'getTranslationBundle' = 'system.getTranslationBundle',
+	'generateSingleUseToken' = 'system.generateSingleUseToken',
 }

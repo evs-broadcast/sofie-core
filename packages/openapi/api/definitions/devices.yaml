@@ -21,8 +21,10 @@ resources:
                   result:
                     type: array
                     items:
-                      type: string
-                    example: ['47', '27']
+                      $ref: '#/components/schemas/deviceItem'
+                    example:
+                      - id: '47'
+                      - id: '27'
   device:
     get:
       operationId: device
@@ -99,7 +101,7 @@ resources:
         404:
           description: The requested device does not exist.
   deviceAction:
-    put:
+    post:
       operationId: deviceAction
       tags:
         - devices
@@ -145,6 +147,14 @@ components:
           const: restart
       required:
         - action
+      additionalProperties: false
+    deviceItem:
+      type: object
+      properties:
+        id:
+          type: string
+      required:
+        - id
       additionalProperties: false
   responses:
     deviceNotFound:

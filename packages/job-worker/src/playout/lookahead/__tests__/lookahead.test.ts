@@ -38,14 +38,15 @@ describe('Lookahead', () => {
 
 		context = setupDefaultJobEnvironment()
 		const mappings: MappingsExt = {}
-		for (const [k, v] of Object.entries(LookaheadMode)) {
+		for (const [k, v] of Object.entries<LookaheadMode>(LookaheadMode as any)) {
 			if (isNaN(parseInt(k))) {
 				mappings[k] = {
 					device: TSR.DeviceType.ABSTRACT,
 					deviceId: protectString('fake0'),
-					lookahead: v as LookaheadMode,
+					lookahead: v,
 					// lookaheadDepth: 0,
 					// lookaheadMaxSearchDistance: 0,
+					options: {},
 				}
 			}
 		}
@@ -58,12 +59,12 @@ describe('Lookahead', () => {
 		rundownId = protectString(`rundown0`)
 		playlistId = protectString(`playlist0`)
 
-		await context.directCollections.RundownPlaylists.insertOne({
+		await context.mockCollections.RundownPlaylists.insertOne({
 			...defaultRundownPlaylist(playlistId, context.studioId),
 			activationId: protectString('active'),
 		})
 
-		await context.directCollections.Rundowns.insertOne({
+		await context.mockCollections.Rundowns.insertOne({
 			peripheralDeviceId: undefined,
 			organizationId: null,
 			studioId: context.studioId,
@@ -105,19 +106,19 @@ describe('Lookahead', () => {
 		const segmentId2: SegmentId = getRandomId()
 
 		partIds = await Promise.all([
-			context.directCollections.Parts.insertOne(createMockPart(0, segmentId0)),
-			context.directCollections.Parts.insertOne(createMockPart(1, segmentId0)),
-			context.directCollections.Parts.insertOne(createMockPart(2, segmentId0)),
-			context.directCollections.Parts.insertOne(createMockPart(3, segmentId0)),
-			context.directCollections.Parts.insertOne(createMockPart(4, segmentId0)),
+			context.mockCollections.Parts.insertOne(createMockPart(0, segmentId0)),
+			context.mockCollections.Parts.insertOne(createMockPart(1, segmentId0)),
+			context.mockCollections.Parts.insertOne(createMockPart(2, segmentId0)),
+			context.mockCollections.Parts.insertOne(createMockPart(3, segmentId0)),
+			context.mockCollections.Parts.insertOne(createMockPart(4, segmentId0)),
 
-			context.directCollections.Parts.insertOne(createMockPart(10, segmentId1)),
-			context.directCollections.Parts.insertOne(createMockPart(11, segmentId1)),
-			context.directCollections.Parts.insertOne(createMockPart(12, segmentId1)),
+			context.mockCollections.Parts.insertOne(createMockPart(10, segmentId1)),
+			context.mockCollections.Parts.insertOne(createMockPart(11, segmentId1)),
+			context.mockCollections.Parts.insertOne(createMockPart(12, segmentId1)),
 
-			context.directCollections.Parts.insertOne(createMockPart(20, segmentId2)),
-			context.directCollections.Parts.insertOne(createMockPart(21, segmentId2)),
-			context.directCollections.Parts.insertOne(createMockPart(22, segmentId2)),
+			context.mockCollections.Parts.insertOne(createMockPart(20, segmentId2)),
+			context.mockCollections.Parts.insertOne(createMockPart(21, segmentId2)),
+			context.mockCollections.Parts.insertOne(createMockPart(22, segmentId2)),
 		])
 	})
 
@@ -127,14 +128,14 @@ describe('Lookahead', () => {
 		previous: PartInstanceAndPieceInstances | undefined,
 		orderedPartsFollowingPlayhead: PartAndPieces[]
 	) {
-		const playlist = (await context.directCollections.RundownPlaylists.findOne(playlistId0)) as DBRundownPlaylist
+		const playlist = (await context.mockCollections.RundownPlaylists.findOne(playlistId0)) as DBRundownPlaylist
 		expect(playlist).toBeTruthy()
 
 		expect(findLookaheadForLayerMock).toHaveBeenCalledTimes(2)
 		expect(findLookaheadForLayerMock).toHaveBeenNthCalledWith(
 			1,
 			context,
-			playlist.currentPartInstanceId,
+			playlist.currentPartInfo?.partInstanceId ?? null,
 			partInstances,
 			previous,
 			orderedPartsFollowingPlayhead,
@@ -145,7 +146,7 @@ describe('Lookahead', () => {
 		expect(findLookaheadForLayerMock).toHaveBeenNthCalledWith(
 			2,
 			context,
-			playlist.currentPartInstanceId,
+			playlist.currentPartInfo?.partInstanceId ?? null,
 			partInstances,
 			previous,
 			orderedPartsFollowingPlayhead,
@@ -159,7 +160,7 @@ describe('Lookahead', () => {
 	test('No pieces', async () => {
 		const partInstancesInfo: SelectedPartInstancesTimelineInfo = {}
 
-		const fakeParts = partIds.map((p) => ({ part: { _id: p } as any, pieces: [] }))
+		const fakeParts = partIds.map((p) => ({ part: { _id: p } as any, usesInTransition: true, pieces: [] }))
 		getOrderedPartsAfterPlayheadMock.mockReturnValueOnce(fakeParts.map((p) => p.part))
 
 		const res = await runJobWithPlayoutCache(context, { playlistId }, null, async (cache) =>
@@ -184,7 +185,7 @@ describe('Lookahead', () => {
 	test('got some objects', async () => {
 		const partInstancesInfo: SelectedPartInstancesTimelineInfo = {}
 
-		const fakeParts = partIds.map((p) => ({ part: { _id: p } as any, pieces: [] }))
+		const fakeParts = partIds.map((p) => ({ part: { _id: p } as any, usesInTransition: true, pieces: [] }))
 		getOrderedPartsAfterPlayheadMock.mockReturnValueOnce(fakeParts.map((p) => p.part))
 
 		findLookaheadForLayerMock
@@ -261,7 +262,7 @@ describe('Lookahead', () => {
 	})
 
 	test('PartInstances translation', async () => {
-		const fakeParts = partIds.map((p) => ({ part: { _id: p } as any, pieces: [] }))
+		const fakeParts = partIds.map((p) => ({ part: { _id: p } as any, usesInTransition: true, pieces: [] }))
 		getOrderedPartsAfterPlayheadMock.mockReturnValue(fakeParts.map((p) => p.part))
 
 		// It does have assertions, but hidden inside helper methods
@@ -272,6 +273,7 @@ describe('Lookahead', () => {
 			partInstance: { _id: 'abc2', part: { _id: 'abc' } } as any,
 			nowInPart: 987,
 			pieceInstances: ['1', '2'] as any,
+			calculatedTimings: { inTransitionStart: null } as any,
 		}
 
 		const expectedPrevious = {
@@ -279,6 +281,7 @@ describe('Lookahead', () => {
 			onTimeline: true,
 			nowInPart: partInstancesInfo.previous.nowInPart,
 			allPieces: partInstancesInfo.previous.pieceInstances,
+			calculatedTimings: partInstancesInfo.previous.calculatedTimings,
 		}
 
 		// With a previous
@@ -292,12 +295,14 @@ describe('Lookahead', () => {
 			partInstance: { _id: 'curr', part: {} } as any,
 			nowInPart: 56,
 			pieceInstances: ['3', '4'] as any,
+			calculatedTimings: { inTransitionStart: null } as any,
 		}
 		const expectedCurrent = {
 			part: partInstancesInfo.current.partInstance,
 			onTimeline: true,
 			nowInPart: partInstancesInfo.current.nowInPart,
 			allPieces: partInstancesInfo.current.pieceInstances,
+			calculatedTimings: partInstancesInfo.current.calculatedTimings,
 		}
 		await runJobWithPlayoutCache(context, { playlistId }, null, async (cache) =>
 			getLookeaheadObjects(context, cache, partInstancesInfo)
@@ -309,12 +314,14 @@ describe('Lookahead', () => {
 			partInstance: { _id: 'nxt2', part: { _id: 'nxt' } } as any,
 			nowInPart: -85,
 			pieceInstances: ['5'] as any,
+			calculatedTimings: { inTransitionStart: null } as any,
 		}
 		const expectedNext = {
 			part: partInstancesInfo.next.partInstance,
 			onTimeline: false,
 			nowInPart: partInstancesInfo.next.nowInPart,
 			allPieces: partInstancesInfo.next.pieceInstances,
+			calculatedTimings: partInstancesInfo.next.calculatedTimings,
 		}
 		await runJobWithPlayoutCache(context, { playlistId }, null, async (cache) =>
 			getLookeaheadObjects(context, cache, partInstancesInfo)

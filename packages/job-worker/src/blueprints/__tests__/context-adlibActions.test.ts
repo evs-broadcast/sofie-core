@@ -9,7 +9,7 @@ import { ActionExecutionContext, ActionPartChange } from '../context/adlibAction
 import { isTooCloseToAutonext } from '../../playout/lib'
 import { CacheForPlayout } from '../../playout/cache'
 import { WatchedPackagesHelper } from '../context/watchedPackages'
-import { setupDefaultJobEnvironment } from '../../__mocks__/context'
+import { MockJobContext, setupDefaultJobEnvironment } from '../../__mocks__/context'
 import { runJobWithPlayoutCache } from '../../playout/lock'
 import { defaultRundownPlaylist } from '../../__mocks__/defaultCollectionObjects'
 import { protectString, unprotectString } from '@sofie-automation/corelib/dist/protectedString'
@@ -68,16 +68,16 @@ postProcessTimelineObjectsMock.mockImplementation(postProcessTimelineObjectsOrig
 
 describe('Test blueprint api context', () => {
 	async function generateSparsePieceInstances(
-		context: JobContext,
+		context: MockJobContext,
 		activationId: RundownPlaylistActivationId,
 		rundownId: RundownId
 	): Promise<DBPartInstance[]> {
-		const parts = await context.directCollections.Parts.findFetch({ rundownId })
+		const parts = await context.mockCollections.Parts.findFetch({ rundownId })
 		for (let i = 0; i < parts.length; i++) {
 			const part = parts[i]
 
 			// make into a partInstance
-			await context.directCollections.PartInstances.insertOne({
+			await context.mockCollections.PartInstances.insertOne({
 				_id: protectString(`${part._id}_instance`),
 				rundownId: part.rundownId,
 				segmentId: part.segmentId,
@@ -88,12 +88,12 @@ describe('Test blueprint api context', () => {
 				part,
 			})
 
-			const pieces = await context.directCollections.Pieces.findFetch({
+			const pieces = await context.mockCollections.Pieces.findFetch({
 				startPartId: part._id,
 				startRundownId: rundownId,
 			})
 			for (const p of pieces) {
-				await context.directCollections.PieceInstances.insertOne({
+				await context.mockCollections.PieceInstances.insertOne({
 					_id: protectString(`${part._id}_piece_${p._id}`),
 					rundownId: rundownId,
 					partInstanceId: protectString(`${part._id}_instance`),
@@ -104,7 +104,7 @@ describe('Test blueprint api context', () => {
 
 			const count = ((i + 2) % 4) + 1 // Some consistent randomness
 			for (let o = 0; o < count; o++) {
-				await context.directCollections.PieceInstances.insertOne({
+				await context.mockCollections.PieceInstances.insertOne({
 					_id: protectString(`${part._id}_piece${o}`),
 					rundownId: rundownId,
 					partInstanceId: protectString(`${part._id}_instance`),
@@ -130,7 +130,7 @@ describe('Test blueprint api context', () => {
 			}
 		}
 
-		return context.directCollections.PartInstances.findFetch({ rundownId })
+		return context.mockCollections.PartInstances.findFetch({ rundownId })
 	}
 
 	// let context: MockJobContext
@@ -183,7 +183,7 @@ describe('Test blueprint api context', () => {
 	}
 
 	async function setupMyDefaultRundown(): Promise<{
-		jobContext: JobContext
+		jobContext: MockJobContext
 		playlistId: RundownPlaylistId
 		rundownId: RundownId
 		allPartInstances: DBPartInstance[]
@@ -193,7 +193,7 @@ describe('Test blueprint api context', () => {
 		const playlistId: RundownPlaylistId = protectString('playlist0')
 		const activationId: RundownPlaylistActivationId = getRandomId()
 
-		await context.directCollections.RundownPlaylists.insertOne({
+		await context.mockCollections.RundownPlaylists.insertOne({
 			...defaultRundownPlaylist(playlistId, context.studioId),
 			// Mark playlist as active
 			activationId: activationId,
@@ -214,6 +214,58 @@ describe('Test blueprint api context', () => {
 			playlistId: playlistId,
 			rundownId: rundownId,
 			allPartInstances,
+		}
+	}
+
+	async function setPartInstances(
+		jobContext: MockJobContext,
+		playlistId: RundownPlaylistId,
+		currentPartInstance: DBPartInstance | PieceInstance | undefined | null,
+		nextPartInstance: DBPartInstance | PieceInstance | undefined | null,
+		previousPartInstance?: DBPartInstance | PieceInstance | null
+	) {
+		const convertInfo = (info: DBPartInstance | PieceInstance | null) => {
+			if (!info) {
+				return null
+			} else if ('partInstanceId' in info) {
+				return {
+					partInstanceId: info.partInstanceId,
+					rundownId: info.rundownId,
+					manuallySelected: false,
+					consumesNextSegmentId: false,
+				}
+			} else {
+				return {
+					partInstanceId: info._id,
+					rundownId: info.rundownId,
+					manuallySelected: false,
+					consumesNextSegmentId: false,
+				}
+			}
+		}
+
+		if (currentPartInstance !== undefined) {
+			await jobContext.mockCollections.RundownPlaylists.update(playlistId, {
+				$set: {
+					currentPartInfo: convertInfo(currentPartInstance),
+				},
+			})
+		}
+
+		if (nextPartInstance !== undefined) {
+			await jobContext.mockCollections.RundownPlaylists.update(playlistId, {
+				$set: {
+					nextPartInfo: convertInfo(nextPartInstance),
+				},
+			})
+		}
+
+		if (previousPartInstance !== undefined) {
+			await jobContext.mockCollections.RundownPlaylists.update(playlistId, {
+				$set: {
+					previousPartInfo: convertInfo(previousPartInstance),
+				},
+			})
 		}
 	}
 
@@ -248,9 +300,7 @@ describe('Test blueprint api context', () => {
 					await expect(context.getPartInstance('current')).resolves.toBeUndefined()
 				})
 
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { currentPartInstanceId: allPartInstances[1]._id },
-				})
+				await setPartInstances(jobContext, playlistId, allPartInstances[1], undefined)
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
 
@@ -263,9 +313,7 @@ describe('Test blueprint api context', () => {
 					})
 				})
 
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { currentPartInstanceId: null, nextPartInstanceId: allPartInstances[2]._id },
-				})
+				await setPartInstances(jobContext, playlistId, null, allPartInstances[2])
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
 
@@ -309,9 +357,7 @@ describe('Test blueprint api context', () => {
 					await expect(context.getPieceInstances('current')).resolves.toHaveLength(0)
 				})
 
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { currentPartInstanceId: allPartInstances[1]._id },
-				})
+				await setPartInstances(jobContext, playlistId, allPartInstances[1], undefined)
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
 
@@ -322,9 +368,7 @@ describe('Test blueprint api context', () => {
 					await expect(context.getPieceInstances('current')).resolves.toHaveLength(5)
 				})
 
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { currentPartInstanceId: null, nextPartInstanceId: allPartInstances[2]._id },
-				})
+				await setPartInstances(jobContext, playlistId, null, allPartInstances[2])
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
 
@@ -394,9 +438,7 @@ describe('Test blueprint api context', () => {
 					}
 				)
 
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { currentPartInstanceId: allPartInstances[1]._id },
-				})
+				await setPartInstances(jobContext, playlistId, allPartInstances[1], undefined)
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
 
@@ -413,9 +455,7 @@ describe('Test blueprint api context', () => {
 				mockCalledIds = []
 				getResolvedPiecesMock.mockClear()
 
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { currentPartInstanceId: null, nextPartInstanceId: allPartInstances[2]._id },
-				})
+				await setPartInstances(jobContext, playlistId, null, allPartInstances[2])
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
 
@@ -541,9 +581,7 @@ describe('Test blueprint api context', () => {
 			test('excludeCurrentPart', async () => {
 				const { jobContext, playlistId, allPartInstances } = await setupMyDefaultRundown()
 
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { currentPartInstanceId: allPartInstances[2]._id },
-				})
+				await setPartInstances(jobContext, playlistId, allPartInstances[2], undefined)
 
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context, rundown, activationId } = await getActionExecutionContext(jobContext, cache)
@@ -627,9 +665,7 @@ describe('Test blueprint api context', () => {
 			test('pieceMetaDataFilter', async () => {
 				const { jobContext, playlistId, allPartInstances } = await setupMyDefaultRundown()
 
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { currentPartInstanceId: allPartInstances[2]._id },
-				})
+				await setPartInstances(jobContext, playlistId, allPartInstances[2], undefined)
 
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context, rundown, activationId } = await getActionExecutionContext(jobContext, cache)
@@ -743,24 +779,22 @@ describe('Test blueprint api context', () => {
 			test('First Part', async () => {
 				const { jobContext, playlistId, rundownId } = await setupMyDefaultRundown()
 
-				const segmentIds = (await jobContext.directCollections.Segments.findFetch({ rundownId }))
+				const segmentIds = (await jobContext.mockCollections.Segments.findFetch({ rundownId }))
 					.sort((a, b) => a._rank - b._rank)
 					.map((s) => s._id)
 
 				const partInstances = (
-					await jobContext.directCollections.PartInstances.findFetch({ segmentId: segmentIds[0] })
+					await jobContext.mockCollections.PartInstances.findFetch({ segmentId: segmentIds[0] })
 				).sort((a, b) => a.part._rank - b.part._rank)
 				expect(partInstances).toHaveLength(2)
 
-				const pieceInstances = await jobContext.directCollections.PieceInstances.findFetch({
+				const pieceInstances = await jobContext.mockCollections.PieceInstances.findFetch({
 					partInstanceId: { $in: partInstances.map((p) => p._id) },
 				})
 				expect(pieceInstances).toHaveLength(10)
 
 				// Set Part 1 as current part
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { currentPartInstanceId: partInstances[0]._id },
-				})
+				await setPartInstances(jobContext, playlistId, partInstances[0], undefined)
 
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
@@ -770,12 +804,12 @@ describe('Test blueprint api context', () => {
 
 					const expectedPieceInstanceSourceLayer0 = pieceInstances.find(
 						(p) =>
-							p.partInstanceId === cache.Playlist.doc.currentPartInstanceId &&
+							p.partInstanceId === cache.Playlist.doc.currentPartInfo?.partInstanceId &&
 							p.piece.sourceLayerId === sourceLayerIds[0]
 					)
 					expect(expectedPieceInstanceSourceLayer0).not.toBeUndefined()
 
-					const expectedPieceSourceLayer0 = await jobContext.directCollections.Pieces.findOne({
+					const expectedPieceSourceLayer0 = await jobContext.mockCollections.Pieces.findOne({
 						_id: expectedPieceInstanceSourceLayer0?.piece._id,
 					})
 					await expect(context.findLastScriptedPieceOnLayer(sourceLayerIds[0])).resolves.toMatchObject({
@@ -784,12 +818,12 @@ describe('Test blueprint api context', () => {
 
 					const expectedPieceInstanceSourceLayer1 = pieceInstances.find(
 						(p) =>
-							p.partInstanceId === cache.Playlist.doc.currentPartInstanceId &&
+							p.partInstanceId === cache.Playlist.doc.currentPartInfo?.partInstanceId &&
 							p.piece.sourceLayerId === sourceLayerIds[1]
 					)
 					expect(expectedPieceInstanceSourceLayer1).not.toBeUndefined()
 
-					const expectedPieceSourceLayer1 = await jobContext.directCollections.Pieces.findOne({
+					const expectedPieceSourceLayer1 = await jobContext.mockCollections.Pieces.findOne({
 						_id: expectedPieceInstanceSourceLayer1?.piece._id,
 					})
 					await expect(context.findLastScriptedPieceOnLayer(sourceLayerIds[1])).resolves.toMatchObject({
@@ -801,19 +835,17 @@ describe('Test blueprint api context', () => {
 			test('First Part, Ignore Current Part', async () => {
 				const { jobContext, playlistId, rundownId } = await setupMyDefaultRundown()
 
-				const segmentIds = (await jobContext.directCollections.Segments.findFetch({ rundownId }))
+				const segmentIds = (await jobContext.mockCollections.Segments.findFetch({ rundownId }))
 					.sort((a, b) => a._rank - b._rank)
 					.map((s) => s._id)
 
 				const partInstances = (
-					await jobContext.directCollections.PartInstances.findFetch({ segmentId: segmentIds[0] })
+					await jobContext.mockCollections.PartInstances.findFetch({ segmentId: segmentIds[0] })
 				).sort((a, b) => a.part._rank - b.part._rank)
 				expect(partInstances).toHaveLength(2)
 
 				// Set Part 1 as current part
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { currentPartInstanceId: partInstances[0]._id },
-				})
+				await setPartInstances(jobContext, playlistId, partInstances[0], undefined)
 
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
@@ -830,24 +862,22 @@ describe('Test blueprint api context', () => {
 			test('Second Part', async () => {
 				const { jobContext, playlistId, rundownId } = await setupMyDefaultRundown()
 
-				const segmentIds = (await jobContext.directCollections.Segments.findFetch({ rundownId }))
+				const segmentIds = (await jobContext.mockCollections.Segments.findFetch({ rundownId }))
 					.sort((a, b) => a._rank - b._rank)
 					.map((s) => s._id)
 
 				const partInstances = (
-					await jobContext.directCollections.PartInstances.findFetch({ segmentId: segmentIds[0] })
+					await jobContext.mockCollections.PartInstances.findFetch({ segmentId: segmentIds[0] })
 				).sort((a, b) => a.part._rank - b.part._rank)
 				expect(partInstances).toHaveLength(2)
 
-				const pieceInstances = await jobContext.directCollections.PieceInstances.findFetch({
+				const pieceInstances = await jobContext.mockCollections.PieceInstances.findFetch({
 					partInstanceId: { $in: partInstances.map((p) => p._id) },
 				})
 				expect(pieceInstances).toHaveLength(10)
 
 				// Set Part 2 as current part
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { currentPartInstanceId: partInstances[1]._id },
-				})
+				await setPartInstances(jobContext, playlistId, partInstances[1], undefined)
 
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
@@ -857,12 +887,12 @@ describe('Test blueprint api context', () => {
 
 					const expectedPieceInstanceSourceLayer0 = pieceInstances.find(
 						(p) =>
-							p.partInstanceId === cache.Playlist.doc.currentPartInstanceId &&
+							p.partInstanceId === cache.Playlist.doc.currentPartInfo?.partInstanceId &&
 							p.piece.sourceLayerId === sourceLayerIds[0]
 					)
 					expect(expectedPieceInstanceSourceLayer0).not.toBeUndefined()
 
-					const expectedPieceSourceLayer0 = await jobContext.directCollections.Pieces.findOne({
+					const expectedPieceSourceLayer0 = await jobContext.mockCollections.Pieces.findOne({
 						_id: expectedPieceInstanceSourceLayer0?.piece._id,
 					})
 					await expect(context.findLastScriptedPieceOnLayer(sourceLayerIds[0])).resolves.toMatchObject({
@@ -875,7 +905,7 @@ describe('Test blueprint api context', () => {
 					)
 					expect(expectedPieceInstanceSourceLayer0).not.toBeUndefined()
 
-					const expectedPieceSourceLayer1 = await jobContext.directCollections.Pieces.findOne({
+					const expectedPieceSourceLayer1 = await jobContext.mockCollections.Pieces.findOne({
 						_id: expectedPieceInstanceSourceLayer1?.piece._id,
 					})
 					await expect(context.findLastScriptedPieceOnLayer(sourceLayerIds[1])).resolves.toMatchObject({
@@ -942,9 +972,7 @@ describe('Test blueprint api context', () => {
 				})
 
 				// Again with stuff in the cache
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { currentPartInstanceId: allPartInstances[1]._id },
-				})
+				await setPartInstances(jobContext, playlistId, allPartInstances[1], undefined)
 
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
@@ -1010,7 +1038,7 @@ describe('Test blueprint api context', () => {
 					expect(cache.PartInstances.documents.size).toBe(0)
 					expect(cache.PieceInstances.documents.size).toBe(0)
 
-					const pieceInstance0 = (await jobContext.directCollections.PieceInstances.findOne({
+					const pieceInstance0 = (await jobContext.mockCollections.PieceInstances.findOne({
 						partInstanceId: allPartInstances[0]._id,
 					})) as PieceInstance
 					expect(pieceInstance0).not.toBeUndefined()
@@ -1021,7 +1049,7 @@ describe('Test blueprint api context', () => {
 						_id: allPartInstances[0].part._id,
 					})
 
-					const pieceInstance1 = (await jobContext.directCollections.PieceInstances.findOne({
+					const pieceInstance1 = (await jobContext.mockCollections.PieceInstances.findOne({
 						partInstanceId: allPartInstances[1]._id,
 					})) as PieceInstance
 					expect(pieceInstance1).not.toBeUndefined()
@@ -1044,9 +1072,7 @@ describe('Test blueprint api context', () => {
 			test('bad parameters', async () => {
 				const { jobContext, playlistId, allPartInstances } = await setupMyDefaultRundown()
 
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { currentPartInstanceId: allPartInstances[0]._id },
-				})
+				await setPartInstances(jobContext, playlistId, allPartInstances[0], undefined)
 
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
@@ -1075,9 +1101,7 @@ describe('Test blueprint api context', () => {
 
 				const partInstance = allPartInstances[0]
 
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { currentPartInstanceId: partInstance._id },
-				})
+				await setPartInstances(jobContext, playlistId, partInstance, undefined)
 
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
@@ -1119,20 +1143,16 @@ describe('Test blueprint api context', () => {
 			test('bad parameters', async () => {
 				const { jobContext, playlistId, allPartInstances } = await setupMyDefaultRundown()
 
-				const pieceInstance = (await jobContext.directCollections.PieceInstances.findOne({
+				const pieceInstance = (await jobContext.mockCollections.PieceInstances.findOne({
 					partInstanceId: allPartInstances[0]._id,
 				})) as PieceInstance
 				expect(pieceInstance).toBeTruthy()
-				const pieceInstanceOther = (await jobContext.directCollections.PieceInstances.findOne({
+				const pieceInstanceOther = (await jobContext.mockCollections.PieceInstances.findOne({
 					partInstanceId: allPartInstances[1]._id,
 				})) as PieceInstance
 				expect(pieceInstanceOther).toBeTruthy()
 
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: {
-						previousPartInstanceId: allPartInstances[0]._id,
-					},
-				})
+				await setPartInstances(jobContext, playlistId, undefined, undefined, allPartInstances[0])
 
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
@@ -1155,12 +1175,8 @@ describe('Test blueprint api context', () => {
 				})
 
 				// Set a current part instance
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: {
-						previousPartInstanceId: pieceInstanceOther.partInstanceId,
-						currentPartInstanceId: pieceInstance.partInstanceId,
-					},
-				})
+				await setPartInstances(jobContext, playlistId, pieceInstance, undefined, pieceInstanceOther)
+
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
 					await expect(context.updatePieceInstance('abc', { sourceLayerId: 'new' })).rejects.toThrow(
@@ -1175,13 +1191,7 @@ describe('Test blueprint api context', () => {
 				})
 
 				// Set as next part instance
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: {
-						previousPartInstanceId: pieceInstanceOther.partInstanceId,
-						currentPartInstanceId: null,
-						nextPartInstanceId: pieceInstance.partInstanceId,
-					},
-				})
+				await setPartInstances(jobContext, playlistId, null, pieceInstance, pieceInstanceOther)
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
 					await expect(context.updatePieceInstance('abc', { sourceLayerId: 'new' })).rejects.toThrow(
@@ -1200,13 +1210,11 @@ describe('Test blueprint api context', () => {
 				const { jobContext, playlistId, rundownId } = await setupMyDefaultRundown()
 
 				// Find a piece to modify
-				const pieceInstance0 = (await jobContext.directCollections.PieceInstances.findOne({
+				const pieceInstance0 = (await jobContext.mockCollections.PieceInstances.findOne({
 					rundownId,
 				})) as PieceInstance
 				expect(pieceInstance0).toBeTruthy()
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { currentPartInstanceId: pieceInstance0.partInstanceId },
-				})
+				await setPartInstances(jobContext, playlistId, pieceInstance0, undefined)
 
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
@@ -1288,13 +1296,11 @@ describe('Test blueprint api context', () => {
 					await expect(context.queuePart()).rejects.toThrow('Cannot queue part when no current partInstance')
 				})
 
-				const partInstance = (await jobContext.directCollections.PartInstances.findOne({
+				const partInstance = (await jobContext.mockCollections.PartInstances.findOne({
 					rundownId,
 				})) as DBPartInstance
 				expect(partInstance).toBeTruthy()
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { currentPartInstanceId: partInstance._id },
-				})
+				await setPartInstances(jobContext, playlistId, partInstance, undefined)
 
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
@@ -1365,13 +1371,11 @@ describe('Test blueprint api context', () => {
 			test('good', async () => {
 				const { jobContext, playlistId, rundownId } = await setupMyDefaultRundown()
 
-				const partInstance = (await jobContext.directCollections.PartInstances.findOne({
+				const partInstance = (await jobContext.mockCollections.PartInstances.findOne({
 					rundownId,
 				})) as DBPartInstance
 				expect(partInstance).toBeTruthy()
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { currentPartInstanceId: partInstance._id },
-				})
+				await setPartInstances(jobContext, playlistId, partInstance, undefined)
 
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
@@ -1400,7 +1404,7 @@ describe('Test blueprint api context', () => {
 					postProcessPiecesMock.mockImplementationOnce(postProcessPiecesOrig)
 					innerStartQueuedAdLibMock.mockImplementationOnce(innerStartQueuedAdLibOrig)
 					expect((await context.queuePart(newPart, [newPiece]))._id).toEqual(
-						cache.Playlist.doc.nextPartInstanceId
+						cache.Playlist.doc.nextPartInfo?.partInstanceId
 					)
 
 					expect(postProcessPiecesMock).toHaveBeenCalledTimes(1)
@@ -1409,8 +1413,8 @@ describe('Test blueprint api context', () => {
 
 					// Verify some properties not exposed to the blueprints
 					const newPartInstance = cache.PartInstances.findOne(
-						// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-						cache.Playlist.doc.nextPartInstanceId!
+						// eslint-disable-next-line @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-non-null-asserted-optional-chain
+						cache.Playlist.doc.nextPartInfo?.partInstanceId!
 					) as DBPartInstance
 					expect(newPartInstance).toBeTruthy()
 					expect(newPartInstance.part._rank).toBeLessThan(9000)
@@ -1433,8 +1437,15 @@ describe('Test blueprint api context', () => {
 				const { jobContext, playlistId } = await setupMyDefaultRundown()
 
 				// Bad instance id
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { currentPartInstanceId: protectString('abc') },
+				await jobContext.mockCollections.RundownPlaylists.update(playlistId, {
+					$set: {
+						currentPartInfo: {
+							partInstanceId: protectString('abc'),
+							rundownId: protectString('def'),
+							manuallySelected: false,
+							consumesNextSegmentId: false,
+						},
+					},
 				})
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
@@ -1445,9 +1456,7 @@ describe('Test blueprint api context', () => {
 					)
 				})
 
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { currentPartInstanceId: null },
-				})
+				await setPartInstances(jobContext, playlistId, null, undefined)
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
 
@@ -1462,13 +1471,11 @@ describe('Test blueprint api context', () => {
 			test('valid parameters', async () => {
 				const { jobContext, playlistId, rundownId } = await setupMyDefaultRundown()
 
-				const currentPartInstance = (await jobContext.directCollections.PartInstances.findOne({
+				const currentPartInstance = (await jobContext.mockCollections.PartInstances.findOne({
 					rundownId,
 				})) as DBPartInstance
 				expect(currentPartInstance).toBeTruthy()
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { currentPartInstanceId: currentPartInstance._id },
-				})
+				await setPartInstances(jobContext, playlistId, currentPartInstance, undefined)
 
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
@@ -1509,8 +1516,15 @@ describe('Test blueprint api context', () => {
 				const { jobContext, playlistId } = await setupMyDefaultRundown()
 
 				// Bad instance id
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { currentPartInstanceId: protectString('abc') },
+				await jobContext.mockCollections.RundownPlaylists.update(playlistId, {
+					$set: {
+						currentPartInfo: {
+							partInstanceId: protectString('abc'),
+							rundownId: protectString('def'),
+							manuallySelected: false,
+							consumesNextSegmentId: false,
+						},
+					},
 				})
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
@@ -1521,9 +1535,7 @@ describe('Test blueprint api context', () => {
 					)
 				})
 
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { currentPartInstanceId: null },
-				})
+				await setPartInstances(jobContext, playlistId, null, undefined)
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
 
@@ -1538,13 +1550,11 @@ describe('Test blueprint api context', () => {
 			test('valid parameters', async () => {
 				const { jobContext, playlistId, rundownId } = await setupMyDefaultRundown()
 
-				const currentPartInstance = (await jobContext.directCollections.PartInstances.findOne({
+				const currentPartInstance = (await jobContext.mockCollections.PartInstances.findOne({
 					rundownId,
 				})) as DBPartInstance
 				expect(currentPartInstance).toBeTruthy()
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { currentPartInstanceId: currentPartInstance._id },
-				})
+				await setPartInstances(jobContext, playlistId, currentPartInstance, undefined)
 
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
@@ -1584,9 +1594,7 @@ describe('Test blueprint api context', () => {
 				const { jobContext, playlistId, rundownId, allPartInstances } = await setupMyDefaultRundown()
 
 				// No instance id
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { nextPartInstanceId: null },
-				})
+				await setPartInstances(jobContext, playlistId, undefined, null)
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
 
@@ -1598,16 +1606,14 @@ describe('Test blueprint api context', () => {
 
 				// Ensure missing/bad ids dont delete anything
 				const partInstance = allPartInstances[0]
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { nextPartInstanceId: partInstance._id },
-				})
+				await setPartInstances(jobContext, playlistId, undefined, partInstance)
 
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
 					const beforePieceInstancesCount = cache.PieceInstances.findAll(null).length // Because only those frm current, next, prev are included..
 					expect(beforePieceInstancesCount).not.toEqual(0)
 
-					const pieceInstanceFromOther = (await jobContext.directCollections.PieceInstances.findOne({
+					const pieceInstanceFromOther = (await jobContext.mockCollections.PieceInstances.findOne({
 						rundownId,
 						partInstanceId: { $ne: partInstance._id },
 					})) as PieceInstance
@@ -1626,9 +1632,7 @@ describe('Test blueprint api context', () => {
 				const { jobContext, playlistId, allPartInstances } = await setupMyDefaultRundown()
 
 				const partInstance = allPartInstances[0]
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { nextPartInstanceId: partInstance._id },
-				})
+				await setPartInstances(jobContext, playlistId, undefined, partInstance)
 
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
@@ -1654,11 +1658,11 @@ describe('Test blueprint api context', () => {
 			test('bad parameters', async () => {
 				const { jobContext, playlistId, rundownId } = await setupMyDefaultRundown()
 
-				const partInstance = (await jobContext.directCollections.PartInstances.findOne({
+				const partInstance = (await jobContext.mockCollections.PartInstances.findOne({
 					rundownId,
 				})) as DBPartInstance
 				expect(partInstance).toBeTruthy()
-				const partInstanceOther = (await jobContext.directCollections.PartInstances.findOne({
+				const partInstanceOther = (await jobContext.mockCollections.PartInstances.findOne({
 					_id: { $ne: partInstance._id },
 					rundownId,
 				})) as DBPartInstance
@@ -1679,9 +1683,7 @@ describe('Test blueprint api context', () => {
 				})
 
 				// Set a current part instance
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { currentPartInstanceId: partInstance._id },
-				})
+				await setPartInstances(jobContext, playlistId, partInstance, undefined)
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)
 					await expect(context.updatePartInstance('next', { title: 'new' })).rejects.toThrow(
@@ -1694,13 +1696,11 @@ describe('Test blueprint api context', () => {
 				const { jobContext, playlistId, rundownId } = await setupMyDefaultRundown()
 
 				// Setup the rundown and find an instance to modify
-				const partInstance0 = (await jobContext.directCollections.PartInstances.findOne({
+				const partInstance0 = (await jobContext.mockCollections.PartInstances.findOne({
 					rundownId,
 				})) as DBPartInstance
 				expect(partInstance0).toBeTruthy()
-				await jobContext.directCollections.RundownPlaylists.update(playlistId, {
-					$set: { nextPartInstanceId: partInstance0._id },
-				})
+				await setPartInstances(jobContext, playlistId, undefined, partInstance0)
 
 				await wrapWithCache(jobContext, playlistId, async (cache) => {
 					const { context } = await getActionExecutionContext(jobContext, cache)

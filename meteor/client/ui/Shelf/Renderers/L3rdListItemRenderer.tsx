@@ -12,7 +12,6 @@ import { L3rdFloatingInspector } from '../../FloatingInspectors/L3rdFloatingInsp
 import { PieceInstancePiece } from '../../../../lib/collections/PieceInstances'
 import { AdLibPieceUi } from '../../../lib/shelf'
 import { ActionAdLibHotkeyPreview } from '../../../lib/triggers/ActionAdLibHotkeyPreview'
-import { PieceStatusCode } from '@sofie-automation/corelib/dist/dataModel/Piece'
 
 export const L3rdListItemRenderer: React.FunctionComponent<ILayerItemRendererProps> = (
 	props: ILayerItemRendererProps
@@ -139,11 +138,7 @@ export const L3rdListItemRenderer: React.FunctionComponent<ILayerItemRendererPro
 				className={ClassNames(
 					'adlib-panel__list-view__list__table__cell--icon',
 					props.layer && RundownUtils.getSourceLayerClassName(props.layer.type),
-					{
-						'source-missing': props.status === PieceStatusCode.SOURCE_MISSING,
-						'source-broken': props.status === PieceStatusCode.SOURCE_BROKEN,
-						'unknown-state': props.status === PieceStatusCode.UNKNOWN,
-					}
+					props.status && RundownUtils.getPieceStatusClassName(props.status)
 				)}
 				ref={itemIcon}
 				onMouseOver={handleOnMouseOver}
@@ -165,10 +160,11 @@ export const L3rdListItemRenderer: React.FunctionComponent<ILayerItemRendererPro
 				<L3rdFloatingInspector
 					showMiniInspector={showMiniInspector}
 					content={noraContent}
-					floatingInspectorStyle={{
-						top: itemIconPosition?.top + 'px',
-						left: itemIconPosition?.left + 'px',
-						transform: 'translate(0, -100%)',
+					position={{
+						top: itemIconPosition?.top ?? 0,
+						left: itemIconPosition?.left ?? 0,
+						anchor: 'start',
+						position: 'top-start',
 					}}
 					typeClass={props.layer && RundownUtils.getSourceLayerClassName(props.layer.type)}
 					itemElement={itemIcon.current}

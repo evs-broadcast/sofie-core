@@ -11,7 +11,6 @@ import {
 	handleMosFullStory,
 	handleMosInsertStories,
 	handleMosMoveStories,
-	handleMosStoryStatus,
 	handleMosSwapStories,
 } from '../mosStoryJobs'
 import { handleMosRundownData, handleMosRundownReadyToAir, handleMosRundownStatus } from '../mosRundownJobs'
@@ -35,6 +34,7 @@ import { removeRundownPlaylistFromDb } from '../../__tests__/lib'
 
 jest.mock('../../updateNext')
 import { ensureNextPartIsValid } from '../../updateNext'
+import { UserErrorMessage } from '@sofie-automation/corelib/dist/error'
 type TensureNextPartIsValid = jest.MockedFunction<typeof ensureNextPartIsValid>
 const ensureNextPartIsValidMock = ensureNextPartIsValid as TensureNextPartIsValid
 
@@ -75,7 +75,7 @@ describe('Test recieved mos ingest payloads', () => {
 	})
 
 	async function resetOrphanedRundown() {
-		await context.directCollections.Rundowns.update({}, { $unset: { orphaned: 1 } })
+		await context.mockCollections.Rundowns.update({}, { $unset: { orphaned: 1 } })
 
 		// Reset RO
 		const roData = mockRO.roCreate()
@@ -90,17 +90,17 @@ describe('Test recieved mos ingest payloads', () => {
 	}
 
 	async function getRundownData(query?: MongoQuery<DBRundown>) {
-		const rundown = (await context.directCollections.Rundowns.findOne(query)) as DBRundown
+		const rundown = (await context.mockCollections.Rundowns.findOne(query)) as DBRundown
 		expect(rundown).toBeTruthy()
-		const rundownPlaylist = (await context.directCollections.RundownPlaylists.findOne(
+		const rundownPlaylist = (await context.mockCollections.RundownPlaylists.findOne(
 			rundown.playlistId
 		)) as DBRundownPlaylist
 		expect(rundownPlaylist).toBeTruthy()
 
-		const rawSegments = await context.directCollections.Segments.findFetch({ rundownId: rundown._id })
-		const rawParts = await context.directCollections.Parts.findFetch({ rundownId: rundown._id })
+		const rawSegments = await context.mockCollections.Segments.findFetch({ rundownId: rundown._id })
+		const rawParts = await context.mockCollections.Parts.findFetch({ rundownId: rundown._id })
 
-		const segments = sortSegmentsInRundowns(rawSegments, { rundownIdsInOrder: [rundown._id] })
+		const segments = sortSegmentsInRundowns(rawSegments, [rundown._id])
 		const parts = sortPartsInSortedSegments(rawParts, segments)
 
 		return {
@@ -112,26 +112,26 @@ describe('Test recieved mos ingest payloads', () => {
 	}
 
 	async function expectRundownToMatchSnapshot(rundownId: RundownId, playlist: boolean, pieces: boolean) {
-		const rundown = (await context.directCollections.Rundowns.findOne(rundownId)) as DBRundown
+		const rundown = (await context.mockCollections.Rundowns.findOne(rundownId)) as DBRundown
 		expect(rundown).toBeTruthy()
 
 		if (playlist) {
 			expect(
-				fixSnapshot(await context.directCollections.RundownPlaylists.findOne(rundown.playlistId), true)
+				fixSnapshot(await context.mockCollections.RundownPlaylists.findOne(rundown.playlistId), true)
 			).toMatchSnapshot()
 		}
 
 		expect(fixSnapshot(rundown, true)).toMatchSnapshot()
 		expect(
-			fixSnapshot(await context.directCollections.Segments.findFetch({ rundownId: rundown._id }), true)
+			fixSnapshot(await context.mockCollections.Segments.findFetch({ rundownId: rundown._id }), true)
 		).toMatchSnapshot()
 		expect(
-			fixSnapshot(await context.directCollections.Parts.findFetch({ rundownId: rundown._id }), true)
+			fixSnapshot(await context.mockCollections.Parts.findFetch({ rundownId: rundown._id }), true)
 		).toMatchSnapshot()
 
 		if (pieces) {
 			expect(
-				fixSnapshot(await context.directCollections.Pieces.findFetch({ rundownId: rundown._id }), true)
+				fixSnapshot(await context.mockCollections.Pieces.findFetch({ rundownId: rundown._id }), true)
 			).toMatchSnapshot()
 		}
 	}
@@ -139,7 +139,7 @@ describe('Test recieved mos ingest payloads', () => {
 	test('mosRoCreate', async () => {
 		// setLogLevel(LogLevel.DEBUG)
 
-		await expect(context.directCollections.Rundowns.findOne()).resolves.toBeFalsy()
+		await expect(context.mockCollections.Rundowns.findOne()).resolves.toBeFalsy()
 
 		const roData = mockRO.roCreate()
 		await handleMosRundownData(context, {
@@ -173,7 +173,7 @@ describe('Test recieved mos ingest payloads', () => {
 		roData.Stories.splice(4, 0, ...s)
 
 		expect(
-			await context.directCollections.Rundowns.findOne({ externalId: mosTypes.mosString128.stringify(roData.ID) })
+			await context.mockCollections.Rundowns.findOne({ externalId: mosTypes.mosString128.stringify(roData.ID) })
 		).toBeTruthy()
 
 		await handleMosRundownData(context, {
@@ -205,12 +205,12 @@ describe('Test recieved mos ingest payloads', () => {
 	test('mosRoCreate: replace deleted', async () => {
 		const roData = mockRO.roCreate()
 
-		await context.directCollections.Rundowns.update(
+		await context.mockCollections.Rundowns.update(
 			{ externalId: mosTypes.mosString128.stringify(roData.ID) },
 			{ $set: { orphaned: 'deleted' } }
 		)
 		expect(
-			await context.directCollections.Rundowns.findOne({ externalId: mosTypes.mosString128.stringify(roData.ID) })
+			await context.mockCollections.Rundowns.findOne({ externalId: mosTypes.mosString128.stringify(roData.ID) })
 		).toBeTruthy()
 
 		await handleMosRundownData(context, {
@@ -235,24 +235,26 @@ describe('Test recieved mos ingest payloads', () => {
 
 	test('mosRoDelete: already orphaned rundown', async () => {
 		const roData = mockRO.roCreate()
-		await context.directCollections.Rundowns.update(
+		await context.mockCollections.Rundowns.update(
 			{ externalId: mosTypes.mosString128.stringify(roData.ID) },
 			{ $set: { orphaned: 'deleted' } }
 		)
 
-		const rundown = (await context.directCollections.Rundowns.findOne({
+		const rundown = (await context.mockCollections.Rundowns.findOne({
 			externalId: mosTypes.mosString128.stringify(roData.ID),
 		})) as DBRundown
 		expect(rundown).toBeTruthy()
-		expect(await context.directCollections.RundownPlaylists.findOne(rundown.playlistId)).toBeTruthy()
+		expect(await context.mockCollections.RundownPlaylists.findOne(rundown.playlistId)).toBeTruthy()
 
-		await handleRemovedRundown(context, {
-			peripheralDeviceId: device._id,
-			rundownExternalId: parseMosString(roData.ID),
-		})
+		await expect(
+			handleRemovedRundown(context, {
+				peripheralDeviceId: device._id,
+				rundownExternalId: parseMosString(roData.ID),
+			})
+		).rejects.toMatchUserError(UserErrorMessage.RundownRemoveWhileActive)
 
 		expect(
-			await context.directCollections.Rundowns.findOne({
+			await context.mockCollections.Rundowns.findOne({
 				externalId: mosTypes.mosString128.stringify(roData.ID),
 			})
 		).toBeTruthy()
@@ -261,27 +263,27 @@ describe('Test recieved mos ingest payloads', () => {
 		await resetOrphanedRundown()
 
 		const roData = mockRO.roCreate()
-		const rundown = (await context.directCollections.Rundowns.findOne({
+		const rundown = (await context.mockCollections.Rundowns.findOne({
 			externalId: mosTypes.mosString128.stringify(roData.ID),
 		})) as DBRundown
 		expect(rundown).toBeTruthy()
 		expect(rundown.orphaned).toBeFalsy()
-		expect(await context.directCollections.RundownPlaylists.findOne(rundown.playlistId)).toBeTruthy()
+		expect(await context.mockCollections.RundownPlaylists.findOne(rundown.playlistId)).toBeTruthy()
 
 		await handleRemovedRundown(context, {
 			peripheralDeviceId: device._id,
 			rundownExternalId: parseMosString(roData.ID),
 		})
 
-		expect(await context.directCollections.Rundowns.findOne()).toBeFalsy()
+		expect(await context.mockCollections.Rundowns.findOne()).toBeFalsy()
 
-		expect(await context.directCollections.RundownPlaylists.findOne()).toBeFalsy()
+		expect(await context.mockCollections.RundownPlaylists.findOne()).toBeFalsy()
 	})
 
 	test('mosRoDelete: Does not exist', async () => {
 		const roData = mockRO.roCreate()
-		expect(await context.directCollections.Rundowns.findOne()).toBeFalsy()
-		expect(await context.directCollections.RundownPlaylists.findOne()).toBeFalsy()
+		expect(await context.mockCollections.Rundowns.findOne()).toBeFalsy()
+		expect(await context.mockCollections.RundownPlaylists.findOne()).toBeFalsy()
 
 		await expect(
 			handleRemovedRundown(context, {
@@ -297,7 +299,7 @@ describe('Test recieved mos ingest payloads', () => {
 
 		const newStatus = MOS.IMOSObjectStatus.BUSY
 
-		let rundown = (await context.directCollections.Rundowns.findOne()) as DBRundown
+		let rundown = (await context.mockCollections.Rundowns.findOne()) as DBRundown
 		expect(rundown).toBeTruthy()
 		expect(rundown.status).not.toEqual(newStatus.toString())
 
@@ -307,7 +309,7 @@ describe('Test recieved mos ingest payloads', () => {
 			status: newStatus,
 		})
 
-		rundown = (await context.directCollections.Rundowns.findOne({ _id: rundown._id })) as DBRundown
+		rundown = (await context.mockCollections.Rundowns.findOne({ _id: rundown._id })) as DBRundown
 		expect(rundown).toBeTruthy()
 		expect(rundown.status).toEqual(newStatus.toString())
 
@@ -315,11 +317,11 @@ describe('Test recieved mos ingest payloads', () => {
 	})
 
 	test('mosRoStatus: orphaned rundown', async () => {
-		await context.directCollections.Rundowns.update({}, { $set: { orphaned: 'deleted' } })
+		await context.mockCollections.Rundowns.update({}, { $set: { orphaned: 'deleted' } })
 
 		const newStatus = MOS.IMOSObjectStatus.UPDATED
 
-		let rundown = (await context.directCollections.Rundowns.findOne()) as DBRundown
+		let rundown = (await context.mockCollections.Rundowns.findOne()) as DBRundown
 		expect(rundown).toBeTruthy()
 		expect(rundown.status).not.toEqual(newStatus.toString())
 
@@ -329,7 +331,7 @@ describe('Test recieved mos ingest payloads', () => {
 			status: newStatus,
 		})
 
-		rundown = (await context.directCollections.Rundowns.findOne({ _id: rundown._id })) as DBRundown
+		rundown = (await context.mockCollections.Rundowns.findOne({ _id: rundown._id })) as DBRundown
 		expect(rundown).toBeTruthy()
 		expect(rundown.status).not.toEqual(newStatus.toString())
 	})
@@ -340,7 +342,7 @@ describe('Test recieved mos ingest payloads', () => {
 		const newStatus = MOS.IMOSObjectStatus.BUSY
 
 		const externalId = 'fakeId'
-		expect(await context.directCollections.Rundowns.findOne({ externalId: externalId })).toBeFalsy()
+		expect(await context.mockCollections.Rundowns.findOne({ externalId: externalId })).toBeFalsy()
 
 		await expect(
 			handleMosRundownStatus(context, {
@@ -354,7 +356,7 @@ describe('Test recieved mos ingest payloads', () => {
 	test('mosRoReadyToAir: Update ro', async () => {
 		const newStatus = MOS.IMOSObjectAirStatus.READY
 
-		let rundown = (await context.directCollections.Rundowns.findOne()) as DBRundown
+		let rundown = (await context.mockCollections.Rundowns.findOne()) as DBRundown
 		expect(rundown).toBeTruthy()
 		expect(rundown.status).not.toEqual(newStatus.toString())
 		expect((rundown.metaData as any)?.airStatus).not.toEqual(newStatus.toString())
@@ -365,7 +367,7 @@ describe('Test recieved mos ingest payloads', () => {
 			status: newStatus,
 		})
 
-		rundown = (await context.directCollections.Rundowns.findOne({ _id: rundown._id })) as DBRundown
+		rundown = (await context.mockCollections.Rundowns.findOne({ _id: rundown._id })) as DBRundown
 		expect(rundown).toBeTruthy()
 		expect(rundown.airStatus).toEqual(newStatus.toString())
 
@@ -375,11 +377,11 @@ describe('Test recieved mos ingest payloads', () => {
 	})
 
 	test('mosRoReadyToAir: orphaned rundown', async () => {
-		await context.directCollections.Rundowns.update({}, { $set: { orphaned: 'deleted' } })
+		await context.mockCollections.Rundowns.update({}, { $set: { orphaned: 'deleted' } })
 
 		const newStatus = MOS.IMOSObjectAirStatus.NOT_READY
 
-		let rundown = (await context.directCollections.Rundowns.findOne()) as DBRundown
+		let rundown = (await context.mockCollections.Rundowns.findOne()) as DBRundown
 		expect(rundown).toBeTruthy()
 		expect(rundown.status).not.toEqual(newStatus.toString())
 
@@ -389,7 +391,7 @@ describe('Test recieved mos ingest payloads', () => {
 			status: newStatus,
 		})
 
-		rundown = (await context.directCollections.Rundowns.findOne({ _id: rundown._id })) as DBRundown
+		rundown = (await context.mockCollections.Rundowns.findOne({ _id: rundown._id })) as DBRundown
 		expect(rundown).toBeTruthy()
 		expect(rundown.airStatus).not.toEqual(newStatus.toString())
 	})
@@ -400,7 +402,7 @@ describe('Test recieved mos ingest payloads', () => {
 		const newStatus = MOS.IMOSObjectAirStatus.READY
 
 		const externalId = 'fakeId'
-		expect(await context.directCollections.Rundowns.findOne({ externalId: externalId })).toBeFalsy()
+		expect(await context.mockCollections.Rundowns.findOne({ externalId: externalId })).toBeFalsy()
 
 		await expect(
 			handleMosRundownReadyToAir(context, {
@@ -411,72 +413,10 @@ describe('Test recieved mos ingest payloads', () => {
 		).rejects.toThrow(/Rundown.*not found/i)
 	})
 
-	test('mosRoStoryStatus: Update part', async () => {
-		const newStatus = MOS.IMOSObjectStatus.BUSY
-
-		let part = (await context.directCollections.Parts.findOne()) as DBPart
-		expect(part).toBeTruthy()
-		expect(part.status).not.toEqual(newStatus.toString())
-
-		const rundown = (await context.directCollections.Rundowns.findOne({ _id: part.rundownId })) as DBRundown
-		expect(rundown).toBeTruthy()
-
-		await handleMosStoryStatus(context, {
-			peripheralDeviceId: device._id,
-			rundownExternalId: rundown.externalId,
-			partExternalId: part.externalId,
-			status: newStatus,
-		})
-
-		part = (await context.directCollections.Parts.findOne(part._id)) as DBPart
-		expect(part).toBeTruthy()
-		expect(part.status).toEqual(newStatus.toString())
-
-		await expectRundownToMatchSnapshot(rundown._id, false, true)
-	})
-
-	test('mosRoStoryStatus: Wrong ro for part', async () => {
-		const newStatus = MOS.IMOSObjectStatus.STOP
-
-		const rundownExternalId = 'fakeId'
-		expect(await context.directCollections.Rundowns.findOne({ externalId: rundownExternalId })).toBeFalsy()
-
-		const part = (await context.directCollections.Parts.findOne()) as DBPart
-		expect(part).toBeTruthy()
-		expect(part.status).not.toEqual(newStatus.toString())
-
-		await expect(
-			handleMosStoryStatus(context, {
-				peripheralDeviceId: device._id,
-				rundownExternalId: rundownExternalId,
-				partExternalId: part.externalId,
-				status: newStatus,
-			})
-		).rejects.toThrow(/Rundown.*not found/i)
-	})
-
-	test('mosRoStoryStatus: Missing part', async () => {
-		const newStatus = MOS.IMOSObjectStatus.PLAY
-
-		const rundown = (await context.directCollections.Rundowns.findOne()) as DBRundown
-		expect(rundown).toBeTruthy()
-
-		const partExternalId = 'fakeId'
-
-		await expect(
-			handleMosStoryStatus(context, {
-				peripheralDeviceId: device._id,
-				rundownExternalId: rundown.externalId,
-				partExternalId: partExternalId,
-				status: newStatus,
-			})
-		).rejects.toThrow(`Part ${partExternalId} in rundown ${rundown._id} not found`)
-	})
-
 	test('mosRoStoryInsert: Into segment', async () => {
-		const playlist = (await context.directCollections.RundownPlaylists.findOne()) as DBRundownPlaylist
+		const playlist = (await context.mockCollections.RundownPlaylists.findOne()) as DBRundownPlaylist
 		expect(playlist).toBeTruthy()
-		const rundowns = await context.directCollections.Rundowns.findFetch({ playlistId: playlist._id })
+		const rundowns = await context.mockCollections.Rundowns.findFetch({ playlistId: playlist._id })
 		expect(rundowns).toHaveLength(1)
 		const rundown = rundowns[0]
 
@@ -501,9 +441,9 @@ describe('Test recieved mos ingest payloads', () => {
 		await expectRundownToMatchSnapshot(rundown._id, true, true)
 
 		// Clean up after ourselves:
-		const partsToRemove = await context.directCollections.Parts.findFetch({ externalId: 'ro1;s1;newPart1' })
-		await context.directCollections.Parts.remove({ _id: { $in: partsToRemove.map((p) => p._id) } })
-		await context.directCollections.IngestDataCache.remove({
+		const partsToRemove = await context.mockCollections.Parts.findFetch({ externalId: 'ro1;s1;newPart1' })
+		await context.mockCollections.Parts.remove({ _id: { $in: partsToRemove.map((p) => p._id) } })
+		await context.mockCollections.IngestDataCache.remove({
 			rundownId: rundown._id,
 			type: IngestCacheType.PART,
 			partId: { $in: partsToRemove.map((p) => p._id) },
@@ -511,11 +451,11 @@ describe('Test recieved mos ingest payloads', () => {
 	})
 
 	test('mosRoStoryInsert: orphaned rundown', async () => {
-		await context.directCollections.Rundowns.update({}, { $set: { orphaned: 'deleted' } })
+		await context.mockCollections.Rundowns.update({}, { $set: { orphaned: 'deleted' } })
 
-		const playlist = (await context.directCollections.RundownPlaylists.findOne()) as DBRundownPlaylist
+		const playlist = (await context.mockCollections.RundownPlaylists.findOne()) as DBRundownPlaylist
 		expect(playlist).toBeTruthy()
-		const rundowns = await context.directCollections.Rundowns.findFetch({ playlistId: playlist._id })
+		const rundowns = await context.mockCollections.Rundowns.findFetch({ playlistId: playlist._id })
 		expect(rundowns).toHaveLength(1)
 		const rundown = rundowns[0]
 
@@ -531,16 +471,16 @@ describe('Test recieved mos ingest payloads', () => {
 
 		const { parts } = await getRundownData({ _id: rundown._id })
 
-		expect((await context.directCollections.Rundowns.findOne(rundown._id))?.orphaned).toEqual('deleted')
+		expect((await context.mockCollections.Rundowns.findOne(rundown._id))?.orphaned).toEqual('deleted')
 		expect(parts.find((p) => p.externalId === mosTypes.mosString128.stringify(newPartData.ID))).toBeUndefined()
 	})
 
 	test('mosRoStoryInsert: New segment', async () => {
 		await resetOrphanedRundown()
 
-		const playlist = (await context.directCollections.RundownPlaylists.findOne()) as DBRundownPlaylist
+		const playlist = (await context.mockCollections.RundownPlaylists.findOne()) as DBRundownPlaylist
 		expect(playlist).toBeTruthy()
-		const rundowns = await context.directCollections.Rundowns.findFetch({ playlistId: playlist._id })
+		const rundowns = await context.mockCollections.Rundowns.findFetch({ playlistId: playlist._id })
 		expect(rundowns).toHaveLength(1)
 		const rundown = rundowns[0]
 
@@ -572,10 +512,10 @@ describe('Test recieved mos ingest payloads', () => {
 	})
 
 	test('mosRoStoryInsert: Invalid previous id', async () => {
-		const rundown = (await context.directCollections.Rundowns.findOne()) as DBRundown
+		const rundown = (await context.mockCollections.Rundowns.findOne()) as DBRundown
 		expect(rundown).toBeTruthy()
 
-		await context.directCollections.Parts.remove({ externalId: 'ro1;s1b;newPart1' })
+		await context.mockCollections.Parts.remove({ externalId: 'ro1;s1b;newPart1' })
 
 		const newPartData = mockRO.newItem('ro1;s1;failPart1', 'SEGMENT1;fake1')
 
@@ -594,17 +534,17 @@ describe('Test recieved mos ingest payloads', () => {
 		)
 
 		expect(
-			await context.directCollections.Parts.findOne({
+			await context.mockCollections.Parts.findOne({
 				externalId: mosTypes.mosString128.stringify(newPartData.ID),
 			})
 		).toBeFalsy()
 	})
 
 	test('mosRoStoryInsert: Existing externalId', async () => {
-		const rundown = (await context.directCollections.Rundowns.findOne()) as DBRundown
+		const rundown = (await context.mockCollections.Rundowns.findOne()) as DBRundown
 		expect(rundown).toBeTruthy()
 
-		await context.directCollections.Parts.remove({ externalId: 'ro1;s1;failPart1' })
+		await context.mockCollections.Parts.remove({ externalId: 'ro1;s1;failPart1' })
 
 		const newPartData = mockRO.roCreate().Stories[0]
 
@@ -649,13 +589,13 @@ describe('Test recieved mos ingest payloads', () => {
 	test('mosRoStoryReplace: Same segment', async () => {
 		await resetOrphanedRundown()
 
-		const playlist = (await context.directCollections.RundownPlaylists.findOne()) as DBRundownPlaylist
+		const playlist = (await context.mockCollections.RundownPlaylists.findOne()) as DBRundownPlaylist
 		expect(playlist).toBeTruthy()
-		const rundowns = await context.directCollections.Rundowns.findFetch({ playlistId: playlist._id })
+		const rundowns = await context.mockCollections.Rundowns.findFetch({ playlistId: playlist._id })
 		expect(rundowns).toHaveLength(1)
 		const rundown = rundowns[0]
 
-		await context.directCollections.Parts.remove({ externalId: 'ro1;s1;newPart1' })
+		await context.mockCollections.Parts.remove({ externalId: 'ro1;s1;newPart1' })
 
 		const newPartData = mockRO.newItem('ro1;s1;newPart1', 'SEGMENT1;new1')
 
@@ -679,11 +619,11 @@ describe('Test recieved mos ingest payloads', () => {
 	})
 
 	test('mosRoStoryReplace: orphaned rundown', async () => {
-		await context.directCollections.Rundowns.update({}, { $set: { orphaned: 'deleted' } })
+		await context.mockCollections.Rundowns.update({}, { $set: { orphaned: 'deleted' } })
 
-		const playlist = (await context.directCollections.RundownPlaylists.findOne()) as DBRundownPlaylist
+		const playlist = (await context.mockCollections.RundownPlaylists.findOne()) as DBRundownPlaylist
 		expect(playlist).toBeTruthy()
-		const rundowns = await context.directCollections.Rundowns.findFetch({ playlistId: playlist._id })
+		const rundowns = await context.mockCollections.Rundowns.findFetch({ playlistId: playlist._id })
 		expect(rundowns).toHaveLength(1)
 		const rundown = rundowns[0]
 
@@ -698,17 +638,17 @@ describe('Test recieved mos ingest payloads', () => {
 		})
 		const { parts } = await getRundownData({ _id: rundown._id })
 
-		expect((await context.directCollections.Rundowns.findOne(rundown._id))?.orphaned).toEqual('deleted')
+		expect((await context.mockCollections.Rundowns.findOne(rundown._id))?.orphaned).toEqual('deleted')
 		expect(parts.find((p) => p.externalId === mosTypes.mosString128.stringify(newPartData.ID))).toBeUndefined()
 	})
 
 	test('mosRoStoryReplace: Unknown ID', async () => {
 		await resetOrphanedRundown()
 
-		const rundown = (await context.directCollections.Rundowns.findOne()) as DBRundown
+		const rundown = (await context.mockCollections.Rundowns.findOne()) as DBRundown
 		expect(rundown).toBeTruthy()
 
-		await context.directCollections.Parts.remove({ externalId: 'ro1;s1;newPart1' })
+		await context.mockCollections.Parts.remove({ externalId: 'ro1;s1;newPart1' })
 
 		const newPartData = mockRO.newItem('ro1;s1;newPart1', 'SEGMENT1;new1')
 
@@ -726,7 +666,7 @@ describe('Test recieved mos ingest payloads', () => {
 		)
 
 		expect(
-			await context.directCollections.Parts.findOne({
+			await context.mockCollections.Parts.findOne({
 				externalId: mosTypes.mosString128.stringify(newPartData.ID),
 			})
 		).toBeFalsy()
@@ -735,9 +675,9 @@ describe('Test recieved mos ingest payloads', () => {
 	test('mosRoStoryDelete: Remove segment', async () => {
 		await resetOrphanedRundown()
 
-		const playlist = (await context.directCollections.RundownPlaylists.findOne()) as DBRundownPlaylist
+		const playlist = (await context.mockCollections.RundownPlaylists.findOne()) as DBRundownPlaylist
 		expect(playlist).toBeTruthy()
-		const rundowns = await context.directCollections.Rundowns.findFetch({ playlistId: playlist._id })
+		const rundowns = await context.mockCollections.Rundowns.findFetch({ playlistId: playlist._id })
 		expect(rundowns).toHaveLength(1)
 		const rundown = rundowns[0]
 
@@ -749,9 +689,7 @@ describe('Test recieved mos ingest payloads', () => {
 			stories: partExternalIds.map((i) => mosTypes.mosString128.create(i)),
 		})
 
-		expect(await context.directCollections.Parts.findFetch({ externalId: { $in: partExternalIds } })).toHaveLength(
-			0
-		)
+		expect(await context.mockCollections.Parts.findFetch({ externalId: { $in: partExternalIds } })).toHaveLength(0)
 
 		expect(ensureNextPartIsValid).toHaveBeenCalledTimes(1)
 
@@ -766,7 +704,7 @@ describe('Test recieved mos ingest payloads', () => {
 	})
 
 	test('mosRoStoryDelete: Remove invalid id', async () => {
-		const rundown = (await context.directCollections.Rundowns.findOne()) as DBRundown
+		const rundown = (await context.mockCollections.Rundowns.findOne()) as DBRundown
 		expect(rundown).toBeTruthy()
 
 		const partExternalIds = ['ro1;s1;p2', 'fakeId']
@@ -779,15 +717,13 @@ describe('Test recieved mos ingest payloads', () => {
 			})
 		).rejects.toThrow(`Parts fakeId in rundown ${rundown.externalId} were not found`)
 
-		expect(await context.directCollections.Parts.findFetch({ externalId: { $in: partExternalIds } })).toHaveLength(
-			1
-		)
+		expect(await context.mockCollections.Parts.findFetch({ externalId: { $in: partExternalIds } })).toHaveLength(1)
 	})
 
 	test('mosRoFullStory: Valid data', async () => {
 		await resetOrphanedRundown()
 
-		const rundown = (await context.directCollections.Rundowns.findOne()) as DBRundown
+		const rundown = (await context.mockCollections.Rundowns.findOne()) as DBRundown
 		expect(rundown).toBeTruthy()
 
 		const story = literal<MOS.IMOSROFullStory>({
@@ -802,7 +738,7 @@ describe('Test recieved mos ingest payloads', () => {
 			story: story,
 		})
 
-		const part = (await context.directCollections.Parts.findOne({
+		const part = (await context.mockCollections.Parts.findOne({
 			externalId: mosTypes.mosString128.stringify(story.ID),
 		})) as DBPart
 		expect(part).toBeTruthy()
@@ -812,7 +748,7 @@ describe('Test recieved mos ingest payloads', () => {
 	})
 
 	test('mosRoFullStory: Unknown Part', async () => {
-		const rundown = (await context.directCollections.Rundowns.findOne()) as DBRundown
+		const rundown = (await context.mockCollections.Rundowns.findOne()) as DBRundown
 		expect(rundown).toBeTruthy()
 
 		const story = literal<MOS.IMOSROFullStory>({
@@ -835,7 +771,7 @@ describe('Test recieved mos ingest payloads', () => {
 	})
 
 	test('mosRoFullStory: Unknown Rundown', async () => {
-		const rundown = (await context.directCollections.Rundowns.findOne()) as DBRundown
+		const rundown = (await context.mockCollections.Rundowns.findOne()) as DBRundown
 		expect(rundown).toBeTruthy()
 
 		const story = literal<MOS.IMOSROFullStory>({
@@ -858,9 +794,9 @@ describe('Test recieved mos ingest payloads', () => {
 	test('mosRoStorySwap: Within same segment', async () => {
 		await resetOrphanedRundown()
 
-		const playlist = (await context.directCollections.RundownPlaylists.findOne()) as DBRundownPlaylist
+		const playlist = (await context.mockCollections.RundownPlaylists.findOne()) as DBRundownPlaylist
 		expect(playlist).toBeTruthy()
-		const rundowns = await context.directCollections.Rundowns.findFetch({ playlistId: playlist._id })
+		const rundowns = await context.mockCollections.Rundowns.findFetch({ playlistId: playlist._id })
 		expect(rundowns).toHaveLength(1)
 		const rundown = rundowns[0]
 
@@ -889,9 +825,9 @@ describe('Test recieved mos ingest payloads', () => {
 	test('mosRoStorySwap: With first in same segment', async () => {
 		await resetOrphanedRundown()
 
-		const playlist = (await context.directCollections.RundownPlaylists.findOne()) as DBRundownPlaylist
+		const playlist = (await context.mockCollections.RundownPlaylists.findOne()) as DBRundownPlaylist
 		expect(playlist).toBeTruthy()
-		const rundowns = await context.directCollections.Rundowns.findFetch({ playlistId: playlist._id })
+		const rundowns = await context.mockCollections.Rundowns.findFetch({ playlistId: playlist._id })
 		expect(rundowns).toHaveLength(1)
 		const rundown = rundowns[0]
 
@@ -919,7 +855,7 @@ describe('Test recieved mos ingest payloads', () => {
 	})
 
 	test('mosRoStorySwap: Swap with self', async () => {
-		const rundown = (await context.directCollections.Rundowns.findOne()) as DBRundown
+		const rundown = (await context.mockCollections.Rundowns.findOne()) as DBRundown
 		expect(rundown).toBeTruthy()
 
 		const story0 = mosTypes.mosString128.create('ro1;s1;p1')
@@ -937,7 +873,7 @@ describe('Test recieved mos ingest payloads', () => {
 	})
 
 	test('mosRoStorySwap: Story not found', async () => {
-		const rundown = (await context.directCollections.Rundowns.findOne()) as DBRundown
+		const rundown = (await context.mockCollections.Rundowns.findOne()) as DBRundown
 		expect(rundown).toBeTruthy()
 
 		const story0 = mosTypes.mosString128.create('ro1;s1;p1')
@@ -965,9 +901,9 @@ describe('Test recieved mos ingest payloads', () => {
 	test('mosRoStorySwap: Swap across segments', async () => {
 		await resetOrphanedRundown()
 
-		const playlist = (await context.directCollections.RundownPlaylists.findOne()) as DBRundownPlaylist
+		const playlist = (await context.mockCollections.RundownPlaylists.findOne()) as DBRundownPlaylist
 		expect(playlist).toBeTruthy()
-		const rundowns = await context.directCollections.Rundowns.findFetch({ playlistId: playlist._id })
+		const rundowns = await context.mockCollections.Rundowns.findFetch({ playlistId: playlist._id })
 		expect(rundowns).toHaveLength(1)
 		const rundown = rundowns[0]
 
@@ -998,9 +934,9 @@ describe('Test recieved mos ingest payloads', () => {
 	test('mosRoStorySwap: Swap across segments2', async () => {
 		await resetOrphanedRundown()
 
-		const playlist = (await context.directCollections.RundownPlaylists.findOne()) as DBRundownPlaylist
+		const playlist = (await context.mockCollections.RundownPlaylists.findOne()) as DBRundownPlaylist
 		expect(playlist).toBeTruthy()
-		const rundowns = await context.directCollections.Rundowns.findFetch({ playlistId: playlist._id })
+		const rundowns = await context.mockCollections.Rundowns.findFetch({ playlistId: playlist._id })
 		expect(rundowns).toHaveLength(1)
 		const rundown = rundowns[0]
 
@@ -1024,9 +960,9 @@ describe('Test recieved mos ingest payloads', () => {
 	test('mosRoStoryMove: Within segment', async () => {
 		await resetOrphanedRundown()
 
-		const playlist = (await context.directCollections.RundownPlaylists.findOne()) as DBRundownPlaylist
+		const playlist = (await context.mockCollections.RundownPlaylists.findOne()) as DBRundownPlaylist
 		expect(playlist).toBeTruthy()
-		const rundowns = await context.directCollections.Rundowns.findFetch({ playlistId: playlist._id })
+		const rundowns = await context.mockCollections.Rundowns.findFetch({ playlistId: playlist._id })
 		expect(rundowns).toHaveLength(1)
 		const rundown = rundowns[0]
 
@@ -1053,9 +989,9 @@ describe('Test recieved mos ingest payloads', () => {
 	test('mosRoStoryMove: Move whole segment to end', async () => {
 		await resetOrphanedRundown()
 
-		const playlist = (await context.directCollections.RundownPlaylists.findOne()) as DBRundownPlaylist
+		const playlist = (await context.mockCollections.RundownPlaylists.findOne()) as DBRundownPlaylist
 		expect(playlist).toBeTruthy()
-		const rundowns = await context.directCollections.Rundowns.findFetch({ playlistId: playlist._id })
+		const rundowns = await context.mockCollections.Rundowns.findFetch({ playlistId: playlist._id })
 		expect(rundowns).toHaveLength(1)
 		const rundown = rundowns[0]
 
@@ -1086,7 +1022,7 @@ describe('Test recieved mos ingest payloads', () => {
 	test('mosRoStoryMove: Invalid before ID', async () => {
 		await resetOrphanedRundown()
 
-		const rundown = (await context.directCollections.Rundowns.findOne()) as DBRundown
+		const rundown = (await context.mockCollections.Rundowns.findOne()) as DBRundown
 		expect(rundown).toBeTruthy()
 
 		const beforeStoryId = mosTypes.mosString128.create('fakeId')
@@ -1109,7 +1045,7 @@ describe('Test recieved mos ingest payloads', () => {
 	})
 
 	test('mosRoStoryMove: Invalid before self', async () => {
-		const rundown = (await context.directCollections.Rundowns.findOne()) as DBRundown
+		const rundown = (await context.mockCollections.Rundowns.findOne()) as DBRundown
 		expect(rundown).toBeTruthy()
 
 		const beforeStoryId = mosTypes.mosString128.create('ro1;s1;p2')
@@ -1134,7 +1070,7 @@ describe('Test recieved mos ingest payloads', () => {
 	test('mosRoStoryMove: Bad ID', async () => {
 		await resetOrphanedRundown()
 
-		const rundown = (await context.directCollections.Rundowns.findOne()) as DBRundown
+		const rundown = (await context.mockCollections.Rundowns.findOne()) as DBRundown
 		expect(rundown).toBeTruthy()
 
 		const beforeStoryId = mosTypes.mosString128.create('')
@@ -1159,20 +1095,20 @@ describe('Test recieved mos ingest payloads', () => {
 	test('mosRoStoryDelete: Remove first story in segment', async () => {
 		await resetOrphanedRundown()
 
-		const rundown = (await context.directCollections.Rundowns.findOne()) as DBRundown
+		const rundown = (await context.mockCollections.Rundowns.findOne()) as DBRundown
 		expect(rundown).toBeTruthy()
 
 		const partExternalId = 'ro1;s1;p1'
 
 		const partToBeRemoved = (
-			await context.directCollections.Parts.findFetch({
+			await context.mockCollections.Parts.findFetch({
 				rundownId: rundown._id,
 				externalId: partExternalId,
 			})
 		)[0]
 		expect(partToBeRemoved).toBeTruthy()
 
-		const partsInSegmentBefore = await context.directCollections.Parts.findFetch({
+		const partsInSegmentBefore = await context.mockCollections.Parts.findFetch({
 			rundownId: rundown._id,
 			segmentId: partToBeRemoved.segmentId,
 		})
@@ -1185,12 +1121,12 @@ describe('Test recieved mos ingest payloads', () => {
 			stories: [mosTypes.mosString128.create(partExternalId)],
 		})
 
-		expect(await context.directCollections.Segments.findOne(partToBeRemoved.segmentId)).toBeFalsy()
+		expect(await context.mockCollections.Segments.findOne(partToBeRemoved.segmentId)).toBeFalsy()
 
-		const partAfter = (await context.directCollections.Parts.findOne(partsInSegmentBefore[2]._id)) as DBPart
+		const partAfter = (await context.mockCollections.Parts.findOne(partsInSegmentBefore[2]._id)) as DBPart
 		expect(partAfter).toBeTruthy()
 
-		const partsInSegmentAfter = await context.directCollections.Parts.findFetch({
+		const partsInSegmentAfter = await context.mockCollections.Parts.findFetch({
 			rundownId: rundown._id,
 			segmentId: partAfter.segmentId,
 		})
@@ -1268,7 +1204,7 @@ describe('Test recieved mos ingest payloads', () => {
 	test('Rename segment during update while on air', async () => {
 		await resetOrphanedRundown()
 
-		const rundown = (await context.directCollections.Rundowns.findOne()) as DBRundown
+		const rundown = (await context.mockCollections.Rundowns.findOne()) as DBRundown
 		expect(rundown).toBeTruthy()
 
 		// activate and set on air
@@ -1286,13 +1222,13 @@ describe('Test recieved mos ingest payloads', () => {
 				fromPartInstanceId: null,
 			})
 
-			const partInstances0 = await context.directCollections.PartInstances.findFetch({ rundownId: rundown._id })
+			const partInstances0 = await context.mockCollections.PartInstances.findFetch({ rundownId: rundown._id })
 			const { segments: segments0, parts: parts0 } = await getRundownData({ _id: rundown._id })
 
 			await mosReplaceBasicStory(rundown.externalId, 'ro1;s2;p1', 'ro1;s2;p1', 'SEGMENT2b;PART1')
 			await mosReplaceBasicStory(rundown.externalId, 'ro1;s2;p2', 'ro1;s2;p2', 'SEGMENT2b;PART2')
 
-			const partInstances = await context.directCollections.PartInstances.findFetch({ rundownId: rundown._id })
+			const partInstances = await context.mockCollections.PartInstances.findFetch({ rundownId: rundown._id })
 			const { segments, parts } = await getRundownData({ _id: rundown._id })
 
 			// Update expected data, for just the segment name and ids changing
@@ -1301,6 +1237,9 @@ describe('Test recieved mos ingest payloads', () => {
 			expect(fixSnapshot(segments)).toMatchObject(fixSnapshot(segments0) || [])
 			expect(fixSnapshot(parts)).toMatchObject(fixSnapshot(parts0) || [])
 			expect(fixSnapshot(partInstances)).toMatchObject(fixSnapshot(partInstances0) || [])
+		} catch (e) {
+			console.error(e)
+			throw e
 		} finally {
 			// cleanup
 			await handleDeactivateRundownPlaylist(context, {
@@ -1314,7 +1253,7 @@ describe('Test recieved mos ingest payloads', () => {
 
 		await resetOrphanedRundown()
 
-		const rundown = (await context.directCollections.Rundowns.findOne()) as DBRundown
+		const rundown = (await context.mockCollections.Rundowns.findOne()) as DBRundown
 		expect(rundown).toBeTruthy()
 		expect(rundown.orphaned).toBeFalsy()
 
@@ -1333,7 +1272,7 @@ describe('Test recieved mos ingest payloads', () => {
 				fromPartInstanceId: null,
 			})
 
-			const partInstances0 = await context.directCollections.PartInstances.findFetch({ rundownId: rundown._id })
+			const partInstances0 = await context.mockCollections.PartInstances.findFetch({ rundownId: rundown._id })
 			const { segments: segments0, parts: parts0 } = await getRundownData({ _id: rundown._id })
 
 			// rename the segment
@@ -1356,12 +1295,12 @@ describe('Test recieved mos ingest payloads', () => {
 
 			{
 				// still valid
-				const rundown2 = (await context.directCollections.Rundowns.findOne()) as DBRundown
+				const rundown2 = (await context.mockCollections.Rundowns.findOne()) as DBRundown
 				expect(rundown2).toBeTruthy()
 				expect(rundown2.orphaned).toBeFalsy()
 			}
 
-			const partInstances = await context.directCollections.PartInstances.findFetch({ rundownId: rundown._id })
+			const partInstances = await context.mockCollections.PartInstances.findFetch({ rundownId: rundown._id })
 			const { segments, parts } = await getRundownData({ _id: rundown._id })
 
 			// Update expected data, for just the segment name and ids changing
@@ -1380,15 +1319,15 @@ describe('Test recieved mos ingest payloads', () => {
 
 	test('Playlist updates when removing one (of multiple) rundowns', async () => {
 		// Cleanup any existing playlists
-		await context.directCollections.RundownPlaylists.update({}, { $unset: { activationId: 1 } })
-		await context.directCollections.RundownPlaylists.findFetch().then(async (playlists) =>
+		await context.mockCollections.RundownPlaylists.update({}, { $unset: { activationId: 1 } })
+		await context.mockCollections.RundownPlaylists.findFetch().then(async (playlists) =>
 			removeRundownPlaylistFromDb(
 				context,
 				playlists.map((p) => p._id)
 			)
 		)
-		expect(await context.directCollections.RundownPlaylists.findFetch()).toHaveLength(0)
-		expect(await context.directCollections.Rundowns.findFetch()).toHaveLength(0)
+		expect(await context.mockCollections.RundownPlaylists.findFetch()).toHaveLength(0)
+		expect(await context.mockCollections.Rundowns.findFetch()).toHaveLength(0)
 
 		const roData1 = mockRO.roCreate()
 		roData1.ID = mosTypes.mosString128.create('Rundown1')
@@ -1412,9 +1351,9 @@ describe('Test recieved mos ingest payloads', () => {
 			isUpdateOperation: false,
 		})
 
-		const rundown1 = (await context.directCollections.Rundowns.findOne({ externalId: 'Rundown1' })) as DBRundown
+		const rundown1 = (await context.mockCollections.Rundowns.findOne({ externalId: 'Rundown1' })) as DBRundown
 		expect(rundown1).toBeTruthy()
-		const rundown2 = (await context.directCollections.Rundowns.findOne({ externalId: 'Rundown2' })) as DBRundown
+		const rundown2 = (await context.mockCollections.Rundowns.findOne({ externalId: 'Rundown2' })) as DBRundown
 		expect(rundown2).toBeTruthy()
 
 		// The rundowns should be in the same playlist
@@ -1422,7 +1361,7 @@ describe('Test recieved mos ingest payloads', () => {
 		expect(rundown1.name).not.toEqual(rundown2.name)
 
 		// check the playlist looks correct
-		const playlist = (await context.directCollections.RundownPlaylists.findOne(
+		const playlist = (await context.mockCollections.RundownPlaylists.findOne(
 			rundown1.playlistId
 		)) as DBRundownPlaylist
 		expect(playlist).toBeTruthy()
@@ -1435,10 +1374,10 @@ describe('Test recieved mos ingest payloads', () => {
 			peripheralDeviceId: device._id,
 			rundownExternalId: mosTypes.mosString128.stringify(roData1.ID),
 		})
-		expect(await context.directCollections.Rundowns.findOne(rundown1._id)).toBeFalsy()
+		expect(await context.mockCollections.Rundowns.findOne(rundown1._id)).toBeFalsy()
 
 		// check the playlist looks correct
-		const playlist2 = (await context.directCollections.RundownPlaylists.findOne(
+		const playlist2 = (await context.mockCollections.RundownPlaylists.findOne(
 			rundown1.playlistId
 		)) as DBRundownPlaylist
 		expect(playlist2).toBeTruthy()
@@ -1459,9 +1398,9 @@ describe('Test recieved mos ingest payloads', () => {
 			isUpdateOperation: false,
 		})
 
-		const playlist = (await context.directCollections.RundownPlaylists.findOne()) as DBRundownPlaylist
+		const playlist = (await context.mockCollections.RundownPlaylists.findOne()) as DBRundownPlaylist
 		expect(playlist).toBeTruthy()
-		const rundowns = await context.directCollections.Rundowns.findFetch({ playlistId: playlist._id })
+		const rundowns = await context.mockCollections.Rundowns.findFetch({ playlistId: playlist._id })
 		expect(rundowns).toHaveLength(1)
 		const rundown = rundowns[0]
 		expect(rundown.orphaned).toBeFalsy()
@@ -1484,20 +1423,20 @@ describe('Test recieved mos ingest payloads', () => {
 			// Make sure we inserted, not replaced
 			const firstSegment = segments[0]
 			expect(firstSegment).toBeTruthy()
-			const firstSegmentParts = await context.directCollections.Parts.findFetch({
+			const firstSegmentParts = await context.mockCollections.Parts.findFetch({
 				segmentId: firstSegment._id,
 			})
 			expect(firstSegmentParts).toHaveLength(3)
 
 			const refSegment = segments[2]
 			expect(refSegment).toBeTruthy()
-			const refSegmentParts = await context.directCollections.Parts.findFetch({ segmentId: refSegment._id })
+			const refSegmentParts = await context.mockCollections.Parts.findFetch({ segmentId: refSegment._id })
 			expect(refSegmentParts).toHaveLength(2)
 
 			// Check the insert was ok
 			const newSegment = segments[1]
 			expect(newSegment).toBeTruthy()
-			const newSegmentParts = await context.directCollections.Parts.findFetch({ segmentId: newSegment._id })
+			const newSegmentParts = await context.mockCollections.Parts.findFetch({ segmentId: newSegment._id })
 			expect(newSegmentParts).toHaveLength(1)
 			expect(newSegmentParts[0].externalId).toBe('ro1;s2a;newPart1')
 		}
@@ -1519,13 +1458,13 @@ describe('Test recieved mos ingest payloads', () => {
 			// Make sure first segment is unchanged
 			const firstSegment = segments[0]
 			expect(firstSegment).toBeTruthy()
-			const firstSegmentParts = await context.directCollections.Parts.findFetch({ segmentId: firstSegment._id })
+			const firstSegmentParts = await context.mockCollections.Parts.findFetch({ segmentId: firstSegment._id })
 			expect(firstSegmentParts).toHaveLength(3)
 
 			// Make sure segment combiend ok
 			const refSegment = segments[1]
 			expect(refSegment).toBeTruthy()
-			const refSegmentParts = await context.directCollections.Parts.findFetch({ segmentId: refSegment._id })
+			const refSegmentParts = await context.mockCollections.Parts.findFetch({ segmentId: refSegment._id })
 			expect(refSegmentParts).toHaveLength(3)
 		}
 	})

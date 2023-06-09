@@ -10,6 +10,8 @@ import {
 	IBlueprintActionManifestDisplayContent,
 	TimelineObjectCoreExt,
 	TSR,
+	IOutputLayer,
+	ISourceLayer,
 } from '@sofie-automation/blueprints-integration'
 import {
 	SegmentExtended,
@@ -42,6 +44,8 @@ import { AdLibPieceUi } from './shelf'
 import { UIShowStyleBase } from '../../lib/api/showStyles'
 import { PartId, PieceId, RundownId, SegmentId, ShowStyleBaseId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import { PieceInstances, Segments } from '../collections'
+import { PieceStatusCode } from '@sofie-automation/corelib/dist/dataModel/Piece'
+import { assertNever } from '@sofie-automation/shared-lib/dist/lib/lib'
 
 interface PieceTimelineMetadataExt extends PieceTimelineMetadata {
 	id: PieceId
@@ -239,6 +243,25 @@ export namespace RundownUtils {
 			.replace(/_/g, '-')
 	}
 
+	export function getPieceStatusClassName(status: PieceStatusCode): string | undefined {
+		switch (status) {
+			case PieceStatusCode.OK:
+			case PieceStatusCode.SOURCE_HAS_ISSUES:
+			case PieceStatusCode.SOURCE_NOT_SET:
+				return
+			case PieceStatusCode.SOURCE_BROKEN:
+				return 'source-broken'
+			case PieceStatusCode.SOURCE_MISSING:
+				return 'source-missing'
+			case PieceStatusCode.SOURCE_NOT_READY:
+				return 'source-not-ready'
+			case PieceStatusCode.UNKNOWN:
+				return 'unknown-state'
+			default:
+				assertNever(status)
+		}
+	}
+
 	/**
 	 * This function allows to see what the output of the playback will look like.
 	 * It simulates the operations done by the playout operations in core and playout-gateway
@@ -345,7 +368,7 @@ export namespace RundownUtils {
 			// create local deep copies of the studio outputLayers and sourceLayers so that we can store
 			// pieces present on those layers inside and also figure out which layers are used when inside the rundown
 			const outputLayers: Record<string, IOutputLayerExtended> = {}
-			for (const [id, layer] of Object.entries(showStyleBase.outputLayers)) {
+			for (const [id, layer] of Object.entries<IOutputLayer | undefined>(showStyleBase.outputLayers)) {
 				if (layer) {
 					outputLayers[id] = {
 						...layer,
@@ -355,7 +378,7 @@ export namespace RundownUtils {
 				}
 			}
 			const sourceLayers: Record<string, ISourceLayerExtended> = {}
-			for (const [id, layer] of Object.entries(showStyleBase.sourceLayers)) {
+			for (const [id, layer] of Object.entries<ISourceLayer | undefined>(showStyleBase.sourceLayers)) {
 				if (layer) {
 					sourceLayers[id] = {
 						...layer,
@@ -578,7 +601,7 @@ export namespace RundownUtils {
 				const tlResolved = SuperTimeline.Resolver.resolveTimeline(partTimeline, { time: 0 })
 				// furthestDuration is used to figure out how much content (in terms of time) is there in the Part
 				let furthestDuration = 0
-				const objs = Object.values(tlResolved.objects)
+				const objs = Object.values<SuperTimeline.ResolvedTimelineObject>(tlResolved.objects)
 				for (let i = 0; i < objs.length; i++) {
 					const obj = objs[i]
 					const obj0 = obj as unknown as TimelineObjectCoreExt<any, PieceTimelineMetadataExt>
@@ -685,7 +708,7 @@ export namespace RundownUtils {
 						}
 					})
 
-					const itemsByLayer = Object.entries(
+					const itemsByLayer = Object.entries<PieceExtended[]>(
 						_.groupBy(part.pieces, (item) => {
 							return item.outputLayer && item.sourceLayer && item.outputLayer.isFlattened
 								? item.instance.piece.outputLayerId + '_' + item.sourceLayer.exclusiveGroup
@@ -838,5 +861,11 @@ export namespace RundownUtils {
 			return true
 		}
 		return false
+	}
+
+	export function isBucketAdLibItem(
+		piece: IAdLibListItem | PieceUi | AdLibPieceUi | BucketAdLibItem
+	): piece is BucketAdLibItem {
+		return !!piece['bucketId']
 	}
 }

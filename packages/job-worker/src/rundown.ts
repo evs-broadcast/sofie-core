@@ -12,31 +12,24 @@ import { BeforePartMap } from './ingest/commit'
 import { JobContext } from './jobs'
 import { logger } from './logging'
 import { CacheForPlayout } from './playout/cache'
+import { IMongoTransaction } from './db'
 
 /** Return true if the rundown is allowed to be moved out of that playlist */
-export async function allowedToMoveRundownOutOfPlaylist(
-	context: JobContext,
+export function allowedToMoveRundownOutOfPlaylist(
 	playlist: ReadonlyDeep<DBRundownPlaylist>,
 	rundown: ReadonlyDeep<Pick<DBRundown, '_id' | 'playlistId'>>
-): Promise<boolean> {
+): boolean {
 	if (rundown.playlistId !== playlist._id)
 		throw new Error(
 			`Wrong playlist "${playlist._id}" provided for rundown "${rundown._id}" ("${rundown.playlistId}")`
 		)
 
-	const partInstanceIds = _.compact([playlist.currentPartInstanceId, playlist.nextPartInstanceId])
-	if (!playlist.activationId || partInstanceIds.length === 0) return true
+	if (!playlist.activationId) return true
 
-	const selectedPartInstancesInRundown: Pick<DBPartInstance, '_id'>[] =
-		await context.directCollections.PartInstances.findFetch(
-			{
-				_id: { $in: partInstanceIds },
-				rundownId: rundown._id,
-			},
-			{ projection: { _id: 1 } }
-		)
-
-	return selectedPartInstancesInRundown.length === 0
+	return (
+		!playlist.activationId ||
+		(playlist.currentPartInfo?.rundownId !== rundown._id && playlist.nextPartInfo?.rundownId !== rundown._id)
+	)
 }
 
 /**
@@ -47,14 +40,19 @@ export async function allowedToMoveRundownOutOfPlaylist(
 export async function updatePartInstanceRanks(
 	context: JobContext,
 	cache: CacheForIngest,
+	transaction: IMongoTransaction | null,
 	changedSegmentIds: ReadonlyDeep<SegmentId[]>,
 	beforePartMap: BeforePartMap
 ): Promise<void> {
 	const groupedPartInstances = groupByToMap(
-		await context.directCollections.PartInstances.findFetch({
-			reset: { $ne: true },
-			segmentId: { $in: changedSegmentIds as SegmentId[] },
-		}),
+		await context.directCollections.PartInstances.findFetch(
+			{
+				reset: { $ne: true },
+				segmentId: { $in: changedSegmentIds as SegmentId[] },
+			},
+			undefined,
+			transaction
+		),
 		'segmentId'
 	)
 	const groupedNewParts = groupByToMap(
@@ -114,7 +112,7 @@ export async function updatePartInstanceRanks(
 	}
 
 	if (writeOps.length > 0) {
-		await context.directCollections.PartInstances.bulkWrite(writeOps)
+		await context.directCollections.PartInstances.bulkWrite(writeOps, transaction)
 	}
 	logger.debug(`updatePartRanks: ${writeOps.length} PartInstances updated`)
 }

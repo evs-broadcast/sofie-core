@@ -17,7 +17,6 @@ import { NewUserAPI, UserAPIMethods } from './user'
 import { SystemAPIMethods, SystemAPI } from './system'
 import { Meteor } from 'meteor/meteor'
 import { NewTriggeredActionsAPI, TriggeredActionsAPIMethods } from './triggeredActions'
-import { RestAPI, RestAPIMethods } from './rest'
 import { UserId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import {
 	NewPeripheralDeviceAPI,
@@ -35,7 +34,6 @@ interface IMeteorCall {
 	migration: NewMigrationAPI
 	peripheralDevice: NewPeripheralDeviceAPI
 	playout: NewPlayoutAPI
-	rest: RestAPI
 	rundown: NewRundownAPI
 	rundownLayout: NewRundownLayoutsAPI
 	snapshot: NewSnapshotAPI
@@ -55,7 +53,6 @@ export const MeteorCall: IMeteorCall = {
 	migration: makeMethods(MigrationAPIMethods),
 	peripheralDevice: makeMethods(PeripheralDeviceAPIMethods),
 	playout: makeMethods(PlayoutAPIMethods),
-	rest: makeMethods(RestAPIMethods),
 	rundown: makeMethods(RundownAPIMethods),
 	rundownLayout: makeMethods(RundownLayoutsAPIMethods),
 	snapshot: makeMethods(SnapshotAPIMethods),

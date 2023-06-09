@@ -4,11 +4,14 @@ import { checkServer } from '../checkServer'
 import Logging from '../httpLogging'
 
 const httpLogging = false
-const testServer = process.env.SERVER_TYPE === 'TEST'
+let testServer
+if (process.env.SERVER_TYPE === 'TEST') {
+	testServer = true
+}
 
 describe('Network client', () => {
 	const config = new Configuration({
-		basePath: process.env.ACTIONS_URL,
+		basePath: process.env.SERVER_URL,
 		middleware: [new Logging(httpLogging)],
 	})
 
@@ -21,9 +24,10 @@ describe('Network client', () => {
 		expect(studios.status).toBe(200)
 		expect(studios).toHaveProperty('result')
 		expect(studios.result.length).toBeGreaterThanOrEqual(1)
-		studios.result.forEach((id) => {
-			expect(typeof id).toBe('string')
-			studioIds.push(id)
+		studios.result.forEach((studio) => {
+			expect(typeof studio).toBe('object')
+			expect(typeof studio.id).toBe('string')
+			studioIds.push(studio.id)
 		})
 	})
 
@@ -61,8 +65,9 @@ describe('Network client', () => {
 		expect(devices).toHaveProperty('result')
 		expect(devices.result.length).toBeGreaterThanOrEqual(1)
 		devices.result.forEach((id) => {
-			expect(typeof id).toBe('string')
-			studioDevices.push(id)
+			expect(typeof id).toBe('object')
+			expect(typeof id.id).toBe('string')
+			studioDevices.push(id.id)
 		})
 	})
 

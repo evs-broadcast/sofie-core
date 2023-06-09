@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useState } from 'react'
-import Escape from 'react-escape'
+import Escape from './../../../lib/Escape'
 import { PieceExtended } from '../../../../lib/Rundown'
 import { unprotectString } from '@sofie-automation/corelib/dist/protectedString'
 import { usePopper } from 'react-popper'
@@ -7,8 +7,6 @@ import { PartId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import { StoryboardSecondaryPiece } from '../../SegmentStoryboard/StoryboardPartSecondaryPieces/StoryboardSecondaryPiece'
 import StudioContext from '../../RundownView/StudioContext'
 import { PieceUi } from '../../SegmentContainer/withResolvedSegment'
-
-const AUTO_HIDE_TIMEOUT = 7000
 
 export function PieceIndicatorMenu({
 	pieces,
@@ -26,18 +24,7 @@ export function PieceIndicatorMenu({
 	onPieceDoubleClick?: (item: PieceUi, e: React.MouseEvent<HTMLDivElement>) => void
 }): JSX.Element | null {
 	const [indicatorMenuEl, setIndicatorMenuEl] = useState<HTMLDivElement | null>(null)
-	const { styles, attributes, update } = usePopper(parentEl, indicatorMenuEl, {
-		placement: 'bottom',
-		modifiers: [
-			{
-				name: 'offset',
-				options: {
-					offset: [0, 0],
-				},
-			},
-			// sameWidth,
-		],
-	})
+	const { styles, attributes, update } = usePopper(parentEl, indicatorMenuEl, POPPER_OPTIONS)
 
 	useLayoutEffect(() => {
 		update && update().catch(console.error)
@@ -116,4 +103,26 @@ export function PieceIndicatorMenu({
 			}
 		</StudioContext.Consumer>
 	)
+}
+
+const AUTO_HIDE_TIMEOUT = 7000
+const VIEWPORT_PADDING = { right: 70 }
+
+const POPPER_OPTIONS = {
+	placement: 'bottom' as const,
+	modifiers: [
+		{
+			name: 'flip',
+			options: {
+				fallbackPlacements: ['top'],
+			},
+		},
+		{
+			name: 'preventOverflow',
+			options: {
+				padding: VIEWPORT_PADDING,
+			},
+		},
+		// sameWidth,
+	],
 }

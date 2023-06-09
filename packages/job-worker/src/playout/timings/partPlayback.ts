@@ -7,7 +7,7 @@ import {
 	getOrderedSegmentsAndPartsFromPlayoutCache,
 	getSelectedPartInstancesFromCache,
 } from '../cache'
-import { selectNextPart } from '../lib'
+import { selectNextPart } from '../selectNextPart'
 import { setNextPart } from '../setNext'
 import { updateTimeline } from '../timeline/generate'
 import { getCurrentTime } from '../../lib'
@@ -53,18 +53,18 @@ export async function onPartPlaybackStarted(
 
 		const { currentPartInstance } = getSelectedPartInstancesFromCache(cache)
 
-		if (playlist.currentPartInstanceId === data.partInstanceId) {
+		if (playlist.currentPartInfo?.partInstanceId === data.partInstanceId) {
 			// this is the current part, it has just started playback
 			reportPartInstanceHasStarted(context, cache, playingPartInstance, data.startedPlayback)
 
 			// complete the take
 			await afterTake(context, cache, playingPartInstance)
-		} else if (playlist.nextPartInstanceId === data.partInstanceId) {
+		} else if (playlist.nextPartInfo?.partInstanceId === data.partInstanceId) {
 			// this is the next part, clearly an autoNext has taken place
 
 			cache.Playlist.update((p) => {
-				p.previousPartInstanceId = p.currentPartInstanceId
-				p.currentPartInstanceId = playingPartInstance._id
+				p.previousPartInfo = p.currentPartInfo
+				p.currentPartInfo = playlist.nextPartInfo
 				p.holdState = RundownHoldState.NONE
 				return p
 			})
@@ -91,7 +91,7 @@ export async function onPartPlaybackStarted(
 				currentPartInstance
 			)
 
-			clearNextSegmentId(cache, currentPartInstance)
+			clearNextSegmentId(cache, playingPartInstance, playlist.nextPartInfo)
 			resetPreviousSegment(cache)
 
 			// Update the next partinstance
@@ -102,7 +102,7 @@ export async function onPartPlaybackStarted(
 				null,
 				getOrderedSegmentsAndPartsFromPlayoutCache(cache)
 			)
-			await setNextPart(context, cache, nextPart)
+			await setNextPart(context, cache, nextPart, false)
 
 			// complete the take
 			await afterTake(context, cache, playingPartInstance)
@@ -214,9 +214,9 @@ export function reportPartInstanceHasStarted(
 			return timestampUpdated ? instance : false
 		})
 
-		if (timestampUpdated && !cache.isMultiGatewayMode && cache.Playlist.doc.previousPartInstanceId) {
+		if (timestampUpdated && !cache.isMultiGatewayMode && cache.Playlist.doc.previousPartInfo) {
 			// Ensure the plannedStoppedPlayback is set for the previous partinstance too
-			cache.PartInstances.updateOne(cache.Playlist.doc.previousPartInstanceId, (instance) => {
+			cache.PartInstances.updateOne(cache.Playlist.doc.previousPartInfo.partInstanceId, (instance) => {
 				if (instance.timings && !instance.timings.plannedStoppedPlayback) {
 					instance.timings.plannedStoppedPlayback = timestamp
 					return instance
