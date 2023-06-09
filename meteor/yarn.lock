@@ -2180,7 +2180,7 @@ __metadata:
   resolution: "@sofie-automation/shared-lib@portal:../packages/shared-lib::locator=automation-core%40workspace%3A."
   dependencies:
     "@mos-connection/model": ^3.0.2
-    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.2-CER-3900-merge-r50.321"
+    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.4"
     tslib: ^2.4.0
     type-fest: ^2.19.0
   languageName: node
@@ -12534,12 +12534,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.2-CER-3900-merge-r50.321":
-  version: 8.0.2-CER-3900-merge-r50.321
-  resolution: "@evs/timeline-state-resolver-types@npm:8.0.2-CER-3900-merge-r50.321::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver-types%2F-%2F%40evs%2Ftimeline-state-resolver-types-8.0.2-CER-3900-merge-r50.321.tgz"
+"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.4":
+  version: 8.0.4
+  resolution: "@evs/timeline-state-resolver-types@npm:8.0.4::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver-types%2F-%2F%40evs%2Ftimeline-state-resolver-types-8.0.4.tgz"
   dependencies:
     tslib: ^2.5.1
-  checksum: 293aa029ca64506c79394ad9d5168a0be14e3ab248f6216db8827044517554369645a9612773d9f140c151e88548dee095113a175d31c3ee0fdae359087563d9
+  checksum: 8bde5edfccd82bd54a710a7dd8cbec240d3336e1ab69d24fc62f31fecd1aa1ec32a7b0bee89813b25f61e9f1ab7e3114408e7d3932ebdb3147669c23e0d1ebd5
   languageName: node
   linkType: hard
 
