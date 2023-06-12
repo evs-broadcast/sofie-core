@@ -5484,7 +5484,7 @@ __metadata:
   resolution: "@sofie-automation/shared-lib@workspace:shared-lib"
   dependencies:
     "@mos-connection/model": ^3.0.2
-    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.4"
+    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.6"
     tslib: ^2.4.0
     type-fest: ^2.19.0
   languageName: unknown
@@ -18620,7 +18620,7 @@ asn1@evs-broadcast/node-asn1:
     "@sofie-automation/shared-lib": 1.50.1
     debug: ^4.3.3
     influx: ^5.9.3
-    timeline-state-resolver: "npm:@evs/timeline-state-resolver@8.0.4"
+    timeline-state-resolver: "npm:@evs/timeline-state-resolver@8.0.6"
     tslib: ^2.4.0
     underscore: ^1.13.4
     winston: ^3.8.2
@@ -22315,18 +22315,18 @@ asn1@evs-broadcast/node-asn1:
   languageName: node
   linkType: hard
 
-"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.4":
-  version: 8.0.4
-  resolution: "@evs/timeline-state-resolver-types@npm:8.0.4::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver-types%2F-%2F%40evs%2Ftimeline-state-resolver-types-8.0.4.tgz"
+"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.6":
+  version: 8.0.6
+  resolution: "@evs/timeline-state-resolver-types@npm:8.0.6::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver-types%2F-%2F%40evs%2Ftimeline-state-resolver-types-8.0.6.tgz"
   dependencies:
     tslib: ^2.5.1
-  checksum: 8bde5edfccd82bd54a710a7dd8cbec240d3336e1ab69d24fc62f31fecd1aa1ec32a7b0bee89813b25f61e9f1ab7e3114408e7d3932ebdb3147669c23e0d1ebd5
+  checksum: f89ca65a49b84ad01fcfaf7daf5898ead677ca3f275b46ee616d9c2aac2ba8b6db0b1f1961844d85b29e6f12cd7fe0d79684ae3b13c6896765b8f4596214d9bc
   languageName: node
   linkType: hard
 
-"timeline-state-resolver@npm:@evs/timeline-state-resolver@8.0.4":
-  version: 8.0.4
-  resolution: "@evs/timeline-state-resolver@npm:8.0.4::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver%2F-%2F%40evs%2Ftimeline-state-resolver-8.0.4.tgz"
+"timeline-state-resolver@npm:@evs/timeline-state-resolver@8.0.6":
+  version: 8.0.6
+  resolution: "@evs/timeline-state-resolver@npm:8.0.6::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver%2F-%2F%40evs%2Ftimeline-state-resolver-8.0.6.tgz"
   dependencies:
     "@evs/dsom-connection": 0.1.23
     "@tv2media/v-connection": ^7.3.0
@@ -22348,7 +22348,7 @@ asn1@evs-broadcast/node-asn1:
     sprintf-js: ^1.1.2
     superfly-timeline: ^8.3.1
     threadedclass: ^1.2.1
-    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.4"
+    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.6"
     tslib: ^2.5.1
     tv-automation-quantel-gateway-client: ^3.1.11-agent-debug-20230117-160455-c2c4ee4.0
     underscore: ^1.13.6
@@ -22356,7 +22356,7 @@ asn1@evs-broadcast/node-asn1:
     utf-8-validate: ^5.0.10
     ws: ^7.5.9
     xml-js: ^1.6.11
-  checksum: cf69f9698e584789abaca43372955b6454aaf4855971ba76aa821782c3c234c9731d11db9761356739f3d24597cb3f9b9dc2794ed11aaec582d0c933ad2b7d27
+  checksum: e3666797aacfc66c7092904e7e603b3f398680d83722bc1d1ecfe9c78a3a6422367234aa4d182a5e9712003b2fb0f3d22b28ba3612e622926873185bab1336b1
   languageName: node
   linkType: hard
 
