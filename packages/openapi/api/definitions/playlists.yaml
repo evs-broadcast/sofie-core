@@ -90,7 +90,7 @@ resources:
         500:
           $ref: '#/components/responses/internalServerError'
   executeAdLib:
-    put:
+    post:
       operationId: executeAdLib
       tags:
         - playlists
@@ -143,7 +143,7 @@ resources:
         500:
           $ref: '#/components/responses/internalServerError'
   moveNextPart:
-    put:
+    post:
       operationId: moveNextPart
       tags:
         - playlists
@@ -199,7 +199,7 @@ resources:
         500:
           $ref: '#/components/responses/internalServerError'
   moveNextSegment:
-    put:
+    post:
       operationId: moveNextSegment
       tags:
         - playlists
@@ -398,7 +398,7 @@ resources:
         500:
           $ref: '#/components/responses/internalServerError'
   take:
-    put:
+    post:
       operationId: take
       tags:
         - playlists
