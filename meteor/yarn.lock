@@ -1859,23 +1859,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mos-connection/helper@npm:^3.0.2":
-  version: 3.0.2
-  resolution: "@mos-connection/helper@npm:3.0.2"
+"@mos-connection/helper@npm:^3.0.4":
+  version: 3.0.4
+  resolution: "@mos-connection/helper@npm:3.0.4"
   dependencies:
-    "@mos-connection/model": 3.0.2
+    "@mos-connection/model": 3.0.4
     iconv-lite: ^0.6.2
     tslib: ^2.2.0
     xml-js: ^1.6.11
     xmlbuilder: ^15.1.1
-  checksum: 7415c20230945d89b568297123f833b9ea193a79e207a47c14bba611fdfa4fe4ace5647a78b5fc64831e0b8f52ff91f6479cb89f80060936f0c3caf5d0b57f80
+  checksum: 43ade87fd9a7ca7e183377d36f4d3b0ae063180c8760657201e50169c0868647242c83adaf860c475b9959079512d42ceb43d8ed657356d02140d7aa93992d79
   languageName: node
   linkType: hard
 
-"@mos-connection/model@npm:3.0.2, @mos-connection/model@npm:^3.0.2":
-  version: 3.0.2
-  resolution: "@mos-connection/model@npm:3.0.2"
-  checksum: c8acb3eff5845e71a33349131547be8ca1c8b041f5119d54253f03ad1ce7a2b21d30dbaa4709a978425237585cc4b7eab2edca8027d81984aefd9cdef9c3efc4
+"@mos-connection/model@npm:3.0.4, @mos-connection/model@npm:^3.0.4":
+  version: 3.0.4
+  resolution: "@mos-connection/model@npm:3.0.4"
+  checksum: 7de15fba9a818260fb57847dbc51695036720a7f499d2fe262c691630673e83c01bdc3ea62261529e661f957074a6d92e8d38305485293c5392e073dab33989b
   languageName: node
   linkType: hard
 
@@ -2179,8 +2179,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@sofie-automation/shared-lib@portal:../packages/shared-lib::locator=automation-core%40workspace%3A."
   dependencies:
-    "@mos-connection/model": ^3.0.2
-    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.6"
+    "@mos-connection/model": ^3.0.4
+    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.7"
     tslib: ^2.4.0
     type-fest: ^2.19.0
   languageName: node
@@ -3524,7 +3524,7 @@ __metadata:
     "@jstarpl/react-contextmenu": ^2.15.0
     "@koa/cors": ^4.0.0
     "@koa/router": ^12.0.0
-    "@mos-connection/helper": ^3.0.2
+    "@mos-connection/helper": ^3.0.4
     "@nrk/core-icons": ^9.6.0
     "@popperjs/core": ^2.11.7
     "@slack/webhook": ^6.1.0
@@ -12534,12 +12534,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.6":
-  version: 8.0.6
-  resolution: "@evs/timeline-state-resolver-types@npm:8.0.6::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver-types%2F-%2F%40evs%2Ftimeline-state-resolver-types-8.0.6.tgz"
+"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.7":
+  version: 8.0.7
+  resolution: "@evs/timeline-state-resolver-types@npm:8.0.7::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver-types%2F-%2F%40evs%2Ftimeline-state-resolver-types-8.0.7.tgz"
   dependencies:
     tslib: ^2.5.1
-  checksum: f89ca65a49b84ad01fcfaf7daf5898ead677ca3f275b46ee616d9c2aac2ba8b6db0b1f1961844d85b29e6f12cd7fe0d79684ae3b13c6896765b8f4596214d9bc
+  checksum: 0ccc2fc01fe94e3dd78c9ba35f9f07fa1fee6f9944e4d247fa56a3916cb347a7bd389fceaa138ae938c38ec630a0da7cd640ee8b8a5ff3f8424ab2e78770884b
   languageName: node
   linkType: hard
 
