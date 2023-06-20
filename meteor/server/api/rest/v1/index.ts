@@ -763,7 +763,7 @@ class ServerRestAPI implements RestAPI {
 		const showStyleBase = await ShowStyleBases.findOneAsync(showStyleBaseId)
 		if (!showStyleBase) throw new Meteor.Error(404, `ShowStyleBase ${showStyleBaseId} does not exist`)
 
-		return ClientAPI.responseSuccess(APIShowStyleBaseFrom(showStyleBase))
+		return ClientAPI.responseSuccess(await APIShowStyleBaseFrom(showStyleBase))
 	}
 
 	async addOrUpdateShowStyleBase(
@@ -1005,7 +1005,7 @@ class ServerRestAPI implements RestAPI {
 		const studio = await Studios.findOneAsync(studioId)
 		if (!studio) throw new Meteor.Error(404, `Studio ${studioId} not found`)
 
-		return ClientAPI.responseSuccess(APIStudioFrom(studio))
+		return ClientAPI.responseSuccess(await APIStudioFrom(studio))
 	}
 
 	async addOrUpdateStudio(

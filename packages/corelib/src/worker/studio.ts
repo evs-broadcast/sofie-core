@@ -162,6 +162,8 @@ export enum StudioJobs {
 	 * Validate the blueprintConfig for the Studio, with the Blueprint validateConfig
 	 */
 	BlueprintValidateConfigForStudio = 'blueprintValidateConfigForStudio',
+
+	BlueprintConfigToAPI = 'blueprintConfigToAPI',
 }
 
 export interface RundownPlayoutPropsBase {
@@ -322,6 +324,8 @@ export type StudioJobFunc = {
 
 	[StudioJobs.BlueprintUpgradeForStudio]: () => void
 	[StudioJobs.BlueprintValidateConfigForStudio]: () => BlueprintValidateConfigForStudioResult
+
+	[StudioJobs.BlueprintConfigToAPI]: () => object
 }
 
 export function getStudioQueueName(id: StudioId): string {

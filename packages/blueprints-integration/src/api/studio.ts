@@ -67,6 +67,9 @@ export interface StudioBlueprintManifest<TRawConfig = IBlueprintConfig, TProcess
 		config: TRawConfig,
 		coreConfig: BlueprintConfigCoreConfig
 	) => TProcessedConfig
+
+	/** transform blueprint config to the API format */
+	blueprintConfigToAPI?: (context: ICommonContext, config: TRawConfig) => object
 }
 
 export interface BlueprintResultStudioBaseline {

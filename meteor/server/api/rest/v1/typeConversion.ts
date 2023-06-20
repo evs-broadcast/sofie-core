@@ -32,6 +32,9 @@ import { DBShowStyleBase, ShowStyleBase } from '../../../../lib/collections/Show
 import { ShowStyleVariant } from '../../../../lib/collections/ShowStyleVariants'
 import { Studio } from '../../../../lib/collections/Studios'
 import { Blueprints, ShowStyleBases, Studios } from '../../../collections'
+import { StudioJobs } from '@sofie-automation/corelib/dist/worker/studio'
+import { QueueStudioJob } from '../../../worker/worker'
+import { profiler } from '../../profiler'
 
 /*
 This file contains functions that convert between the internal Sofie-Core types and types exposed to the external API.
@@ -83,7 +86,8 @@ export async function showStyleBaseFrom(
 	}
 }
 
-export function APIShowStyleBaseFrom(showStyleBase: ShowStyleBase): APIShowStyleBase {
+export async function APIShowStyleBaseFrom(showStyleBase: ShowStyleBase): Promise<APIShowStyleBase> {
+	const blueprintConfig = await APIShowStyleBlueprintConfigFrom(showStyleBase)
 	return {
 		name: showStyleBase.name,
 		blueprintId: unprotectString(showStyleBase.blueprintId),
@@ -94,7 +98,7 @@ export function APIShowStyleBaseFrom(showStyleBase: ShowStyleBase): APIShowStyle
 		sourceLayers: Object.values<ISourceLayer | undefined>(
 			applyAndValidateOverrides(showStyleBase.sourceLayersWithOverrides).obj
 		).map((layer) => APISourceLayerFrom(layer!)),
-		config: applyAndValidateOverrides(showStyleBase.blueprintConfigWithOverrides).obj,
+		config: blueprintConfig,
 	}
 }
 
@@ -277,14 +281,14 @@ export async function studioFrom(apiStudio: APIStudio, existingId?: StudioId): P
 	}
 }
 
-export function APIStudioFrom(studio: Studio): APIStudio {
+export async function APIStudioFrom(studio: Studio): Promise<APIStudio> {
 	const studioSettings = APIStudioSettingsFrom(studio.settings)
-
+	const blueprintConfig = await APIStudioBlueprintConfigFrom(studio)
 	return {
 		name: studio.name,
 		blueprintId: unprotectString(studio.blueprintId),
 		blueprintConfigPresetId: studio.blueprintConfigPresetId,
-		config: applyAndValidateOverrides(studio.blueprintConfigWithOverrides).obj,
+		config: blueprintConfig,
 		settings: studioSettings,
 		supportedShowStyleBase: studio.supportedShowStyleBase.map((id) => unprotectString(id)),
 	}
@@ -404,5 +408,21 @@ export function APIOutputLayerFrom(outputLayer: IOutputLayer): APIOutputLayer {
 		name: outputLayer.name,
 		rank: outputLayer._rank,
 		isPgm: outputLayer.isPGM,
+	}
+}
+
+export async function APIShowStyleBlueprintConfigFrom(showStyleBase: ShowStyleBase): Promise<object> {
+	return applyAndValidateOverrides(showStyleBase.blueprintConfigWithOverrides).obj
+}
+
+export async function APIStudioBlueprintConfigFrom(studio: Studio): Promise<object> {
+	const queuedJob = await QueueStudioJob(StudioJobs.BlueprintConfigToAPI, studio._id, undefined)
+	const span = profiler.startSpan('queued-job')
+	try {
+		const res = await queuedJob.complete
+		// explicitly await before returning
+		return res
+	} finally {
+		span?.end()
 	}
 }

@@ -142,6 +142,9 @@ export interface ShowStyleBlueprintManifest<TRawConfig = IBlueprintConfig, TProc
 		coreConfig: BlueprintConfigCoreConfig
 	) => TProcessedConfig
 
+	/** transform blueprint config to the API format */
+	blueprintConfigToAPI?: (context: ICommonContext, config: TRawConfig) => object
+
 	// Events
 
 	onRundownActivate?: (context: IRundownActivationContext, wasActive: boolean) => Promise<void>
