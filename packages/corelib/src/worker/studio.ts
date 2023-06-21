@@ -218,6 +218,7 @@ export interface ExecuteActionProps extends RundownPlayoutPropsBase {
 export interface ExecuteActionResult {
 	queuedPartInstanceId?: PartInstanceId
 	taken?: boolean
+	validationErrors?: any
 }
 export interface TakeNextPartProps extends RundownPlayoutPropsBase {
 	fromPartInstanceId: PartInstanceId | null

@@ -293,7 +293,7 @@ class ServerRestAPI implements RestAPI {
 					412
 				)
 
-			return ServerClientAPI.runUserActionInLogForPlaylistOnWorker(
+			const result = await ServerClientAPI.runUserActionInLogForPlaylistOnWorker(
 				ServerRestAPI.getMethodContext(connection),
 				event,
 				getCurrentTime(),
@@ -311,6 +311,22 @@ class ServerRestAPI implements RestAPI {
 					triggerMode: triggerMode ? triggerMode : undefined,
 				}
 			)
+
+			if (ClientAPI.isClientResponseError(result)) {
+				throw new Meteor.Error(
+					500,
+					`AdLib Action execution failed`,
+					JSON.stringify([{ message: result.error.rawError.message }])
+				)
+			}
+
+			const validationErrors = result.result?.validationErrors
+			if (validationErrors) {
+				const details = JSON.stringify([validationErrors], null, 2)
+				throw new Meteor.Error(409, `AdLib Action validation failed`, details)
+			}
+
+			return result
 		} else {
 			return ClientAPI.responseError(
 				UserError.from(new Error(`No adLib with Id ${adLibId}`), UserErrorMessage.AdlibNotFound),

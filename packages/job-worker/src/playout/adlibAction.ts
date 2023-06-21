@@ -152,12 +152,18 @@ export async function executeActionInner(
 	)
 
 	try {
-		await blueprint.blueprint.executeAction(
+		const result = await blueprint.blueprint.executeAction(
 			actionContext,
 			actionParameters.actionId,
 			actionParameters.userData,
 			actionParameters.triggerMode
 		)
+
+		if (result) {
+			const safeValue = JSON.parse(JSON.stringify(result.validationErrors))
+			logger.info(`Adlib validation failed: ${safeValue}`)
+			return { validationErrors: safeValue }
+		}
 	} catch (err) {
 		logger.error(`Error in showStyleBlueprint.executeAction: ${stringifyError(err)}`)
 		throw UserError.fromUnknown(err, UserErrorMessage.InternalError)
