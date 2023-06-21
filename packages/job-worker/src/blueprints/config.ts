@@ -158,8 +158,6 @@ export function preprocessShowStyleConfig(
 }
 
 export async function handleBlueprintConfigToAPI(context: JobContext, _data: unknown): Promise<object> {
-	console.log('handleBlueprintConfigToAPI')
-
 	const blueprint = context.studioBlueprint
 	if (typeof blueprint.blueprint.blueprintConfigToAPI !== 'function')
 		throw new Error('Blueprint does not support this config flow')

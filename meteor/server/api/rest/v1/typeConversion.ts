@@ -3,6 +3,7 @@ import {
 	IBlueprintConfig,
 	IOutputLayer,
 	ISourceLayer,
+	ShowStyleBlueprintManifest,
 	SourceLayerType,
 	StatusCode,
 } from '@sofie-automation/blueprints-integration'
@@ -35,6 +36,9 @@ import { Blueprints, ShowStyleBases, Studios } from '../../../collections'
 import { StudioJobs } from '@sofie-automation/corelib/dist/worker/studio'
 import { QueueStudioJob } from '../../../worker/worker'
 import { profiler } from '../../profiler'
+import { Meteor } from 'meteor/meteor'
+import { evalBlueprint } from '../../blueprints/cache'
+import { CommonContext } from '../../../migration/upgrades/context'
 
 /*
 This file contains functions that convert between the internal Sofie-Core types and types exposed to the external API.
@@ -412,7 +416,30 @@ export function APIOutputLayerFrom(outputLayer: IOutputLayer): APIOutputLayer {
 }
 
 export async function APIShowStyleBlueprintConfigFrom(showStyleBase: ShowStyleBase): Promise<object> {
-	return applyAndValidateOverrides(showStyleBase.blueprintConfigWithOverrides).obj
+	if (!showStyleBase.blueprintConfigPresetId) throw new Meteor.Error(500, 'ShowStyleBase is missing config preset')
+
+	const blueprint = showStyleBase.blueprintId
+		? await Blueprints.findOneAsync({
+				_id: showStyleBase.blueprintId,
+				blueprintType: BlueprintManifestType.SHOWSTYLE,
+		  })
+		: undefined
+	if (!blueprint) throw new Meteor.Error(404, `Blueprint "${showStyleBase.blueprintId}" not found!`)
+
+	if (!blueprint.blueprintHash) throw new Meteor.Error(500, 'Blueprint is not valid')
+
+	const blueprintManifest = evalBlueprint(blueprint) as ShowStyleBlueprintManifest
+
+	if (typeof blueprintManifest.blueprintConfigToAPI !== 'function')
+		throw new Meteor.Error(500, 'Blueprint does not support this config flow')
+
+	const blueprintContext = new CommonContext(
+		'APIShowStyleBlueprintConfig',
+		`showStyleBase:${showStyleBase._id},blueprint:${blueprint._id}`
+	)
+	const rawBlueprintConfig = applyAndValidateOverrides(showStyleBase.blueprintConfigWithOverrides).obj
+
+	return blueprintManifest.blueprintConfigToAPI(blueprintContext, rawBlueprintConfig)
 }
 
 export async function APIStudioBlueprintConfigFrom(studio: Studio): Promise<object> {
