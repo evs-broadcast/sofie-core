@@ -37,7 +37,7 @@
 		"install_swagger.js"
 	],
 	"dependencies": {
-		"tslib": "^2.4.0"
+		"tslib": "^2.5.1"
 	},
 	"devDependencies": {
 		"@openapitools/openapi-generator-cli": "^2.5.2",

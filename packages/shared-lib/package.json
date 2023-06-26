@@ -40,8 +40,8 @@
 	],
 	"dependencies": {
 		"@mos-connection/model": "^3.0.4",
-		"timeline-state-resolver-types": "npm:@evs/timeline-state-resolver-types@8.0.7",
-		"tslib": "^2.4.0",
+		"timeline-state-resolver-types": "npm:@evs/timeline-state-resolver-types@8.0.9",
+		"tslib": "^2.5.1",
 		"type-fest": "^2.19.0"
 	},
 	"prettier": "@sofie-automation/code-standard-preset/.prettierrc.json",

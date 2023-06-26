@@ -41,7 +41,7 @@
 	],
 	"dependencies": {
 		"@sofie-automation/shared-lib": "1.50.4",
-		"tslib": "^2.4.0",
+		"tslib": "^2.5.1",
 		"type-fest": "^2.19.0"
 	},
 	"lint-staged": {

@@ -61,8 +61,8 @@
 		"@sofie-automation/shared-lib": "1.50.4",
 		"debug": "^4.3.3",
 		"influx": "^5.9.3",
-		"timeline-state-resolver": "npm:@evs/timeline-state-resolver@8.0.7",
-		"tslib": "^2.4.0",
+		"timeline-state-resolver": "npm:@evs/timeline-state-resolver@8.0.9",
+		"tslib": "^2.5.1",
 		"underscore": "^1.13.4",
 		"winston": "^3.8.2"
 	},

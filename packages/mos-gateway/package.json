@@ -69,7 +69,7 @@
 		"@mos-connection/connector": "^3.0.4",
 		"@sofie-automation/server-core-integration": "1.50.4",
 		"@sofie-automation/shared-lib": "1.50.4",
-		"tslib": "^2.4.0",
+		"tslib": "^2.5.1",
 		"type-fest": "^2.19.0",
 		"underscore": "^1.13.4",
 		"winston": "^3.8.2"

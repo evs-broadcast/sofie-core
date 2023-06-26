@@ -2084,7 +2084,7 @@ __metadata:
   resolution: "@sofie-automation/blueprints-integration@portal:../packages/blueprints-integration::locator=automation-core%40workspace%3A."
   dependencies:
     "@sofie-automation/shared-lib": 1.50.4
-    tslib: ^2.4.0
+    tslib: ^2.5.1
     type-fest: ^2.19.0
   languageName: node
   linkType: soft
@@ -2133,7 +2133,7 @@ __metadata:
     object-path: ^0.11.8
     prom-client: ^14.2.0
     timecode: 0.0.4
-    tslib: ^2.4.0
+    tslib: ^2.5.1
     type-fest: ^2.19.0
     underscore: ^1.13.4
   peerDependencies:
@@ -2168,7 +2168,7 @@ __metadata:
     p-timeout: ^4.1.0
     superfly-timeline: ^8.3.1
     threadedclass: ^1.1.2
-    tslib: ^2.4.0
+    tslib: ^2.5.1
     type-fest: ^2.19.0
     underscore: ^1.13.4
     vm2: ^3.9.14
@@ -2180,8 +2180,8 @@ __metadata:
   resolution: "@sofie-automation/shared-lib@portal:../packages/shared-lib::locator=automation-core%40workspace%3A."
   dependencies:
     "@mos-connection/model": ^3.0.4
-    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.7"
-    tslib: ^2.4.0
+    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.9"
+    tslib: ^2.5.1
     type-fest: ^2.19.0
   languageName: node
   linkType: soft
@@ -12534,12 +12534,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.7":
-  version: 8.0.7
-  resolution: "@evs/timeline-state-resolver-types@npm:8.0.7::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver-types%2F-%2F%40evs%2Ftimeline-state-resolver-types-8.0.7.tgz"
+"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.9":
+  version: 8.0.9
+  resolution: "@evs/timeline-state-resolver-types@npm:8.0.9::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver-types%2F-%2F%40evs%2Ftimeline-state-resolver-types-8.0.9.tgz"
   dependencies:
     tslib: ^2.5.1
-  checksum: 0ccc2fc01fe94e3dd78c9ba35f9f07fa1fee6f9944e4d247fa56a3916cb347a7bd389fceaa138ae938c38ec630a0da7cd640ee8b8a5ff3f8424ab2e78770884b
+  checksum: 363825c7a96b8dd63e20d4b8f5c43a148a6cbf5a130f920f718809d51522bcd033cf8788970888665dd36b34aacb37e0a9edfbf0c3418cd823000eafdc335783
   languageName: node
   linkType: hard
 
