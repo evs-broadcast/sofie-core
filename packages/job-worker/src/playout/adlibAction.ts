@@ -166,7 +166,10 @@ export async function executeActionInner(
 		}
 	} catch (err) {
 		logger.error(`Error in showStyleBlueprint.executeAction: ${stringifyError(err)}`)
-		throw UserError.fromUnknown(err, UserErrorMessage.InternalError)
+		throw UserError.fromUnknown(
+			new Error(err instanceof Error ? err.message : 'Unknown error'),
+			UserErrorMessage.InternalError
+		)
 	}
 
 	await applyAnyExecutionSideEffects(context, cache, actionContext, now)
