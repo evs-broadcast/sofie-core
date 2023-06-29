@@ -75,6 +75,7 @@ import {
 	showStyleBaseFrom,
 	showStyleVariantFrom,
 	studioFrom,
+	validateAPIBlueprintConfigForStudio,
 } from './typeConversion'
 import {
 	runUpgradeForShowStyleBase,
@@ -974,9 +975,24 @@ class ServerRestAPI implements RestAPI {
 	async addStudio(
 		_connection: Meteor.Connection,
 		_event: string,
-		studio: APIStudio
+		apiStudio: APIStudio
 	): Promise<ClientAPI.ClientResponse<string>> {
-		const newStudio = await studioFrom(studio)
+		const blueprintConfigValidation = await validateAPIBlueprintConfigForStudio(apiStudio)
+		const blueprintConfigValidationOK = blueprintConfigValidation.reduce(
+			(acc, msg) => acc && msg.level === NoteSeverity.INFO,
+			true
+		)
+		if (!blueprintConfigValidationOK) {
+			const details = JSON.stringify(
+				blueprintConfigValidation.filter((msg) => msg.level < NoteSeverity.INFO).map((msg) => msg.message.key),
+				null,
+				2
+			)
+			logger.error(`addOrUpdateStudio failed blueprint config validation with errors: ${details}`)
+			throw new Meteor.Error(409, `Studio has failed blueprint config validation`, details)
+		}
+
+		const newStudio = await studioFrom(apiStudio)
 		if (!newStudio) throw new Meteor.Error(400, `Invalid Studio`)
 
 		const newStudioId = await Studios.insertAsync(newStudio)
@@ -1012,9 +1028,24 @@ class ServerRestAPI implements RestAPI {
 		_connection: Meteor.Connection,
 		_event: string,
 		studioId: StudioId,
-		studio: APIStudio
+		apiStudio: APIStudio
 	): Promise<ClientAPI.ClientResponse<void>> {
-		const newStudio = await studioFrom(studio, studioId)
+		const blueprintConfigValidation = await validateAPIBlueprintConfigForStudio(apiStudio)
+		const blueprintConfigValidationOK = blueprintConfigValidation.reduce(
+			(acc, msg) => acc && msg.level === NoteSeverity.INFO,
+			true
+		)
+		if (!blueprintConfigValidationOK) {
+			const details = JSON.stringify(
+				blueprintConfigValidation.filter((msg) => msg.level < NoteSeverity.INFO).map((msg) => msg.message.key),
+				null,
+				2
+			)
+			logger.error(`addOrUpdateStudio failed blueprint config validation with errors: ${details}`)
+			throw new Meteor.Error(409, `Studio ${studioId} has failed blueprint config validation`, details)
+		}
+
+		const newStudio = await studioFrom(apiStudio, studioId)
 		if (!newStudio) throw new Meteor.Error(400, `Invalid Studio`)
 
 		const existingStudio = await Studios.findOneAsync(studioId)

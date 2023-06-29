@@ -1,11 +1,13 @@
 import {
 	BlueprintManifestType,
 	IBlueprintConfig,
+	IConfigMessage,
 	IOutputLayer,
 	ISourceLayer,
 	ShowStyleBlueprintManifest,
 	SourceLayerType,
 	StatusCode,
+	StudioBlueprintManifest,
 } from '@sofie-automation/blueprints-integration'
 import { PeripheralDevice, PeripheralDeviceType } from '@sofie-automation/corelib/dist/dataModel/PeripheralDevice'
 import { Blueprint } from '@sofie-automation/corelib/dist/dataModel/Blueprint'
@@ -18,6 +20,7 @@ import {
 	ObjectOverrideSetOp,
 	wrapDefaultObject,
 	updateOverrides,
+	convertObjectIntoOverrides,
 } from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
 import {
 	APIBlueprint,
@@ -257,8 +260,8 @@ export async function studioFrom(apiStudio: APIStudio, existingId?: StudioId): P
 	if (existingId) studio = await Studios.findOneAsync(existingId)
 
 	const blueprintConfig = studio
-		? updateOverrides(studio.blueprintConfigWithOverrides, apiStudio.config as IBlueprintConfig)
-		: wrapDefaultObject({})
+		? updateOverrides(studio.blueprintConfigWithOverrides, await StudioBlueprintConfigFromAPI(apiStudio))
+		: convertObjectIntoOverrides(await StudioBlueprintConfigFromAPI(apiStudio))
 
 	return {
 		_id: existingId ?? getRandomId(),
@@ -440,6 +443,58 @@ export async function APIShowStyleBlueprintConfigFrom(showStyleBase: ShowStyleBa
 	const rawBlueprintConfig = applyAndValidateOverrides(showStyleBase.blueprintConfigWithOverrides).obj
 
 	return blueprintManifest.blueprintConfigToAPI(blueprintContext, rawBlueprintConfig)
+}
+
+export async function validateAPIBlueprintConfigForStudio(apiStudio: APIStudio): Promise<Array<IConfigMessage>> {
+	if (!apiStudio.blueprintConfigPresetId) throw new Meteor.Error(500, 'Studio is missing config preset')
+
+	const blueprint = apiStudio.blueprintId
+		? await Blueprints.findOneAsync({
+				_id: protectString(apiStudio.blueprintId),
+				blueprintType: BlueprintManifestType.STUDIO,
+		  })
+		: undefined
+	if (!blueprint) throw new Meteor.Error(404, `Blueprint "${apiStudio.blueprintId}" not found!`)
+
+	if (!blueprint.blueprintHash) throw new Meteor.Error(500, 'Blueprint is not valid')
+
+	const blueprintManifest = evalBlueprint(blueprint) as StudioBlueprintManifest
+
+	if (typeof blueprintManifest.validateConfigFromAPI !== 'function')
+		throw new Meteor.Error(500, 'Blueprint does not support this config flow')
+
+	const blueprintContext = new CommonContext(
+		'APIStudioBlueprintConfig',
+		`studio:${apiStudio.name},blueprint:${blueprint._id}`
+	)
+
+	return blueprintManifest.validateConfigFromAPI(blueprintContext, apiStudio.config)
+}
+
+export async function StudioBlueprintConfigFromAPI(apiStudio: APIStudio): Promise<IBlueprintConfig> {
+	if (!apiStudio.blueprintConfigPresetId) throw new Meteor.Error(500, 'Studio is missing config preset')
+
+	const blueprint = apiStudio.blueprintId
+		? await Blueprints.findOneAsync({
+				_id: protectString(apiStudio.blueprintId),
+				blueprintType: BlueprintManifestType.STUDIO,
+		  })
+		: undefined
+	if (!blueprint) throw new Meteor.Error(404, `Blueprint "${apiStudio.blueprintId}" not found!`)
+
+	if (!blueprint.blueprintHash) throw new Meteor.Error(500, 'Blueprint is not valid')
+
+	const blueprintManifest = evalBlueprint(blueprint) as StudioBlueprintManifest
+
+	if (typeof blueprintManifest.blueprintConfigFromAPI !== 'function')
+		throw new Meteor.Error(500, 'Blueprint does not support this config flow')
+
+	const blueprintContext = new CommonContext(
+		'BlueprintConfigFromAPI',
+		`studio:${apiStudio.name},blueprint:${blueprint._id}`
+	)
+
+	return blueprintManifest.blueprintConfigFromAPI(blueprintContext, apiStudio.config)
 }
 
 export async function APIStudioBlueprintConfigFrom(studio: Studio): Promise<object> {

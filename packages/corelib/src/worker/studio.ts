@@ -162,7 +162,9 @@ export enum StudioJobs {
 	 * Validate the blueprintConfig for the Studio, with the Blueprint validateConfig
 	 */
 	BlueprintValidateConfigForStudio = 'blueprintValidateConfigForStudio',
-
+	/**
+	 * Transform the database blueprint config to the API format
+	 */
 	BlueprintConfigToAPI = 'blueprintConfigToAPI',
 }
 

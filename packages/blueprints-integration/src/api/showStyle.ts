@@ -142,6 +142,9 @@ export interface ShowStyleBlueprintManifest<TRawConfig = IBlueprintConfig, TProc
 		coreConfig: BlueprintConfigCoreConfig
 	) => TProcessedConfig
 
+	/** transform API blueprint config to the database format */
+	blueprintConfigFromAPI?: (context: ICommonContext, config: object) => TRawConfig
+
 	/** transform blueprint config to the API format */
 	blueprintConfigToAPI?: (context: ICommonContext, config: TRawConfig) => object
 
