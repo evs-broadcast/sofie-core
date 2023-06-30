@@ -6,13 +6,13 @@ import {
 	ShowStyleBlueprintManifest,
 	StudioBlueprintManifest,
 } from '@sofie-automation/blueprints-integration'
-import { getSofieHostUrl, objectPathGet, stringifyError, clone } from '@sofie-automation/corelib/dist/lib'
+import { getSofieHostUrl, objectPathGet, stringifyError } from '@sofie-automation/corelib/dist/lib'
 import _ = require('underscore')
 import { logger } from '../logging'
 import { CommonContext } from './context'
 import { DBStudio, IStudioSettings } from '@sofie-automation/corelib/dist/dataModel/Studio'
 import { protectString } from '@sofie-automation/corelib/dist/protectedString'
-import { JobContext, ProcessedShowStyleCompound, StudioCacheContext } from '../jobs'
+import { ProcessedShowStyleCompound, StudioCacheContext } from '../jobs'
 import { applyAndValidateOverrides } from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
 
 /**
@@ -155,21 +155,4 @@ export function preprocessShowStyleConfig(
 	}
 
 	return res
-}
-
-export async function handleBlueprintConfigToAPI(context: JobContext, _data: unknown): Promise<object> {
-	const blueprint = context.studioBlueprint
-	if (typeof blueprint.blueprint.blueprintConfigToAPI !== 'function')
-		throw new Error('Blueprint does not support this config flow')
-	if (!blueprint.blueprintDoc || !blueprint.blueprintDoc.blueprintHash) throw new Error('Blueprint is not valid')
-	if (!context.studio.blueprintConfigPresetId) throw new Error('Studio is missing config preset')
-
-	const blueprintContext = new CommonContext({
-		name: 'configToAPI',
-		identifier: `studio:${context.studioId},blueprint:${blueprint.blueprintId}`,
-	})
-	const rawBlueprintConfig = applyAndValidateOverrides(context.studio.blueprintConfigWithOverrides).obj
-
-	// TODO - why is this clone necessary?
-	return clone(blueprint.blueprint.blueprintConfigToAPI(blueprintContext, rawBlueprintConfig))
 }

@@ -34,7 +34,6 @@ import { handleBlueprintUpgradeForStudio, handleBlueprintValidateConfigForStudio
 import { handleTimelineTriggerTime, handleOnPlayoutPlaybackChanged } from '../../playout/timings'
 import { handleExecuteAdlibAction } from '../../playout/adlibAction'
 import { handleTakeNextPart } from '../../playout/take'
-import { handleBlueprintConfigToAPI } from '../../blueprints/config'
 
 type ExecutableFunction<T extends keyof StudioJobFunc> = (
 	context: JobContext,
@@ -86,6 +85,4 @@ export const studioJobHandlers: StudioJobHandlers = {
 
 	[StudioJobs.BlueprintUpgradeForStudio]: handleBlueprintUpgradeForStudio,
 	[StudioJobs.BlueprintValidateConfigForStudio]: handleBlueprintValidateConfigForStudio,
-
-	[StudioJobs.BlueprintConfigToAPI]: handleBlueprintConfigToAPI,
 }

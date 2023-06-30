@@ -708,6 +708,7 @@ export interface APIShowStyleBase {
 export interface APIShowStyleVariant {
 	name: string
 	showStyleBaseId: string
+	blueprintConfigPresetId?: string
 	config: object
 	rank: number
 }
