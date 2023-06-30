@@ -96,7 +96,7 @@ export async function showStyleBaseFrom(
 }
 
 export async function APIShowStyleBaseFrom(showStyleBase: ShowStyleBase): Promise<APIShowStyleBase> {
-	const blueprintConfig = await APIShowStyleBlueprintConfigFrom(showStyleBase)
+	const blueprintConfig = await APIShowStyleBlueprintConfigFrom(showStyleBase, showStyleBase.blueprintId)
 	return {
 		name: showStyleBase.name,
 		blueprintId: unprotectString(showStyleBase.blueprintId),
@@ -134,13 +134,17 @@ export function showStyleVariantFrom(
 	}
 }
 
-export function APIShowStyleVariantFrom(showStyleVariant: ShowStyleVariant): APIShowStyleVariant {
+export async function APIShowStyleVariantFrom(
+	showStyleBase: ShowStyleBase,
+	showStyleVariant: ShowStyleVariant
+): Promise<APIShowStyleVariant> {
+	const blueprintConfig = await APIShowStyleBlueprintConfigFrom(showStyleVariant, showStyleBase.blueprintId)
 	return {
 		name: showStyleVariant.name,
 		rank: showStyleVariant._rank,
 		showStyleBaseId: unprotectString(showStyleVariant.showStyleBaseId),
 		blueprintConfigPresetId: showStyleVariant.blueprintConfigPresetId,
-		config: applyAndValidateOverrides(showStyleVariant.blueprintConfigWithOverrides).obj,
+		config: blueprintConfig,
 	}
 }
 
@@ -439,11 +443,12 @@ async function getBlueprint(
 	return blueprint
 }
 
-export async function validateAPIBlueprintConfigForShowStyleBase(
-	apiShowStyleBase: APIShowStyleBase
+export async function validateAPIBlueprintConfigForShowStyle(
+	apiShowStyle: APIShowStyleBase | APIShowStyleVariant,
+	blueprintId: BlueprintId | undefined
 ): Promise<Array<IConfigMessage>> {
-	if (!apiShowStyleBase.blueprintConfigPresetId) throw new Meteor.Error(500, 'ShowStyleBase is missing config preset')
-	const blueprint = await getBlueprint(protectString(apiShowStyleBase.blueprintId), BlueprintManifestType.SHOWSTYLE)
+	if (!apiShowStyle.blueprintConfigPresetId) throw new Meteor.Error(500, 'ShowStyle is missing config preset')
+	const blueprint = await getBlueprint(blueprintId, BlueprintManifestType.SHOWSTYLE)
 	const blueprintManifest = evalBlueprint(blueprint) as ShowStyleBlueprintManifest
 
 	if (typeof blueprintManifest.validateConfigFromAPI !== 'function')
@@ -451,10 +456,10 @@ export async function validateAPIBlueprintConfigForShowStyleBase(
 
 	const blueprintContext = new CommonContext(
 		'validateAPIBlueprintConfig',
-		`showStyleBase:${apiShowStyleBase.name},blueprint:${blueprint._id}`
+		`showStyle:${apiShowStyle.name},blueprint:${blueprint._id}`
 	)
 
-	return blueprintManifest.validateConfigFromAPI(blueprintContext, apiShowStyleBase.config)
+	return blueprintManifest.validateConfigFromAPI(blueprintContext, apiShowStyle.config)
 }
 
 export async function ShowStyleBaseBlueprintConfigFromAPI(
@@ -475,9 +480,12 @@ export async function ShowStyleBaseBlueprintConfigFromAPI(
 	return blueprintManifest.blueprintConfigFromAPI(blueprintContext, apiShowStyleBase.config)
 }
 
-export async function APIShowStyleBlueprintConfigFrom(showStyleBase: ShowStyleBase): Promise<object> {
-	if (!showStyleBase.blueprintConfigPresetId) throw new Meteor.Error(500, 'ShowStyleBase is missing config preset')
-	const blueprint = await getBlueprint(showStyleBase.blueprintId, BlueprintManifestType.SHOWSTYLE)
+export async function APIShowStyleBlueprintConfigFrom(
+	showStyle: ShowStyleBase | ShowStyleVariant,
+	blueprintId: BlueprintId | undefined
+): Promise<object> {
+	if (!showStyle.blueprintConfigPresetId) throw new Meteor.Error(500, 'ShowStyle is missing config preset')
+	const blueprint = await getBlueprint(blueprintId, BlueprintManifestType.SHOWSTYLE)
 	const blueprintManifest = evalBlueprint(blueprint) as ShowStyleBlueprintManifest
 
 	if (typeof blueprintManifest.blueprintConfigToAPI !== 'function')
@@ -485,12 +493,12 @@ export async function APIShowStyleBlueprintConfigFrom(showStyleBase: ShowStyleBa
 
 	const blueprintContext = new CommonContext(
 		'APIShowStyleBlueprintConfigFrom',
-		`showStyleBase:${showStyleBase._id},blueprint:${blueprint._id}`
+		`showStyleBase:${showStyle._id},blueprint:${blueprint._id}`
 	)
 
 	return blueprintManifest.blueprintConfigToAPI(
 		blueprintContext,
-		applyAndValidateOverrides(showStyleBase.blueprintConfigWithOverrides).obj
+		applyAndValidateOverrides(showStyle.blueprintConfigWithOverrides).obj
 	)
 }
 

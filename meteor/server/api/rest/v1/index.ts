@@ -75,7 +75,7 @@ import {
 	showStyleBaseFrom,
 	showStyleVariantFrom,
 	studioFrom,
-	validateAPIBlueprintConfigForShowStyleBase,
+	validateAPIBlueprintConfigForShowStyle,
 	validateAPIBlueprintConfigForStudio,
 } from './typeConversion'
 import {
@@ -749,7 +749,10 @@ class ServerRestAPI implements RestAPI {
 		_event: string,
 		apiShowStyleBase: APIShowStyleBase
 	): Promise<ClientAPI.ClientResponse<string>> {
-		const blueprintConfigValidation = await validateAPIBlueprintConfigForShowStyleBase(apiShowStyleBase)
+		const blueprintConfigValidation = await validateAPIBlueprintConfigForShowStyle(
+			apiShowStyleBase,
+			protectString(apiShowStyleBase.blueprintId)
+		)
 		const blueprintConfigValidationOK = blueprintConfigValidation.reduce(
 			(acc, msg) => acc && msg.level === NoteSeverity.INFO,
 			true
@@ -789,7 +792,10 @@ class ServerRestAPI implements RestAPI {
 		showStyleBaseId: ShowStyleBaseId,
 		apiShowStyleBase: APIShowStyleBase
 	): Promise<ClientAPI.ClientResponse<void>> {
-		const blueprintConfigValidation = await validateAPIBlueprintConfigForShowStyleBase(apiShowStyleBase)
+		const blueprintConfigValidation = await validateAPIBlueprintConfigForShowStyle(
+			apiShowStyleBase,
+			protectString(apiShowStyleBase.blueprintId)
+		)
 		const blueprintConfigValidationOK = blueprintConfigValidation.reduce(
 			(acc, msg) => acc && msg.level === NoteSeverity.INFO,
 			true
@@ -898,12 +904,34 @@ class ServerRestAPI implements RestAPI {
 		_connection: Meteor.Connection,
 		_event: string,
 		showStyleBaseId: ShowStyleBaseId,
-		showStyleVariant: APIShowStyleVariant
+		apiShowStyleVariant: APIShowStyleVariant
 	): Promise<ClientAPI.ClientResponse<string>> {
 		const showStyleBase = await ShowStyleBases.findOneAsync(showStyleBaseId)
 		if (!showStyleBase) throw new Meteor.Error(404, `ShowStyleBase ${showStyleBaseId} not found`)
 
-		const variant = showStyleVariantFrom(showStyleVariant)
+		const blueprintConfigValidation = await validateAPIBlueprintConfigForShowStyle(
+			apiShowStyleVariant,
+			showStyleBase.blueprintId
+		)
+		const blueprintConfigValidationOK = blueprintConfigValidation.reduce(
+			(acc, msg) => acc && msg.level === NoteSeverity.INFO,
+			true
+		)
+		if (!blueprintConfigValidationOK) {
+			const details = JSON.stringify(
+				blueprintConfigValidation.filter((msg) => msg.level < NoteSeverity.INFO).map((msg) => msg.message.key),
+				null,
+				2
+			)
+			logger.error(`addOrUpdateShowStyleBase failed blueprint config validation with errors: ${details}`)
+			throw new Meteor.Error(
+				409,
+				`ShowStyleBase ${showStyleBaseId} has failed blueprint config validation`,
+				details
+			)
+		}
+
+		const variant = showStyleVariantFrom(apiShowStyleVariant)
 		if (!variant) throw new Meteor.Error(400, `Invalid ShowStyleVariant`)
 
 		const variantId = variant._id
@@ -924,7 +952,7 @@ class ServerRestAPI implements RestAPI {
 		const variant = await ShowStyleVariants.findOneAsync(showStyleVariantId)
 		if (!variant) throw new Meteor.Error(404, `ShowStyleVariant ${showStyleVariantId} not found`)
 
-		return ClientAPI.responseSuccess(APIShowStyleVariantFrom(variant))
+		return ClientAPI.responseSuccess(await APIShowStyleVariantFrom(showStyleBase, variant))
 	}
 
 	async addOrUpdateShowStyleVariant(
@@ -932,12 +960,34 @@ class ServerRestAPI implements RestAPI {
 		_event: string,
 		showStyleBaseId: ShowStyleBaseId,
 		showStyleVariantId: ShowStyleVariantId,
-		showStyleVariant: APIShowStyleVariant
+		apiShowStyleVariant: APIShowStyleVariant
 	): Promise<ClientAPI.ClientResponse<void>> {
 		const showStyleBase = await ShowStyleBases.findOneAsync(showStyleBaseId)
 		if (!showStyleBase) throw new Meteor.Error(404, `ShowStyleBase ${showStyleBaseId} does not exist`)
 
-		const showStyle = showStyleVariantFrom(showStyleVariant, showStyleVariantId)
+		const blueprintConfigValidation = await validateAPIBlueprintConfigForShowStyle(
+			apiShowStyleVariant,
+			showStyleBase.blueprintId
+		)
+		const blueprintConfigValidationOK = blueprintConfigValidation.reduce(
+			(acc, msg) => acc && msg.level === NoteSeverity.INFO,
+			true
+		)
+		if (!blueprintConfigValidationOK) {
+			const details = JSON.stringify(
+				blueprintConfigValidation.filter((msg) => msg.level < NoteSeverity.INFO).map((msg) => msg.message.key),
+				null,
+				2
+			)
+			logger.error(`addOrUpdateShowStyleBase failed blueprint config validation with errors: ${details}`)
+			throw new Meteor.Error(
+				409,
+				`ShowStyleBase ${showStyleBaseId} has failed blueprint config validation`,
+				details
+			)
+		}
+
+		const showStyle = showStyleVariantFrom(apiShowStyleVariant, showStyleVariantId)
 		if (!showStyle) throw new Meteor.Error(400, `Invalid ShowStyleVariant`)
 
 		const existingShowStyle = await ShowStyleVariants.findOneAsync(showStyleVariantId)
