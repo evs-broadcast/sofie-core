@@ -44,6 +44,7 @@ import { Blueprints, ShowStyleBases, Studios } from '../../../collections'
 import { Meteor } from 'meteor/meteor'
 import { evalBlueprint } from '../../blueprints/cache'
 import { CommonContext } from '../../../migration/upgrades/context'
+import { logger } from '../../../logging'
 
 /*
 This file contains functions that convert between the internal Sofie-Core types and types exposed to the external API.
@@ -78,8 +79,11 @@ export async function showStyleBaseFrom(
 		: wrapDefaultObject({})
 
 	const blueprintConfig = showStyleBase
-		? updateOverrides(showStyleBase.blueprintConfigWithOverrides, apiShowStyleBase.config as IBlueprintConfig)
-		: wrapDefaultObject({})
+		? updateOverrides(
+				showStyleBase.blueprintConfigWithOverrides,
+				await ShowStyleBaseBlueprintConfigFromAPI(apiShowStyleBase)
+		  )
+		: convertObjectIntoOverrides(await ShowStyleBaseBlueprintConfigFromAPI(apiShowStyleBase))
 
 	return {
 		_id: existingId ?? getRandomId(),
@@ -451,8 +455,10 @@ export async function validateAPIBlueprintConfigForShowStyle(
 	const blueprint = await getBlueprint(blueprintId, BlueprintManifestType.SHOWSTYLE)
 	const blueprintManifest = evalBlueprint(blueprint) as ShowStyleBlueprintManifest
 
-	if (typeof blueprintManifest.validateConfigFromAPI !== 'function')
-		throw new Meteor.Error(500, 'Blueprint does not support this config flow')
+	if (typeof blueprintManifest.validateConfigFromAPI !== 'function') {
+		logger.info('Blueprint does not support Config validation')
+		return []
+	}
 
 	const blueprintContext = new CommonContext(
 		'validateAPIBlueprintConfig',
@@ -507,8 +513,10 @@ export async function validateAPIBlueprintConfigForStudio(apiStudio: APIStudio):
 	const blueprint = await getBlueprint(protectString(apiStudio.blueprintId), BlueprintManifestType.STUDIO)
 	const blueprintManifest = evalBlueprint(blueprint) as StudioBlueprintManifest
 
-	if (typeof blueprintManifest.validateConfigFromAPI !== 'function')
-		throw new Meteor.Error(500, 'Blueprint does not support this config flow')
+	if (typeof blueprintManifest.validateConfigFromAPI !== 'function') {
+		logger.info('Blueprint does not support Config validation')
+		return []
+	}
 
 	const blueprintContext = new CommonContext(
 		'validateAPIBlueprintConfig',
