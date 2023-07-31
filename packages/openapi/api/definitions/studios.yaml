@@ -198,7 +198,7 @@ resources:
       operationId: devices
       tags:
         - studios
-      summary: Returns a list of all devices for a given studio.
+      summary: Returns a list of all devices for a given studio sorted by category.
       parameters:
         - name: studioId
           in: path
@@ -208,7 +208,7 @@ resources:
             type: string
       responses:
         200:
-          description: Command successfully handled - returns an array of peripheral device Ids
+          description: Command successfully handled - returns an object containing studio peripheral device Ids sorted by category
           content:
             application/json:
               schema:
@@ -218,9 +218,43 @@ resources:
                     type: number
                     example: 200
                   result:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/deviceItem'
+                    type: object
+                    properties:
+                      ingest:
+                        type: array
+                        items:
+                          type: string
+                      playout:
+                        type: array
+                        items:
+                          type: string
+                      media_manager:
+                        type: array
+                        items:
+                          type: string
+                      package_manager:
+                        type: array
+                        items:
+                          type: string
+                      live_status:
+                        type: array
+                        items:
+                          type: string
+                      trigger_input:
+                        type: array
+                        items:
+                          type: string
+                    required: [ingest, playout, media_manager, package_manager, live_status, trigger_input]
+                    additionalProperties: false
+                    example:
+                      {
+                        ingest: [],
+                        playout: [playoutgateway0PlayoutCoreParent],
+                        media_manager: [],
+                        package_manager: [],
+                        live_status: [livestatus0LiveStatusGateway],
+                        trigger_input: [],
+                      }
         404:
           $ref: '#/components/responses/studioNotFound'
         500:
@@ -363,14 +397,6 @@ resources:
 components:
   schemas:
     studioItem:
-      type: object
-      properties:
-        id:
-          type: string
-      required:
-        - id
-      additionalProperties: false
-    deviceItem:
       type: object
       properties:
         id:

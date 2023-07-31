@@ -5,11 +5,16 @@ import {
 	ISourceLayer,
 	SourceLayerType,
 	StatusCode,
+	TSR,
 } from '@sofie-automation/blueprints-integration'
-import { PeripheralDevice, PeripheralDeviceType } from '@sofie-automation/corelib/dist/dataModel/PeripheralDevice'
+import {
+	PERIPHERAL_SUBTYPE_PROCESS,
+	PeripheralDevice,
+	PeripheralDeviceType,
+} from '@sofie-automation/corelib/dist/dataModel/PeripheralDevice'
 import { Blueprint } from '@sofie-automation/corelib/dist/dataModel/Blueprint'
 import { ShowStyleBaseId, ShowStyleVariantId, StudioId } from '@sofie-automation/corelib/dist/dataModel/Ids'
-import { DBStudio, IStudioSettings } from '@sofie-automation/corelib/dist/dataModel/Studio'
+import { DBStudio, IStudioSettings, StudioPlayoutDevice } from '@sofie-automation/corelib/dist/dataModel/Studio'
 import { assertNever, getRandomId, literal } from '@sofie-automation/corelib/dist/lib'
 import { protectString, unprotectString } from '@sofie-automation/corelib/dist/protectedString'
 import {
@@ -17,6 +22,7 @@ import {
 	ObjectOverrideSetOp,
 	wrapDefaultObject,
 	updateOverrides,
+	ObjectWithOverrides,
 } from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
 import {
 	APIBlueprint,
@@ -31,7 +37,7 @@ import {
 import { DBShowStyleBase, ShowStyleBase } from '../../../../lib/collections/ShowStyleBases'
 import { ShowStyleVariant } from '../../../../lib/collections/ShowStyleVariants'
 import { Studio } from '../../../../lib/collections/Studios'
-import { Blueprints, ShowStyleBases, Studios } from '../../../collections'
+import { Blueprints, PeripheralDevices, ShowStyleBases, Studios } from '../../../collections'
 
 /*
 This file contains functions that convert between the internal Sofie-Core types and types exposed to the external API.
@@ -252,6 +258,59 @@ export async function studioFrom(apiStudio: APIStudio, existingId?: StudioId): P
 		? updateOverrides(studio.blueprintConfigWithOverrides, apiStudio.config as IBlueprintConfig)
 		: wrapDefaultObject({})
 
+	const playoutGateways = (
+		await PeripheralDevices.findFetchAsync(
+			{ studioId: existingId },
+			{ projection: { _id: 1, category: 1, type: 1, subType: 1 } }
+		)
+	).filter((d) => d.category === 'playout' && d.type === 'playout' && d.subType === PERIPHERAL_SUBTYPE_PROCESS)
+	console.log(`playoutGateways: ${JSON.stringify(playoutGateways, null, 2)}`)
+
+	const peripheralDeviceSettings = studio?.peripheralDeviceSettings
+	console.log(`peripheralDeviceSettings: ${JSON.stringify(peripheralDeviceSettings, null, 2)}`)
+
+	// All must move to applyConfig in blueprints - here only for testing
+	// setup any device services from the blueprint config, adding peripheral devices and studio settings as required
+	const playoutDevices: ObjectWithOverrides<Record<string, StudioPlayoutDevice>> = wrapDefaultObject({})
+	playoutDevices.overrides = Object.entries<any>(applyAndValidateOverrides(blueprintConfig).obj)
+		.filter(([key, _value]) => {
+			return key === 'deviceServices'
+		})
+		.map(([_key, value]) => value[0])
+		.map((dsomConfig) => {
+			const dsomOptions: TSR.DeviceOptionsDSOM = {
+				type: TSR.DeviceType.DSOM,
+				isMultiThreaded: false,
+				reportAllCommands: false,
+				options: {
+					url: dsomConfig.address,
+					username: dsomConfig.username,
+					password: dsomConfig.password,
+					studioDevices: [],
+				},
+			}
+			const dsomDevice: StudioPlayoutDevice = {
+				peripheralDeviceId: playoutGateways[0]._id,
+				options: dsomOptions,
+			}
+
+			return literal<ObjectOverrideSetOp>({
+				op: 'set',
+				path: dsomConfig.objectId,
+				value: dsomDevice,
+			})
+		})
+	// console.log(`playoutDevices overrides: ${JSON.stringify(playoutDevices.overrides, null, 2)}`)
+
+	if (existingId && studio) {
+		studio.peripheralDeviceSettings = {
+			playoutDevices: playoutDevices,
+			ingestDevices: wrapDefaultObject({}),
+			inputDevices: wrapDefaultObject({}),
+		}
+		await Studios.upsertAsync(existingId, studio)
+	}
+
 	return {
 		_id: existingId ?? getRandomId(),
 		name: apiStudio.name,
@@ -269,7 +328,7 @@ export async function studioFrom(apiStudio: APIStudio, existingId?: StudioId): P
 		previewContainerIds: [],
 		thumbnailContainerIds: [],
 		peripheralDeviceSettings: {
-			playoutDevices: wrapDefaultObject({}),
+			playoutDevices: wrapDefaultObject({}), //playoutDevices,
 			ingestDevices: wrapDefaultObject({}),
 			inputDevices: wrapDefaultObject({}),
 		},
@@ -279,6 +338,10 @@ export async function studioFrom(apiStudio: APIStudio, existingId?: StudioId): P
 
 export function APIStudioFrom(studio: Studio): APIStudio {
 	const studioSettings = APIStudioSettingsFrom(studio.settings)
+
+	Object.entries<any>(studio.peripheralDeviceSettings).forEach(([key, value]) => {
+		console.log(`Peripheral Devices - ${key}: ${JSON.stringify(value, null, 2)}`)
+	})
 
 	return {
 		name: studio.name,

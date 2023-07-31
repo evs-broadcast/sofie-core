@@ -451,6 +451,12 @@ body.evs {
 		}
 	}
 
+	.btn-primary:disabled {
+		pointer-events: none;
+		color: #E0E3E4;
+		border-color: rgba(224, 227, 228, 0.5);
+		background-color: transparent; }
+	  
 	.settings-studio-mappings-table,
 	.settings-studio-source-table,
 	.settings-studio-output-table {

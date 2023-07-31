@@ -256,7 +256,7 @@ export interface RestAPI {
 	getPeripheralDevices(
 		connection: Meteor.Connection,
 		event: string
-	): Promise<ClientAPI.ClientResponse<Array<{ id: string }>>>
+	): Promise<ClientAPI.ClientResponse<Record<string, string[]>>>
 	/**
 	 * Get a specific device.
 	 *
@@ -298,7 +298,7 @@ export interface RestAPI {
 		connection: Meteor.Connection,
 		event: string,
 		studioId: StudioId
-	): Promise<ClientAPI.ClientResponse<Array<{ id: string }>>>
+	): Promise<ClientAPI.ClientResponse<Record<string, string[]>>>
 	/*
 	 * Gets all available Blueprints.
 	 * @param connection Connection data including client and header details
