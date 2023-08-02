@@ -85,6 +85,7 @@ export function updateOverrides<T extends object>(
 	rawObj: ReadonlyDeep<T>
 ): ObjectWithOverrides<T> {
 	const result: ObjectWithOverrides<T> = { defaults: clone(curObj.defaults), overrides: [] }
+	const appliedCurObj = applyAndValidateOverrides(curObj).obj
 	for (const [key, value] of Object.entries<any>(rawObj)) {
 		const override = curObj.overrides.find((ov) => {
 			const parentPath = getParentObjectPath(ov.path)
@@ -102,11 +103,10 @@ export function updateOverrides<T extends object>(
 		}
 
 		// check the values of the raw object against the current object, generating an override for each difference
-		const appliedCurObj = applyAndValidateOverrides(curObj).obj
 		for (const [curKey, curValue] of Object.entries<any>(appliedCurObj)) {
 			if (key === curKey && !_.isEqual(value, curValue)) {
 				// Some or all members of the property have been modified
-				if (typeof value === 'object') {
+				if (!Array.isArray(value) && typeof value === 'object') {
 					// check one level down info the potentially modified object
 					for (const [rawKey, rawValue] of Object.entries<any>(value)) {
 						if (!_.isEqual(rawValue, curValue[rawKey])) {
@@ -130,7 +130,6 @@ export function updateOverrides<T extends object>(
 				}
 			}
 		}
-		// }
 	}
 	return result
 }

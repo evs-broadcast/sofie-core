@@ -1,14 +1,22 @@
 import {
 	BlueprintManifestType,
 	IBlueprintConfig,
+	IConfigMessage,
 	IOutputLayer,
 	ISourceLayer,
+	ShowStyleBlueprintManifest,
 	SourceLayerType,
 	StatusCode,
+	StudioBlueprintManifest,
 } from '@sofie-automation/blueprints-integration'
 import { PeripheralDevice, PeripheralDeviceType } from '@sofie-automation/corelib/dist/dataModel/PeripheralDevice'
 import { Blueprint } from '@sofie-automation/corelib/dist/dataModel/Blueprint'
-import { ShowStyleBaseId, ShowStyleVariantId, StudioId } from '@sofie-automation/corelib/dist/dataModel/Ids'
+import {
+	BlueprintId,
+	ShowStyleBaseId,
+	ShowStyleVariantId,
+	StudioId,
+} from '@sofie-automation/corelib/dist/dataModel/Ids'
 import { DBStudio, IStudioSettings } from '@sofie-automation/corelib/dist/dataModel/Studio'
 import { assertNever, getRandomId, literal } from '@sofie-automation/corelib/dist/lib'
 import { protectString, unprotectString } from '@sofie-automation/corelib/dist/protectedString'
@@ -17,6 +25,7 @@ import {
 	ObjectOverrideSetOp,
 	wrapDefaultObject,
 	updateOverrides,
+	convertObjectIntoOverrides,
 } from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
 import {
 	APIBlueprint,
@@ -32,6 +41,10 @@ import { DBShowStyleBase, ShowStyleBase } from '../../../../lib/collections/Show
 import { ShowStyleVariant } from '../../../../lib/collections/ShowStyleVariants'
 import { Studio } from '../../../../lib/collections/Studios'
 import { Blueprints, ShowStyleBases, Studios } from '../../../collections'
+import { Meteor } from 'meteor/meteor'
+import { evalBlueprint } from '../../blueprints/cache'
+import { CommonContext } from '../../../migration/upgrades/context'
+import { logger } from '../../../logging'
 
 /*
 This file contains functions that convert between the internal Sofie-Core types and types exposed to the external API.
@@ -66,8 +79,11 @@ export async function showStyleBaseFrom(
 		: wrapDefaultObject({})
 
 	const blueprintConfig = showStyleBase
-		? updateOverrides(showStyleBase.blueprintConfigWithOverrides, apiShowStyleBase.config as IBlueprintConfig)
-		: wrapDefaultObject({})
+		? updateOverrides(
+				showStyleBase.blueprintConfigWithOverrides,
+				await ShowStyleBaseBlueprintConfigFromAPI(apiShowStyleBase)
+		  )
+		: convertObjectIntoOverrides(await ShowStyleBaseBlueprintConfigFromAPI(apiShowStyleBase))
 
 	return {
 		_id: existingId ?? getRandomId(),
@@ -83,7 +99,8 @@ export async function showStyleBaseFrom(
 	}
 }
 
-export function APIShowStyleBaseFrom(showStyleBase: ShowStyleBase): APIShowStyleBase {
+export async function APIShowStyleBaseFrom(showStyleBase: ShowStyleBase): Promise<APIShowStyleBase> {
+	const blueprintConfig = await APIShowStyleBlueprintConfigFrom(showStyleBase, showStyleBase.blueprintId)
 	return {
 		name: showStyleBase.name,
 		blueprintId: unprotectString(showStyleBase.blueprintId),
@@ -94,7 +111,7 @@ export function APIShowStyleBaseFrom(showStyleBase: ShowStyleBase): APIShowStyle
 		sourceLayers: Object.values<ISourceLayer | undefined>(
 			applyAndValidateOverrides(showStyleBase.sourceLayersWithOverrides).obj
 		).map((layer) => APISourceLayerFrom(layer!)),
-		config: applyAndValidateOverrides(showStyleBase.blueprintConfigWithOverrides).obj,
+		config: blueprintConfig,
 	}
 }
 
@@ -114,18 +131,24 @@ export function showStyleVariantFrom(
 		_id: existingId ?? getRandomId(),
 		_rank: apiShowStyleVariant.rank,
 		showStyleBaseId: protectString(apiShowStyleVariant.showStyleBaseId),
+		blueprintConfigPresetId: apiShowStyleVariant.blueprintConfigPresetId,
 		name: apiShowStyleVariant.name,
 		blueprintConfigWithOverrides: blueprintConfig,
 		_rundownVersionHash: '',
 	}
 }
 
-export function APIShowStyleVariantFrom(showStyleVariant: ShowStyleVariant): APIShowStyleVariant {
+export async function APIShowStyleVariantFrom(
+	showStyleBase: ShowStyleBase,
+	showStyleVariant: ShowStyleVariant
+): Promise<APIShowStyleVariant> {
+	const blueprintConfig = await APIShowStyleBlueprintConfigFrom(showStyleVariant, showStyleBase.blueprintId)
 	return {
 		name: showStyleVariant.name,
 		rank: showStyleVariant._rank,
 		showStyleBaseId: unprotectString(showStyleVariant.showStyleBaseId),
-		config: applyAndValidateOverrides(showStyleVariant.blueprintConfigWithOverrides).obj,
+		blueprintConfigPresetId: showStyleVariant.blueprintConfigPresetId,
+		config: blueprintConfig,
 	}
 }
 
@@ -249,8 +272,8 @@ export async function studioFrom(apiStudio: APIStudio, existingId?: StudioId): P
 	if (existingId) studio = await Studios.findOneAsync(existingId)
 
 	const blueprintConfig = studio
-		? updateOverrides(studio.blueprintConfigWithOverrides, apiStudio.config as IBlueprintConfig)
-		: wrapDefaultObject({})
+		? updateOverrides(studio.blueprintConfigWithOverrides, await StudioBlueprintConfigFromAPI(apiStudio))
+		: convertObjectIntoOverrides(await StudioBlueprintConfigFromAPI(apiStudio))
 
 	return {
 		_id: existingId ?? getRandomId(),
@@ -277,14 +300,14 @@ export async function studioFrom(apiStudio: APIStudio, existingId?: StudioId): P
 	}
 }
 
-export function APIStudioFrom(studio: Studio): APIStudio {
+export async function APIStudioFrom(studio: Studio): Promise<APIStudio> {
 	const studioSettings = APIStudioSettingsFrom(studio.settings)
-
+	const blueprintConfig = await APIStudioBlueprintConfigFrom(studio)
 	return {
 		name: studio.name,
 		blueprintId: unprotectString(studio.blueprintId),
 		blueprintConfigPresetId: studio.blueprintConfigPresetId,
-		config: applyAndValidateOverrides(studio.blueprintConfigWithOverrides).obj,
+		config: blueprintConfig,
 		settings: studioSettings,
 		supportedShowStyleBase: studio.supportedShowStyleBase.map((id) => unprotectString(id)),
 	}
@@ -405,4 +428,140 @@ export function APIOutputLayerFrom(outputLayer: IOutputLayer): APIOutputLayer {
 		rank: outputLayer._rank,
 		isPgm: outputLayer.isPGM,
 	}
+}
+
+async function getBlueprint(
+	blueprintId: BlueprintId | undefined,
+	blueprintType: BlueprintManifestType
+): Promise<Blueprint> {
+	const blueprint = blueprintId
+		? await Blueprints.findOneAsync({
+				_id: blueprintId,
+				blueprintType,
+		  })
+		: undefined
+	if (!blueprint) throw new Meteor.Error(404, `Blueprint "${blueprintId}" not found!`)
+
+	if (!blueprint.blueprintHash) throw new Meteor.Error(500, 'Blueprint is not valid')
+
+	return blueprint
+}
+
+export async function validateAPIBlueprintConfigForShowStyle(
+	apiShowStyle: APIShowStyleBase | APIShowStyleVariant,
+	blueprintId: BlueprintId | undefined
+): Promise<Array<IConfigMessage>> {
+	if (!apiShowStyle.blueprintConfigPresetId)
+		throw new Meteor.Error(500, `ShowStyle ${apiShowStyle.name} is missing config preset`)
+	const blueprint = await getBlueprint(blueprintId, BlueprintManifestType.SHOWSTYLE)
+	const blueprintManifest = evalBlueprint(blueprint) as ShowStyleBlueprintManifest
+
+	if (typeof blueprintManifest.validateConfigFromAPI !== 'function') {
+		logger.info(`Blueprint ${blueprintManifest.blueprintId} does not support Config validation`)
+		return []
+	}
+
+	const blueprintContext = new CommonContext(
+		'validateAPIBlueprintConfig',
+		`showStyle:${apiShowStyle.name},blueprint:${blueprint._id}`
+	)
+
+	return blueprintManifest.validateConfigFromAPI(blueprintContext, apiShowStyle.config)
+}
+
+export async function ShowStyleBaseBlueprintConfigFromAPI(
+	apiShowStyleBase: APIShowStyleBase
+): Promise<IBlueprintConfig> {
+	if (!apiShowStyleBase.blueprintConfigPresetId)
+		throw new Meteor.Error(500, `ShowStyleBase ${apiShowStyleBase.name} is missing config preset`)
+	const blueprint = await getBlueprint(protectString(apiShowStyleBase.blueprintId), BlueprintManifestType.SHOWSTYLE)
+	const blueprintManifest = evalBlueprint(blueprint) as ShowStyleBlueprintManifest
+
+	if (typeof blueprintManifest.blueprintConfigFromAPI !== 'function')
+		throw new Meteor.Error(500, `Blueprint ${blueprintManifest.blueprintId} does not support this config flow`)
+
+	const blueprintContext = new CommonContext(
+		'BlueprintConfigFromAPI',
+		`showStyleBase:${apiShowStyleBase.name},blueprint:${blueprint._id}`
+	)
+
+	return blueprintManifest.blueprintConfigFromAPI(blueprintContext, apiShowStyleBase.config)
+}
+
+export async function APIShowStyleBlueprintConfigFrom(
+	showStyle: ShowStyleBase | ShowStyleVariant,
+	blueprintId: BlueprintId | undefined
+): Promise<object> {
+	if (!showStyle.blueprintConfigPresetId)
+		throw new Meteor.Error(500, `ShowStyle ${showStyle._id} is missing config preset`)
+	const blueprint = await getBlueprint(blueprintId, BlueprintManifestType.SHOWSTYLE)
+	const blueprintManifest = evalBlueprint(blueprint) as ShowStyleBlueprintManifest
+
+	if (typeof blueprintManifest.blueprintConfigToAPI !== 'function')
+		throw new Meteor.Error(500, `Blueprint ${blueprintManifest.blueprintId} does not support this config flow`)
+
+	const blueprintContext = new CommonContext(
+		'APIShowStyleBlueprintConfigFrom',
+		`showStyleBase:${showStyle._id},blueprint:${blueprint._id}`
+	)
+
+	return blueprintManifest.blueprintConfigToAPI(
+		blueprintContext,
+		applyAndValidateOverrides(showStyle.blueprintConfigWithOverrides).obj
+	)
+}
+
+export async function validateAPIBlueprintConfigForStudio(apiStudio: APIStudio): Promise<Array<IConfigMessage>> {
+	if (!apiStudio.blueprintConfigPresetId)
+		throw new Meteor.Error(500, `Studio ${apiStudio.name} is missing config preset`)
+	const blueprint = await getBlueprint(protectString(apiStudio.blueprintId), BlueprintManifestType.STUDIO)
+	const blueprintManifest = evalBlueprint(blueprint) as StudioBlueprintManifest
+
+	if (typeof blueprintManifest.validateConfigFromAPI !== 'function') {
+		logger.info(`Blueprint ${blueprintManifest.blueprintId} does not support Config validation`)
+		return []
+	}
+
+	const blueprintContext = new CommonContext(
+		'validateAPIBlueprintConfig',
+		`studio:${apiStudio.name},blueprint:${blueprint._id}`
+	)
+
+	return blueprintManifest.validateConfigFromAPI(blueprintContext, apiStudio.config)
+}
+
+export async function StudioBlueprintConfigFromAPI(apiStudio: APIStudio): Promise<IBlueprintConfig> {
+	if (!apiStudio.blueprintConfigPresetId)
+		throw new Meteor.Error(500, `Studio ${apiStudio.name} is missing config preset`)
+	const blueprint = await getBlueprint(protectString(apiStudio.blueprintId), BlueprintManifestType.STUDIO)
+	const blueprintManifest = evalBlueprint(blueprint) as StudioBlueprintManifest
+
+	if (typeof blueprintManifest.blueprintConfigFromAPI !== 'function')
+		throw new Meteor.Error(500, `Blueprint ${blueprintManifest.blueprintId} does not support this config flow`)
+
+	const blueprintContext = new CommonContext(
+		'BlueprintConfigFromAPI',
+		`studio:${apiStudio.name},blueprint:${blueprint._id}`
+	)
+
+	return blueprintManifest.blueprintConfigFromAPI(blueprintContext, apiStudio.config)
+}
+
+export async function APIStudioBlueprintConfigFrom(studio: Studio): Promise<object> {
+	if (!studio.blueprintConfigPresetId) throw new Meteor.Error(500, `Studio ${studio._id} is missing config preset`)
+	const blueprint = await getBlueprint(studio.blueprintId, BlueprintManifestType.STUDIO)
+	const blueprintManifest = evalBlueprint(blueprint) as StudioBlueprintManifest
+
+	if (typeof blueprintManifest.blueprintConfigToAPI !== 'function')
+		throw new Meteor.Error(500, `Blueprint ${blueprintManifest.blueprintId} does not support this config flow`)
+
+	const blueprintContext = new CommonContext(
+		'APIStudioBlueprintConfigFrom',
+		`studio:${studio.name},blueprint:${blueprint._id}`
+	)
+
+	return blueprintManifest.blueprintConfigToAPI(
+		blueprintContext,
+		applyAndValidateOverrides(studio.blueprintConfigWithOverrides).obj
+	)
 }
