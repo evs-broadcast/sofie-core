@@ -12,6 +12,7 @@ interface BasicType {
 		valC: number
 		valD?: string
 	}
+	valE?: [{ valF: number; valG: string }]
 }
 
 describe('applyAndValidateOverrides', () => {
@@ -57,11 +58,13 @@ describe('applyAndValidateOverrides', () => {
 			valB: {
 				valC: 5,
 			},
+			valE: [{ valF: 27, valG: 'hij' }],
 		}
 		const inputOps: SomeObjectOverrideOp[] = [
 			{ op: 'delete', path: 'valA' },
 			{ op: 'set', path: 'valB', value: { valC: 9 } },
 			{ op: 'set', path: 'valB.valD', value: 'def' },
+			{ op: 'set', path: 'valE.0', value: { valF: 32, valG: 'klm' } },
 		]
 
 		const res = applyAndValidateOverrides({
@@ -76,6 +79,7 @@ describe('applyAndValidateOverrides', () => {
 					valC: 9,
 					valD: 'def',
 				},
+				valE: [{ valF: 32, valG: 'klm' }],
 			})
 		)
 		expect(res.invalid).toHaveLength(0)
@@ -158,6 +162,7 @@ describe('applyAndValidateOverrides', () => {
 				valC: 5,
 				valD: 'xyz',
 			},
+			valE: [{ valF: 27, valG: 'hij' }],
 		}
 
 		const inputObjWithOverrides: ObjectWithOverrides<BasicType> = {
@@ -171,6 +176,7 @@ describe('applyAndValidateOverrides', () => {
 				valC: 6,
 				valD: 'uvw',
 			},
+			valE: [{ valF: 32, valG: 'klm' }],
 		}
 
 		const res = updateOverrides(inputObjWithOverrides, updateObj)
@@ -184,11 +190,13 @@ describe('applyAndValidateOverrides', () => {
 						valC: 5,
 						valD: 'xyz',
 					},
+					valE: [{ valF: 27, valG: 'hij' }],
 				},
 				overrides: [
 					{ op: 'set', path: 'valA', value: 'def' },
 					{ op: 'set', path: 'valB.valD', value: 'uvw' },
 					{ op: 'set', path: 'valB.valC', value: 6 },
+					{ op: 'set', path: 'valE', value: [{ valF: 32, valG: 'klm' }] },
 				],
 			})
 		)

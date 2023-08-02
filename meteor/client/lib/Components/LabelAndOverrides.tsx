@@ -51,7 +51,7 @@ export function LabelAndOverrides<T extends object, TValue = any>({
 
 	let displayValue = '""'
 	if (item.defaults) {
-		const defaultValue: any = item.defaults[itemKey]
+		const defaultValue = objectPathGet(item.defaults, String(itemKey))
 		// Special cases for formatting of the default
 		if (formatDefaultValue) {
 			displayValue = formatDefaultValue(defaultValue)

@@ -75,6 +75,8 @@ import {
 	showStyleBaseFrom,
 	showStyleVariantFrom,
 	studioFrom,
+	validateAPIBlueprintConfigForShowStyle,
+	validateAPIBlueprintConfigForStudio,
 } from './typeConversion'
 import {
 	runUpgradeForShowStyleBase,
@@ -763,9 +765,27 @@ class ServerRestAPI implements RestAPI {
 	async addShowStyleBase(
 		_connection: Meteor.Connection,
 		_event: string,
-		showStyleBase: APIShowStyleBase
+		apiShowStyleBase: APIShowStyleBase
 	): Promise<ClientAPI.ClientResponse<string>> {
-		const showStyle = await showStyleBaseFrom(showStyleBase)
+		const blueprintConfigValidation = await validateAPIBlueprintConfigForShowStyle(
+			apiShowStyleBase,
+			protectString(apiShowStyleBase.blueprintId)
+		)
+		const blueprintConfigValidationOK = blueprintConfigValidation.reduce(
+			(acc, msg) => acc && msg.level === NoteSeverity.INFO,
+			true
+		)
+		if (!blueprintConfigValidationOK) {
+			const details = JSON.stringify(
+				blueprintConfigValidation.filter((msg) => msg.level < NoteSeverity.INFO).map((msg) => msg.message.key),
+				null,
+				2
+			)
+			logger.error(`addShowStyleBase failed blueprint config validation with errors: ${details}`)
+			throw new Meteor.Error(409, `ShowStyleBase has failed blueprint config validation`, details)
+		}
+
+		const showStyle = await showStyleBaseFrom(apiShowStyleBase)
 		if (!showStyle) throw new Meteor.Error(400, `Invalid ShowStyleBase`)
 		const showStyleId = showStyle._id
 		await ShowStyleBases.insertAsync(showStyle)
@@ -781,16 +801,38 @@ class ServerRestAPI implements RestAPI {
 		const showStyleBase = await ShowStyleBases.findOneAsync(showStyleBaseId)
 		if (!showStyleBase) throw new Meteor.Error(404, `ShowStyleBase ${showStyleBaseId} does not exist`)
 
-		return ClientAPI.responseSuccess(APIShowStyleBaseFrom(showStyleBase))
+		return ClientAPI.responseSuccess(await APIShowStyleBaseFrom(showStyleBase))
 	}
 
 	async addOrUpdateShowStyleBase(
 		_connection: Meteor.Connection,
 		_event: string,
 		showStyleBaseId: ShowStyleBaseId,
-		showStyleBase: APIShowStyleBase
+		apiShowStyleBase: APIShowStyleBase
 	): Promise<ClientAPI.ClientResponse<void>> {
-		const showStyle = await showStyleBaseFrom(showStyleBase, showStyleBaseId)
+		const blueprintConfigValidation = await validateAPIBlueprintConfigForShowStyle(
+			apiShowStyleBase,
+			protectString(apiShowStyleBase.blueprintId)
+		)
+		const blueprintConfigValidationOK = blueprintConfigValidation.reduce(
+			(acc, msg) => acc && msg.level === NoteSeverity.INFO,
+			true
+		)
+		if (!blueprintConfigValidationOK) {
+			const details = JSON.stringify(
+				blueprintConfigValidation.filter((msg) => msg.level < NoteSeverity.INFO).map((msg) => msg.message.key),
+				null,
+				2
+			)
+			logger.error(`addOrUpdateShowStyleBase failed blueprint config validation with errors: ${details}`)
+			throw new Meteor.Error(
+				409,
+				`ShowStyleBase ${showStyleBaseId} has failed blueprint config validation`,
+				details
+			)
+		}
+
+		const showStyle = await showStyleBaseFrom(apiShowStyleBase, showStyleBaseId)
 		if (!showStyle) throw new Meteor.Error(400, `Invalid ShowStyleBase`)
 
 		const existingShowStyle = await ShowStyleBases.findOneAsync(showStyleBaseId)
@@ -880,12 +922,34 @@ class ServerRestAPI implements RestAPI {
 		_connection: Meteor.Connection,
 		_event: string,
 		showStyleBaseId: ShowStyleBaseId,
-		showStyleVariant: APIShowStyleVariant
+		apiShowStyleVariant: APIShowStyleVariant
 	): Promise<ClientAPI.ClientResponse<string>> {
 		const showStyleBase = await ShowStyleBases.findOneAsync(showStyleBaseId)
 		if (!showStyleBase) throw new Meteor.Error(404, `ShowStyleBase ${showStyleBaseId} not found`)
 
-		const variant = showStyleVariantFrom(showStyleVariant)
+		const blueprintConfigValidation = await validateAPIBlueprintConfigForShowStyle(
+			apiShowStyleVariant,
+			showStyleBase.blueprintId
+		)
+		const blueprintConfigValidationOK = blueprintConfigValidation.reduce(
+			(acc, msg) => acc && msg.level === NoteSeverity.INFO,
+			true
+		)
+		if (!blueprintConfigValidationOK) {
+			const details = JSON.stringify(
+				blueprintConfigValidation.filter((msg) => msg.level < NoteSeverity.INFO).map((msg) => msg.message.key),
+				null,
+				2
+			)
+			logger.error(`addOrUpdateShowStyleBase failed blueprint config validation with errors: ${details}`)
+			throw new Meteor.Error(
+				409,
+				`ShowStyleBase ${showStyleBaseId} has failed blueprint config validation`,
+				details
+			)
+		}
+
+		const variant = showStyleVariantFrom(apiShowStyleVariant)
 		if (!variant) throw new Meteor.Error(400, `Invalid ShowStyleVariant`)
 
 		const variantId = variant._id
@@ -906,7 +970,7 @@ class ServerRestAPI implements RestAPI {
 		const variant = await ShowStyleVariants.findOneAsync(showStyleVariantId)
 		if (!variant) throw new Meteor.Error(404, `ShowStyleVariant ${showStyleVariantId} not found`)
 
-		return ClientAPI.responseSuccess(APIShowStyleVariantFrom(variant))
+		return ClientAPI.responseSuccess(await APIShowStyleVariantFrom(showStyleBase, variant))
 	}
 
 	async addOrUpdateShowStyleVariant(
@@ -914,12 +978,34 @@ class ServerRestAPI implements RestAPI {
 		_event: string,
 		showStyleBaseId: ShowStyleBaseId,
 		showStyleVariantId: ShowStyleVariantId,
-		showStyleVariant: APIShowStyleVariant
+		apiShowStyleVariant: APIShowStyleVariant
 	): Promise<ClientAPI.ClientResponse<void>> {
 		const showStyleBase = await ShowStyleBases.findOneAsync(showStyleBaseId)
 		if (!showStyleBase) throw new Meteor.Error(404, `ShowStyleBase ${showStyleBaseId} does not exist`)
 
-		const showStyle = showStyleVariantFrom(showStyleVariant, showStyleVariantId)
+		const blueprintConfigValidation = await validateAPIBlueprintConfigForShowStyle(
+			apiShowStyleVariant,
+			showStyleBase.blueprintId
+		)
+		const blueprintConfigValidationOK = blueprintConfigValidation.reduce(
+			(acc, msg) => acc && msg.level === NoteSeverity.INFO,
+			true
+		)
+		if (!blueprintConfigValidationOK) {
+			const details = JSON.stringify(
+				blueprintConfigValidation.filter((msg) => msg.level < NoteSeverity.INFO).map((msg) => msg.message.key),
+				null,
+				2
+			)
+			logger.error(`addOrUpdateShowStyleBase failed blueprint config validation with errors: ${details}`)
+			throw new Meteor.Error(
+				409,
+				`ShowStyleBase ${showStyleBaseId} has failed blueprint config validation`,
+				details
+			)
+		}
+
+		const showStyle = showStyleVariantFrom(apiShowStyleVariant, showStyleVariantId)
 		if (!showStyle) throw new Meteor.Error(400, `Invalid ShowStyleVariant`)
 
 		const existingShowStyle = await ShowStyleVariants.findOneAsync(showStyleVariantId)
@@ -992,9 +1078,24 @@ class ServerRestAPI implements RestAPI {
 	async addStudio(
 		_connection: Meteor.Connection,
 		_event: string,
-		studio: APIStudio
+		apiStudio: APIStudio
 	): Promise<ClientAPI.ClientResponse<string>> {
-		const newStudio = await studioFrom(studio)
+		const blueprintConfigValidation = await validateAPIBlueprintConfigForStudio(apiStudio)
+		const blueprintConfigValidationOK = blueprintConfigValidation.reduce(
+			(acc, msg) => acc && msg.level === NoteSeverity.INFO,
+			true
+		)
+		if (!blueprintConfigValidationOK) {
+			const details = JSON.stringify(
+				blueprintConfigValidation.filter((msg) => msg.level < NoteSeverity.INFO).map((msg) => msg.message.key),
+				null,
+				2
+			)
+			logger.error(`addOrUpdateStudio failed blueprint config validation with errors: ${details}`)
+			throw new Meteor.Error(409, `Studio has failed blueprint config validation`, details)
+		}
+
+		const newStudio = await studioFrom(apiStudio)
 		if (!newStudio) throw new Meteor.Error(400, `Invalid Studio`)
 
 		const newStudioId = await Studios.insertAsync(newStudio)
@@ -1023,16 +1124,31 @@ class ServerRestAPI implements RestAPI {
 		const studio = await Studios.findOneAsync(studioId)
 		if (!studio) throw new Meteor.Error(404, `Studio ${studioId} not found`)
 
-		return ClientAPI.responseSuccess(APIStudioFrom(studio))
+		return ClientAPI.responseSuccess(await APIStudioFrom(studio))
 	}
 
 	async addOrUpdateStudio(
 		_connection: Meteor.Connection,
 		_event: string,
 		studioId: StudioId,
-		studio: APIStudio
+		apiStudio: APIStudio
 	): Promise<ClientAPI.ClientResponse<void>> {
-		const newStudio = await studioFrom(studio, studioId)
+		const blueprintConfigValidation = await validateAPIBlueprintConfigForStudio(apiStudio)
+		const blueprintConfigValidationOK = blueprintConfigValidation.reduce(
+			(acc, msg) => acc && msg.level === NoteSeverity.INFO,
+			true
+		)
+		if (!blueprintConfigValidationOK) {
+			const details = JSON.stringify(
+				blueprintConfigValidation.filter((msg) => msg.level < NoteSeverity.INFO).map((msg) => msg.message.key),
+				null,
+				2
+			)
+			logger.error(`addOrUpdateStudio failed blueprint config validation with errors: ${details}`)
+			throw new Meteor.Error(409, `Studio ${studioId} has failed blueprint config validation`, details)
+		}
+
+		const newStudio = await studioFrom(apiStudio, studioId)
 		if (!newStudio) throw new Meteor.Error(400, `Invalid Studio`)
 
 		const existingStudio = await Studios.findOneAsync(studioId)
