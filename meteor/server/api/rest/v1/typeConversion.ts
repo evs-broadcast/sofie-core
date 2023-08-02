@@ -451,12 +451,13 @@ export async function validateAPIBlueprintConfigForShowStyle(
 	apiShowStyle: APIShowStyleBase | APIShowStyleVariant,
 	blueprintId: BlueprintId | undefined
 ): Promise<Array<IConfigMessage>> {
-	if (!apiShowStyle.blueprintConfigPresetId) throw new Meteor.Error(500, 'ShowStyle is missing config preset')
+	if (!apiShowStyle.blueprintConfigPresetId)
+		throw new Meteor.Error(500, `ShowStyle ${apiShowStyle.name} is missing config preset`)
 	const blueprint = await getBlueprint(blueprintId, BlueprintManifestType.SHOWSTYLE)
 	const blueprintManifest = evalBlueprint(blueprint) as ShowStyleBlueprintManifest
 
 	if (typeof blueprintManifest.validateConfigFromAPI !== 'function') {
-		logger.info('Blueprint does not support Config validation')
+		logger.info(`Blueprint ${blueprintManifest.blueprintId} does not support Config validation`)
 		return []
 	}
 
@@ -471,12 +472,13 @@ export async function validateAPIBlueprintConfigForShowStyle(
 export async function ShowStyleBaseBlueprintConfigFromAPI(
 	apiShowStyleBase: APIShowStyleBase
 ): Promise<IBlueprintConfig> {
-	if (!apiShowStyleBase.blueprintConfigPresetId) throw new Meteor.Error(500, 'ShowStyleBase is missing config preset')
+	if (!apiShowStyleBase.blueprintConfigPresetId)
+		throw new Meteor.Error(500, `ShowStyleBase ${apiShowStyleBase.name} is missing config preset`)
 	const blueprint = await getBlueprint(protectString(apiShowStyleBase.blueprintId), BlueprintManifestType.SHOWSTYLE)
 	const blueprintManifest = evalBlueprint(blueprint) as ShowStyleBlueprintManifest
 
 	if (typeof blueprintManifest.blueprintConfigFromAPI !== 'function')
-		throw new Meteor.Error(500, 'Blueprint does not support this config flow')
+		throw new Meteor.Error(500, `Blueprint ${blueprintManifest.blueprintId} does not support this config flow`)
 
 	const blueprintContext = new CommonContext(
 		'BlueprintConfigFromAPI',
@@ -490,12 +492,13 @@ export async function APIShowStyleBlueprintConfigFrom(
 	showStyle: ShowStyleBase | ShowStyleVariant,
 	blueprintId: BlueprintId | undefined
 ): Promise<object> {
-	if (!showStyle.blueprintConfigPresetId) throw new Meteor.Error(500, 'ShowStyle is missing config preset')
+	if (!showStyle.blueprintConfigPresetId)
+		throw new Meteor.Error(500, `ShowStyle ${showStyle._id} is missing config preset`)
 	const blueprint = await getBlueprint(blueprintId, BlueprintManifestType.SHOWSTYLE)
 	const blueprintManifest = evalBlueprint(blueprint) as ShowStyleBlueprintManifest
 
 	if (typeof blueprintManifest.blueprintConfigToAPI !== 'function')
-		throw new Meteor.Error(500, 'Blueprint does not support this config flow')
+		throw new Meteor.Error(500, `Blueprint ${blueprintManifest.blueprintId} does not support this config flow`)
 
 	const blueprintContext = new CommonContext(
 		'APIShowStyleBlueprintConfigFrom',
@@ -509,12 +512,13 @@ export async function APIShowStyleBlueprintConfigFrom(
 }
 
 export async function validateAPIBlueprintConfigForStudio(apiStudio: APIStudio): Promise<Array<IConfigMessage>> {
-	if (!apiStudio.blueprintConfigPresetId) throw new Meteor.Error(500, 'Studio is missing config preset')
+	if (!apiStudio.blueprintConfigPresetId)
+		throw new Meteor.Error(500, `Studio ${apiStudio.name} is missing config preset`)
 	const blueprint = await getBlueprint(protectString(apiStudio.blueprintId), BlueprintManifestType.STUDIO)
 	const blueprintManifest = evalBlueprint(blueprint) as StudioBlueprintManifest
 
 	if (typeof blueprintManifest.validateConfigFromAPI !== 'function') {
-		logger.info('Blueprint does not support Config validation')
+		logger.info(`Blueprint ${blueprintManifest.blueprintId} does not support Config validation`)
 		return []
 	}
 
@@ -527,12 +531,13 @@ export async function validateAPIBlueprintConfigForStudio(apiStudio: APIStudio):
 }
 
 export async function StudioBlueprintConfigFromAPI(apiStudio: APIStudio): Promise<IBlueprintConfig> {
-	if (!apiStudio.blueprintConfigPresetId) throw new Meteor.Error(500, 'Studio is missing config preset')
+	if (!apiStudio.blueprintConfigPresetId)
+		throw new Meteor.Error(500, `Studio ${apiStudio.name} is missing config preset`)
 	const blueprint = await getBlueprint(protectString(apiStudio.blueprintId), BlueprintManifestType.STUDIO)
 	const blueprintManifest = evalBlueprint(blueprint) as StudioBlueprintManifest
 
 	if (typeof blueprintManifest.blueprintConfigFromAPI !== 'function')
-		throw new Meteor.Error(500, 'Blueprint does not support this config flow')
+		throw new Meteor.Error(500, `Blueprint ${blueprintManifest.blueprintId} does not support this config flow`)
 
 	const blueprintContext = new CommonContext(
 		'BlueprintConfigFromAPI',
@@ -543,12 +548,12 @@ export async function StudioBlueprintConfigFromAPI(apiStudio: APIStudio): Promis
 }
 
 export async function APIStudioBlueprintConfigFrom(studio: Studio): Promise<object> {
-	if (!studio.blueprintConfigPresetId) throw new Meteor.Error(500, 'Studio is missing config preset')
+	if (!studio.blueprintConfigPresetId) throw new Meteor.Error(500, `Studio ${studio._id} is missing config preset`)
 	const blueprint = await getBlueprint(studio.blueprintId, BlueprintManifestType.STUDIO)
 	const blueprintManifest = evalBlueprint(blueprint) as StudioBlueprintManifest
 
 	if (typeof blueprintManifest.blueprintConfigToAPI !== 'function')
-		throw new Meteor.Error(500, 'Blueprint does not support this config flow')
+		throw new Meteor.Error(500, `Blueprint ${blueprintManifest.blueprintId} does not support this config flow`)
 
 	const blueprintContext = new CommonContext(
 		'APIStudioBlueprintConfigFrom',
