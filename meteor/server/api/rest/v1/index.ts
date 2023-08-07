@@ -1166,7 +1166,7 @@ class ServerRestAPI implements RestAPI {
 			}
 		}
 
-		// await Studios.upsertAsync(studioId, newStudio)
+		await Studios.upsertAsync(studioId, newStudio)
 
 		const validation = await validateConfigForStudio(studioId)
 		const validateOK = validation.messages.reduce((acc, msg) => acc && msg.level === NoteSeverity.INFO, true)

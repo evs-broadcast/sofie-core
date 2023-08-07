@@ -275,59 +275,6 @@ export async function studioFrom(apiStudio: APIStudio, existingId?: StudioId): P
 		? updateOverrides(studio.blueprintConfigWithOverrides, await StudioBlueprintConfigFromAPI(apiStudio))
 		: convertObjectIntoOverrides(await StudioBlueprintConfigFromAPI(apiStudio))
 
-	// const playoutGateways = (
-	// 	await PeripheralDevices.findFetchAsync(
-	// 		{ studioId: existingId },
-	// 		{ projection: { _id: 1, category: 1, type: 1, subType: 1 } }
-	// 	)
-	// ).filter((d) => d.category === 'playout' && d.type === 'playout' && d.subType === PERIPHERAL_SUBTYPE_PROCESS)
-	// console.log(`playoutGateways: ${JSON.stringify(playoutGateways, null, 2)}`)
-
-	// const peripheralDeviceSettings = studio?.peripheralDeviceSettings
-	// console.log(`peripheralDeviceSettings: ${JSON.stringify(peripheralDeviceSettings, null, 2)}`)
-
-	// // All must move to applyConfig in blueprints - here only for testing
-	// // setup any device services from the blueprint config, adding peripheral devices and studio settings as required
-	// const playoutDevices: ObjectWithOverrides<Record<string, StudioPlayoutDevice>> = wrapDefaultObject({})
-	// playoutDevices.overrides = Object.entries<any>(applyAndValidateOverrides(blueprintConfig).obj)
-	// 	.filter(([key, _value]) => {
-	// 		return key === 'deviceServices'
-	// 	})
-	// 	.map(([_key, value]) => value[0])
-	// 	.map((dsomConfig) => {
-	// 		const dsomOptions: TSR.DeviceOptionsDSOM = {
-	// 			type: TSR.DeviceType.DSOM,
-	// 			isMultiThreaded: false,
-	// 			reportAllCommands: false,
-	// 			options: {
-	// 				url: dsomConfig.address,
-	// 				username: dsomConfig.username,
-	// 				password: dsomConfig.password,
-	// 				studioDevices: [],
-	// 			},
-	// 		}
-	// 		const dsomDevice: StudioPlayoutDevice = {
-	// 			peripheralDeviceId: playoutGateways[0]._id,
-	// 			options: dsomOptions,
-	// 		}
-
-	// 		return literal<ObjectOverrideSetOp>({
-	// 			op: 'set',
-	// 			path: dsomConfig.objectId,
-	// 			value: dsomDevice,
-	// 		})
-	// 	})
-	// // console.log(`playoutDevices overrides: ${JSON.stringify(playoutDevices.overrides, null, 2)}`)
-
-	// if (existingId && studio) {
-	// 	studio.peripheralDeviceSettings = {
-	// 		playoutDevices: playoutDevices,
-	// 		ingestDevices: wrapDefaultObject({}),
-	// 		inputDevices: wrapDefaultObject({}),
-	// 	}
-	// 	await Studios.upsertAsync(existingId, studio)
-	// }
-
 	return {
 		_id: existingId ?? getRandomId(),
 		name: apiStudio.name,
@@ -345,7 +292,7 @@ export async function studioFrom(apiStudio: APIStudio, existingId?: StudioId): P
 		previewContainerIds: [],
 		thumbnailContainerIds: [],
 		peripheralDeviceSettings: {
-			playoutDevices: wrapDefaultObject({}), //playoutDevices,
+			playoutDevices: wrapDefaultObject({}),
 			ingestDevices: wrapDefaultObject({}),
 			inputDevices: wrapDefaultObject({}),
 		},

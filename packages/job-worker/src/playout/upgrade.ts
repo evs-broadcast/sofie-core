@@ -13,6 +13,10 @@ import { BlueprintValidateConfigForStudioResult } from '@sofie-automation/coreli
 import { compileCoreConfigValues } from '../blueprints/config'
 import { CommonContext } from '../blueprints/context'
 import { JobContext } from '../jobs'
+import {
+	PeripheralDeviceType,
+	PERIPHERAL_SUBTYPE_PROCESS,
+} from '@sofie-automation/corelib/dist/dataModel/PeripheralDevice'
 
 /**
  * Run the Blueprint applyConfig for the studio
@@ -36,11 +40,25 @@ export async function handleBlueprintUpgradeForStudio(context: JobContext, _data
 		compileCoreConfigValues(context.studio.settings)
 	)
 
+	const peripheralPlayoutDevices = await context.directCollections.PeripheralDevices.findFetch(
+		{
+			type: PeripheralDeviceType.PLAYOUT,
+			subType: PERIPHERAL_SUBTYPE_PROCESS,
+			studioId: context.studioId,
+		},
+		{
+			sort: {
+				created: 1,
+			},
+		}
+	)
+
+	// set the peripherDeviceId if there is exactly one playout device in the studio
 	const playoutDevices = Object.fromEntries(
 		Object.entries<TSR.DeviceOptionsAny>(result.playoutDevices ?? {}).map((dev) => [
 			dev[0],
 			literal<Complete<StudioPlayoutDevice>>({
-				peripheralDeviceId: undefined,
+				peripheralDeviceId: peripheralPlayoutDevices.length === 1 ? peripheralPlayoutDevices[0]._id : undefined,
 				options: dev[1],
 			}),
 		])
