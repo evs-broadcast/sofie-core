@@ -14,7 +14,9 @@ import { compileCoreConfigValues } from '../blueprints/config'
 import { CommonContext } from '../blueprints/context'
 import { JobContext } from '../jobs'
 import {
+	PeripheralDevice,
 	PeripheralDeviceType,
+	PeripheralDeviceCategory,
 	PERIPHERAL_SUBTYPE_PROCESS,
 } from '@sofie-automation/corelib/dist/dataModel/PeripheralDevice'
 
@@ -40,25 +42,25 @@ export async function handleBlueprintUpgradeForStudio(context: JobContext, _data
 		compileCoreConfigValues(context.studio.settings)
 	)
 
-	const peripheralPlayoutDevices = await context.directCollections.PeripheralDevices.findFetch(
+	const peripheralDevices = (await context.directCollections.PeripheralDevices.findFetch(
 		{
-			type: PeripheralDeviceType.PLAYOUT,
 			subType: PERIPHERAL_SUBTYPE_PROCESS,
 			studioId: context.studioId,
 		},
 		{
-			sort: {
-				created: 1,
-			},
+			projection: { _id: 1, type: 1, category: 1 },
 		}
-	)
+	)) as Array<Pick<PeripheralDevice, '_id' | 'type' | 'category'>>
+	const playoutIds = peripheralDevices.filter((p) => p.type === PeripheralDeviceType.PLAYOUT).map((p) => p._id)
+	const ingestIds = peripheralDevices.filter((p) => p.category === PeripheralDeviceCategory.INGEST).map((p) => p._id)
+	const inputIds = peripheralDevices.filter((p) => p.type === PeripheralDeviceType.INPUT).map((p) => p._id)
 
-	// set the peripherDeviceId if there is exactly one playout device in the studio
+	// set the peripheralDeviceId if there is exactly one parent device in the studio
 	const playoutDevices = Object.fromEntries(
 		Object.entries<TSR.DeviceOptionsAny>(result.playoutDevices ?? {}).map((dev) => [
 			dev[0],
 			literal<Complete<StudioPlayoutDevice>>({
-				peripheralDeviceId: peripheralPlayoutDevices.length === 1 ? peripheralPlayoutDevices[0]._id : undefined,
+				peripheralDeviceId: playoutIds.length === 1 ? playoutIds[0] : undefined,
 				options: dev[1],
 			}),
 		])
@@ -67,7 +69,7 @@ export async function handleBlueprintUpgradeForStudio(context: JobContext, _data
 		Object.entries<unknown>(result.ingestDevices ?? {}).map((dev) => [
 			dev[0],
 			literal<Complete<StudioIngestDevice>>({
-				peripheralDeviceId: undefined,
+				peripheralDeviceId: ingestIds.length === 1 ? ingestIds[0] : undefined,
 				options: dev[1],
 			}),
 		])
@@ -76,7 +78,7 @@ export async function handleBlueprintUpgradeForStudio(context: JobContext, _data
 		Object.entries<unknown>(result.inputDevices ?? {}).map((dev) => [
 			dev[0],
 			literal<Complete<StudioInputDevice>>({
-				peripheralDeviceId: undefined,
+				peripheralDeviceId: inputIds.length === 1 ? inputIds[0] : undefined,
 				options: dev[1],
 			}),
 		])
