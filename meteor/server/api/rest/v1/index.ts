@@ -85,7 +85,7 @@ import {
 	validateConfigForStudio,
 } from '../../../migration/upgrades'
 import { MigrationStepInputResult, NoteSeverity } from '@sofie-automation/blueprints-integration'
-import { PeripheralDevice } from '@sofie-automation/corelib/dist/dataModel/PeripheralDevice'
+import { PeripheralDevice, PeripheralDeviceCategory } from '@sofie-automation/corelib/dist/dataModel/PeripheralDevice'
 import { Blueprint } from '@sofie-automation/corelib/dist/dataModel/Blueprint'
 import { ShowStyleBase } from '../../../../lib/collections/ShowStyleBases'
 import { ShowStyleVariant } from '../../../../lib/collections/ShowStyleVariants'
@@ -566,11 +566,21 @@ class ServerRestAPI implements RestAPI {
 	async getPeripheralDevices(
 		_connection: Meteor.Connection,
 		_event: string
-	): Promise<ClientAPI.ClientResponse<Array<{ id: string }>>> {
-		const peripheralDevices = (await PeripheralDevices.findFetchAsync({}, { projection: { _id: 1 } })) as Array<
-			Pick<PeripheralDevice, '_id'>
-		>
-		return ClientAPI.responseSuccess(peripheralDevices.map((p) => ({ id: unprotectString(p._id) })))
+	): Promise<ClientAPI.ClientResponse<Record<string, string[]>>> {
+		const peripheralDevices = (await PeripheralDevices.findFetchAsync(
+			{},
+			{ projection: { _id: 1, category: 1 } }
+		)) as Array<Pick<PeripheralDevice, '_id' | 'category'>>
+		const apiDeviceRecords: Record<PeripheralDeviceCategory, string[]> = {
+			ingest: [],
+			playout: [],
+			media_manager: [],
+			package_manager: [],
+			live_status: [],
+			trigger_input: [],
+		}
+		peripheralDevices.forEach((dev) => apiDeviceRecords[dev.category].push(unprotectString(dev._id)))
+		return ClientAPI.responseSuccess(apiDeviceRecords)
 	}
 
 	async getPeripheralDevice(
@@ -622,13 +632,21 @@ class ServerRestAPI implements RestAPI {
 		_connection: Meteor.Connection,
 		_event: string,
 		studioId: StudioId
-	): Promise<ClientAPI.ClientResponse<Array<{ id: string }>>> {
+	): Promise<ClientAPI.ClientResponse<Record<string, string[]>>> {
 		const peripheralDevices = (await PeripheralDevices.findFetchAsync(
 			{ studioId },
-			{ projection: { _id: 1 } }
-		)) as Array<Pick<PeripheralDevice, '_id'>>
-
-		return ClientAPI.responseSuccess(peripheralDevices.map((p) => ({ id: unprotectString(p._id) })))
+			{ projection: { _id: 1, category: 1 } }
+		)) as Array<Pick<PeripheralDevice, '_id' | 'category'>>
+		const apiDeviceRecords: Record<PeripheralDeviceCategory, string[]> = {
+			ingest: [],
+			playout: [],
+			media_manager: [],
+			package_manager: [],
+			live_status: [],
+			trigger_input: [],
+		}
+		peripheralDevices.forEach((dev) => apiDeviceRecords[dev.category].push(unprotectString(dev._id)))
+		return ClientAPI.responseSuccess(apiDeviceRecords)
 	}
 
 	async getAllBlueprints(
@@ -1618,7 +1636,7 @@ sofieAPIRequest<{ playlistId: string; sourceLayerId: string }, never, void>(
 	}
 )
 
-sofieAPIRequest<never, never, Array<{ id: string }>>(
+sofieAPIRequest<never, never, Record<string, string[]>>(
 	'get',
 	'/devices',
 	new Map(),
@@ -1718,7 +1736,7 @@ sofieAPIRequest<{ studioId: string }, never, void>(
 	}
 )
 
-sofieAPIRequest<{ studioId: string }, never, Array<{ id: string }>>(
+sofieAPIRequest<{ studioId: string }, never, Record<string, string[]>>(
 	'get',
 	'/studios/:studioId/devices',
 	new Map([[404, [UserErrorMessage.StudioNotFound]]]),
