@@ -2180,7 +2180,7 @@ __metadata:
   resolution: "@sofie-automation/shared-lib@portal:../packages/shared-lib::locator=automation-core%40workspace%3A."
   dependencies:
     "@mos-connection/model": ^3.0.4
-    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.9"
+    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.9-CER-4721-multiple-dsom-devices.353"
     tslib: ^2.5.1
     type-fest: ^2.19.0
   languageName: node
@@ -12534,12 +12534,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.9":
-  version: 8.0.9
-  resolution: "@evs/timeline-state-resolver-types@npm:8.0.9::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver-types%2F-%2F%40evs%2Ftimeline-state-resolver-types-8.0.9.tgz"
+"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.9-CER-4721-multiple-dsom-devices.353":
+  version: 8.0.9-CER-4721-multiple-dsom-devices.353
+  resolution: "@evs/timeline-state-resolver-types@npm:8.0.9-CER-4721-multiple-dsom-devices.353::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver-types%2F-%2F%40evs%2Ftimeline-state-resolver-types-8.0.9-CER-4721-multiple-dsom-devices.353.tgz"
   dependencies:
     tslib: ^2.5.1
-  checksum: 363825c7a96b8dd63e20d4b8f5c43a148a6cbf5a130f920f718809d51522bcd033cf8788970888665dd36b34aacb37e0a9edfbf0c3418cd823000eafdc335783
+  checksum: bae945e3c1253fb99d985ccf010e0aca651904c0a7aec3327c58db44b06f264a5e502b7a62d0e2b80336383e8ecfc1f78652987440d86d34714ce5045b5e7d8d
   languageName: node
   linkType: hard
 

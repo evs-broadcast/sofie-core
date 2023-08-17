@@ -40,7 +40,7 @@
 	],
 	"dependencies": {
 		"@mos-connection/model": "^3.0.4",
-		"timeline-state-resolver-types": "npm:@evs/timeline-state-resolver-types@8.0.9",
+		"timeline-state-resolver-types": "npm:@evs/timeline-state-resolver-types@8.0.9-CER-4721-multiple-dsom-devices.353",
 		"tslib": "^2.5.1",
 		"type-fest": "^2.19.0"
 	},
