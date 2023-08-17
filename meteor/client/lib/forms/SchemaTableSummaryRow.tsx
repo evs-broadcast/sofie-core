@@ -40,7 +40,7 @@ export function SchemaTableSummaryRow<T extends string | number>({
 				if (Array.isArray(value)) value = value.join(', ')
 
 				return (
-					<td className="settings-studio-device__primary_id c4" key={field.attr}>
+					<td className="settings-studio-device__primary_id c2" key={field.attr}>
 						{value ?? ''}
 					</td>
 				)
