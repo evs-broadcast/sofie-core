@@ -40,7 +40,7 @@
 		"/LICENSE"
 	],
 	"dependencies": {
-		"@sofie-automation/shared-lib": "1.50.5",
+		"@sofie-automation/shared-lib": "1.50.6",
 		"tslib": "^2.5.1",
 		"type-fest": "^2.19.0"
 	},

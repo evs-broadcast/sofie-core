@@ -72,7 +72,7 @@
 		"production"
 	],
 	"dependencies": {
-		"@sofie-automation/shared-lib": "1.50.5",
+		"@sofie-automation/shared-lib": "1.50.6",
 		"ejson": "^2.2.3",
 		"eventemitter3": "^4.0.7",
 		"faye-websocket": "^0.11.4",
