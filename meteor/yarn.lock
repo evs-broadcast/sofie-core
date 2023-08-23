@@ -2180,7 +2180,7 @@ __metadata:
   resolution: "@sofie-automation/shared-lib@portal:../packages/shared-lib::locator=automation-core%40workspace%3A."
   dependencies:
     "@mos-connection/model": ^3.0.4
-    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.9-CER-4721-multiple-dsom-devices.353"
+    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.9-master.354"
     tslib: ^2.5.1
     type-fest: ^2.19.0
   languageName: node
@@ -12534,12 +12534,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.9-CER-4721-multiple-dsom-devices.353":
-  version: 8.0.9-CER-4721-multiple-dsom-devices.353
-  resolution: "@evs/timeline-state-resolver-types@npm:8.0.9-CER-4721-multiple-dsom-devices.353::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver-types%2F-%2F%40evs%2Ftimeline-state-resolver-types-8.0.9-CER-4721-multiple-dsom-devices.353.tgz"
+"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.9-master.354":
+  version: 8.0.9-master.354
+  resolution: "@evs/timeline-state-resolver-types@npm:8.0.9-master.354::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver-types%2F-%2F%40evs%2Ftimeline-state-resolver-types-8.0.9-master.354.tgz"
   dependencies:
     tslib: ^2.5.1
-  checksum: bae945e3c1253fb99d985ccf010e0aca651904c0a7aec3327c58db44b06f264a5e502b7a62d0e2b80336383e8ecfc1f78652987440d86d34714ce5045b5e7d8d
+  checksum: 5414d943a4c8b7379f564a19f244053c346202ff58cfe79f0e9e9a5c3e727e0291609efbbb50cb06367cd96442570d108219fa6ab9dbed7451fdb4b45e904b33
   languageName: node
   linkType: hard
 
