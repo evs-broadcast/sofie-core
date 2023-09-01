@@ -262,7 +262,6 @@ class ServerRestAPI implements RestAPI {
 			return ClientAPI.responseSuccess({})
 		} else if (adLibActionDoc) {
 			// This is an AdLib Action
-			const actionUserData = adLibOptions
 
 			const rundownPlaylist = await RundownPlaylists.findOneAsync(rundownPlaylistId, {
 				projection: { currentPartInfo: 1, activationId: 1 },
@@ -307,7 +306,7 @@ class ServerRestAPI implements RestAPI {
 					playlistId: rundownPlaylistId,
 					actionDocId: adLibActionDoc._id,
 					actionId: adLibActionDoc.actionId,
-					userData: actionUserData,
+					userData: adLibOptions ?? adLibActionDoc.userData,
 					triggerMode: triggerMode ? triggerMode : undefined,
 				}
 			)
@@ -322,7 +321,7 @@ class ServerRestAPI implements RestAPI {
 
 			const validationErrors = result.result?.validationErrors
 			if (validationErrors) {
-				const details = JSON.stringify([validationErrors], null, 2)
+				const details = JSON.stringify(validationErrors, null, 2)
 				throw new Meteor.Error(409, `AdLib Action validation failed`, details)
 			}
 
