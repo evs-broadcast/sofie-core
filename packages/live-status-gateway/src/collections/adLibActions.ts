@@ -45,7 +45,7 @@ export class AdLibActionsHandler
 		if (!(prevRundownId === this._curRundownId && prevCurPartInstance === this._curPartInstance)) {
 			if (this._subscriptionId) this._coreHandler.unsubscribe(this._subscriptionId)
 			if (this._dbObserver) this._dbObserver.stop()
-			if (this._curRundownId) {
+			if (this._curRundownId && this._curPartInstance) {
 				this._subscriptionId = await this._coreHandler.setupSubscription(this._publication, {
 					rundownId: this._curRundownId,
 				})
@@ -61,7 +61,7 @@ export class AdLibActionsHandler
 				if (!col) throw new Error(`collection '${this._collection}' not found!`)
 				this._collectionData = col.find({
 					rundownId: this._curRundownId,
-					partId: this._curPartInstance?.part._id,
+					partId: this._curPartInstance.part._id,
 				})
 				await this.notify(this._collectionData)
 			}
