@@ -15,6 +15,7 @@ export class AdLibsHandler
 	public observerName: string
 	private _core: CoreConnection
 	private _curRundownId: string | undefined
+	private _curPartInstance: DBPartInstance | undefined
 
 	constructor(logger: Logger, coreHandler: CoreHandler) {
 		super('AdLibHandler', CollectionName.AdLibPieces, 'adLibPieces', logger, coreHandler)
@@ -34,13 +35,14 @@ export class AdLibsHandler
 	async update(source: string, data: Map<PartInstanceName, DBPartInstance | undefined> | undefined): Promise<void> {
 		this._logger.info(`${this._name} received adLibs update from ${source}`)
 		const prevRundownId = this._curRundownId
-		const partInstance = data ? data.get(PartInstanceName.current) ?? data.get(PartInstanceName.next) : undefined
-		this._curRundownId = partInstance ? unprotectString(partInstance.rundownId) : undefined
+		const prevCurPartInstance = this._curPartInstance
+		this._curPartInstance = data ? data.get(PartInstanceName.current) ?? data.get(PartInstanceName.next) : undefined
+		this._curRundownId = this._curPartInstance ? unprotectString(this._curPartInstance.rundownId) : undefined
 
 		await new Promise(process.nextTick.bind(this))
 		if (!this._collection) return
 		if (!this._publication) return
-		if (prevRundownId !== this._curRundownId) {
+		if (!(prevRundownId === this._curRundownId && prevCurPartInstance === this._curPartInstance)) {
 			if (this._subscriptionId) this._coreHandler.unsubscribe(this._subscriptionId)
 			if (this._dbObserver) this._dbObserver.stop()
 			if (this._curRundownId) {
@@ -57,7 +59,10 @@ export class AdLibsHandler
 
 				const col = this._core.getCollection<AdLibPiece>(this._collection)
 				if (!col) throw new Error(`collection '${this._collection}' not found!`)
-				this._collectionData = col.find({ rundownId: this._curRundownId })
+				this._collectionData = col.find({
+					rundownId: this._curRundownId,
+					partId: this._curPartInstance?.part._id,
+				})
 				await this.notify(this._collectionData)
 			}
 		}
