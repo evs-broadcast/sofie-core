@@ -25,37 +25,34 @@ resources:
                         type: array
                         items:
                           type: string
+                        example: []
                       playout:
                         type: array
                         items:
                           type: string
+                        example: [playoutgateway0PlayoutCoreParent]
                       media_manager:
                         type: array
                         items:
                           type: string
+                        example: []
                       package_manager:
                         type: array
                         items:
                           type: string
+                        example: []
                       live_status:
                         type: array
                         items:
                           type: string
+                        example: [livestatus0LiveStatusGateway]
                       trigger_input:
                         type: array
                         items:
                           type: string
+                        example: []
                     required: [ingest, playout, media_manager, package_manager, live_status, trigger_input]
                     additionalProperties: false
-                    example:
-                      {
-                        ingest: [],
-                        playout: [playoutgateway0PlayoutCoreParent],
-                        media_manager: [],
-                        package_manager: [],
-                        live_status: [livestatus0LiveStatusGateway],
-                        trigger_input: [],
-                      }
   device:
     get:
       operationId: device

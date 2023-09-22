@@ -63,6 +63,8 @@ paths:
     $ref: 'definitions/studios.yaml#/resources/studios'
   /studios/{studioId}:
     $ref: 'definitions/studios.yaml#/resources/studio'
+  /studios/{studioId}/config:
+    $ref: 'definitions/studios.yaml#/resources/config'
   /studios/{studioId}/switch-route-set:
     $ref: 'definitions/studios.yaml#/resources/switchRouteSet'
   /studios/{studioId}/devices:

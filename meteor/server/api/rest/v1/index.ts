@@ -1212,6 +1212,76 @@ class ServerRestAPI implements RestAPI {
 		return ClientAPI.responseSuccess(await runUpgradeForStudio(studioId))
 	}
 
+	async getStudioConfig(
+		_connection: Meteor.Connection,
+		_event: string,
+		studioId: StudioId
+	): Promise<ClientAPI.ClientResponse<object>> {
+		const studio = await Studios.findOneAsync(studioId)
+		if (!studio) throw new Meteor.Error(404, `Studio ${studioId} not found`)
+
+		return ClientAPI.responseSuccess((await APIStudioFrom(studio)).config)
+	}
+
+	async updateStudioConfig(
+		_connection: Meteor.Connection,
+		_event: string,
+		studioId: StudioId,
+		config: object
+	): Promise<ClientAPI.ClientResponse<void>> {
+		const existingStudio = await Studios.findOneAsync(studioId)
+		if (existingStudio) {
+			const playlists = (await RundownPlaylists.findFetchAsync(
+				{ studioId },
+				{
+					projection: {
+						activationId: 1,
+					},
+				}
+			)) as Array<Pick<RundownPlaylist, 'activationId'>>
+			if (playlists.some((p) => p.activationId !== undefined)) {
+				throw new Meteor.Error(412, `Studio ${studioId} cannot be updated, it is in use in an active Playlist`)
+			}
+		} else throw new Meteor.Error(404, `Studio ${studioId} not found`)
+
+		const apiStudio = await APIStudioFrom(existingStudio)
+		apiStudio.config = config
+
+		const blueprintConfigValidation = await validateAPIBlueprintConfigForStudio(apiStudio)
+		const blueprintConfigValidationOK = blueprintConfigValidation.reduce(
+			(acc, msg) => acc && msg.level === NoteSeverity.INFO,
+			true
+		)
+		if (!blueprintConfigValidationOK) {
+			const details = JSON.stringify(
+				blueprintConfigValidation.filter((msg) => msg.level < NoteSeverity.INFO).map((msg) => msg.message.key),
+				null,
+				2
+			)
+			logger.error(`updateStudioConfig failed blueprint config validation with errors: ${details}`)
+			throw new Meteor.Error(409, `Studio ${studioId} has failed blueprint config validation`, details)
+		}
+
+		const newStudio = await studioFrom(apiStudio, studioId)
+		if (!newStudio) throw new Meteor.Error(400, `Invalid Studio`)
+
+		await Studios.upsertAsync(studioId, newStudio)
+
+		const validation = await validateConfigForStudio(studioId)
+		const validateOK = validation.messages.reduce((acc, msg) => acc && msg.level === NoteSeverity.INFO, true)
+		if (!validateOK) {
+			const details = JSON.stringify(
+				validation.messages.filter((msg) => msg.level < NoteSeverity.INFO).map((msg) => msg.message.key),
+				null,
+				2
+			)
+			logger.error(`updateStudioConfig failed validation with errors: ${details}`)
+			throw new Meteor.Error(409, `Studio ${studioId} has failed validation`, details)
+		}
+
+		return ClientAPI.responseSuccess(await runUpgradeForStudio(studioId))
+	}
+
 	async deleteStudio(
 		connection: Meteor.Connection,
 		event: string,
@@ -1754,6 +1824,35 @@ sofieAPIRequest<{ studioId: string }, APIStudio, void>(
 
 		check(studioId, String)
 		return await serverAPI.addOrUpdateStudio(connection, event, studioId, body)
+	}
+)
+
+sofieAPIRequest<{ studioId: string }, never, object>(
+	'get',
+	'/studios/:studioId/config',
+	new Map([[404, [UserErrorMessage.StudioNotFound]]]),
+	async (serverAPI, connection, event, params, _) => {
+		const studioId = protectString<StudioId>(params.studioId)
+		logger.info(`API GET: studio config ${studioId}`)
+
+		check(studioId, String)
+		return await serverAPI.getStudioConfig(connection, event, studioId)
+	}
+)
+
+sofieAPIRequest<{ studioId: string }, object, void>(
+	'put',
+	'/studios/:studioId/config',
+	new Map([
+		[404, [UserErrorMessage.StudioNotFound]],
+		[409, [UserErrorMessage.ValidationFailed]],
+	]),
+	async (serverAPI, connection, event, params, body) => {
+		const studioId = protectString<StudioId>(params.studioId)
+		logger.info(`API PUT: Update studio config ${studioId}`)
+
+		check(studioId, String)
+		return await serverAPI.updateStudioConfig(connection, event, studioId, body)
 	}
 )
 
