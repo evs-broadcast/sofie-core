@@ -4,10 +4,7 @@ import { checkServer } from '../checkServer'
 import Logging from '../httpLogging'
 
 const httpLogging = false
-let testServer = false
-if (process.env.SERVER_TYPE === 'TEST') {
-	testServer = true
-}
+const testServer = process.env.SERVER_TYPE === 'TEST'
 
 describe('Network client', () => {
 	const config = new Configuration({

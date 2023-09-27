@@ -4,10 +4,7 @@ import { checkServer } from '../checkServer'
 import Logging from '../httpLogging'
 
 const httpLogging = false
-let testServer
-if (process.env.SERVER_TYPE === 'TEST') {
-	testServer = true
-}
+const testServer = process.env.SERVER_TYPE === 'TEST'
 
 describe('Network client', () => {
 	const config = new Configuration({
@@ -23,11 +20,10 @@ describe('Network client', () => {
 		const devices = await devicesApi.devices()
 		expect(devices.status).toBe(200)
 		expect(devices).toHaveProperty('result')
-		devices.result.forEach((device) => {
-			expect(typeof device).toBe('object')
-			expect(device).toHaveProperty('id')
-			expect(typeof device.id).toBe('string')
-			deviceIds.push(device.id)
+		expect(devices.result).toHaveProperty('playout')
+		devices.result.playout.forEach((device) => {
+			expect(typeof device).toBe('string')
+			deviceIds.push(device)
 		})
 	})
 

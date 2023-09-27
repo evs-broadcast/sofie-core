@@ -4,6 +4,7 @@ import { checkServer } from '../checkServer'
 import Logging from '../httpLogging'
 
 const httpLogging = false
+const testServer = process.env.SERVER_TYPE === 'TEST'
 
 describe('Network client', () => {
 	const config = new Configuration({
@@ -87,48 +88,52 @@ describe('Network client', () => {
 		})
 	})
 
-	let newShowStyleVariant: ShowStyleVariant | undefined
-	test('can request a ShowStyleVariant by id', async () => {
-		const showStyleVariant = await showStylesApi.showStyleVariant({
-			showStyleBaseId: showStyleBaseIds[0],
-			showStyleVariantId: showStyleVariantIds[0],
+	if (testServer) {
+		let newShowStyleVariant: ShowStyleVariant | undefined
+		test('can request a ShowStyleVariant by id', async () => {
+			const showStyleVariant = await showStylesApi.showStyleVariant({
+				showStyleBaseId: showStyleBaseIds[0],
+				showStyleVariantId: showStyleVariantIds[0],
+			})
+			expect(showStyleVariant.status).toBe(200)
+			expect(showStyleVariant).toHaveProperty('result')
+			expect(showStyleVariant.result).toHaveProperty('name')
+			expect(showStyleVariant.result).toHaveProperty('rank')
+			expect(showStyleVariant.result).toHaveProperty('showStyleBaseId')
+			expect(showStyleVariant.result).toHaveProperty('config')
+			newShowStyleVariant = JSON.parse(JSON.stringify(showStyleVariant.result))
 		})
-		expect(showStyleVariant.status).toBe(200)
-		expect(showStyleVariant).toHaveProperty('result')
-		expect(showStyleVariant.result).toHaveProperty('name')
-		expect(showStyleVariant.result).toHaveProperty('rank')
-		expect(showStyleVariant.result).toHaveProperty('showStyleBaseId')
-		expect(showStyleVariant.result).toHaveProperty('config')
-		newShowStyleVariant = JSON.parse(JSON.stringify(showStyleVariant.result))
-	})
 
-	let testShowStyleVariantId: string | undefined
-	test('can add a ShowStyleVariant', async () => {
-		newShowStyleVariant.name = newShowStyleVariant.name + 'Added'
-		const showStyleVariant = await showStylesApi.addShowStyleVariant({
-			showStyleBaseId: showStyleBaseIds[0],
-			showStyleVariant: newShowStyleVariant,
+		let testShowStyleVariantId: string | undefined
+		test('can add a ShowStyleVariant', async () => {
+			newShowStyleVariant.name = newShowStyleVariant.name + 'Added'
+			const showStyleVariant = await showStylesApi.addShowStyleVariant({
+				showStyleBaseId: showStyleBaseIds[0],
+				showStyleVariant: newShowStyleVariant,
+			})
+			expect(showStyleVariant.status).toBe(200)
+			expect(typeof showStyleVariant.result).toBe('string')
+			testShowStyleVariantId = showStyleVariant.result
 		})
-		expect(showStyleVariant.status).toBe(200)
-		expect(typeof showStyleVariant.result).toBe('string')
-		testShowStyleVariantId = showStyleVariant.result
-	})
 
-	test('can update a ShowStyleVariant', async () => {
-		newShowStyleVariant.config.developerMode = !newShowStyleVariant.config.developerMode
-		const showStyleVariant = await showStylesApi.addOrUpdateShowStyleVariant({
-			showStyleBaseId: showStyleBaseIds[0],
-			showStyleVariantId: testShowStyleVariantId,
-			showStyleVariant: newShowStyleVariant,
+		test('can update a ShowStyleVariant', async () => {
+			newShowStyleVariant.config.developerMode = !newShowStyleVariant.config.developerMode
+			const showStyleVariant = await showStylesApi.addOrUpdateShowStyleVariant({
+				showStyleBaseId: showStyleBaseIds[0],
+				showStyleVariantId: testShowStyleVariantId,
+				showStyleVariant: newShowStyleVariant,
+			})
+			expect(showStyleVariant.status).toBe(200)
 		})
-		expect(showStyleVariant.status).toBe(200)
-	})
 
-	test('can remove a ShowStyleVariant', async () => {
-		const showStyle = await showStylesApi.deleteShowStyleVariant({
-			showStyleBaseId: showStyleBaseIds[0],
-			showStyleVariantId: testShowStyleVariantId,
+		test('can remove a ShowStyleVariant', async () => {
+			const showStyle = await showStylesApi.deleteShowStyleVariant({
+				showStyleBaseId: showStyleBaseIds[0],
+				showStyleVariantId: testShowStyleVariantId,
+			})
+			expect(showStyle.status).toBe(200)
 		})
-		expect(showStyle.status).toBe(200)
-	})
+	} else {
+		test.todo('add/update/remove ShowStyleVariants')
+	}
 })

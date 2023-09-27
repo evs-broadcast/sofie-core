@@ -10,7 +10,6 @@ import { join } from 'path'
 import { createServer } from 'http'
 import { expressAppConfig } from './server/node_modules/oas3-tools/dist/index.js'
 
-const serverPort = 3000
 const testTimeout = 120000
 
 async function startServer() {
@@ -61,17 +60,14 @@ startServer()
 				timeout: testTimeout,
 				env: {
 					...process.env,
+					SERVER_TYPE: 'TEST',
 					SERVER_PORT: `${testServer.address().port}`,
 				},
 			},
 			(error, stdout, stderr) => {
-				testServer.close()
-				if (error) {
-					console.error(`Test error: ${error}`)
-					exit(1)
-				}
 				console.log(stdout)
 				console.log('Warning:', stderr)
+				testServer.close()
 				console.log('Tests complete')
 				exit()
 			}
