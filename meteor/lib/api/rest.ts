@@ -436,6 +436,34 @@ export interface RestAPI {
 		showStyleBaseId: ShowStyleBaseId
 	): Promise<ClientAPI.ClientResponse<void>>
 	/**
+	 * Gets a ShowStyle config, if the ShowStyle id exists.
+	 *
+	 * Throws if the specified ShowStyle does not exist.
+	 * @param connection Connection data including client and header details
+	 * @param event User event string
+	 * @param showStyleBaseId ShowStyleBaseId to fetch
+	 */
+	getShowStyleConfig(
+		connection: Meteor.Connection,
+		event: string,
+		showStyleBaseId: ShowStyleBaseId
+	): Promise<ClientAPI.ClientResponse<object>>
+	/**
+	 * Updates a ShowStyle configuration.
+	 *
+	 * Throws if the ShowStyle is in use in an active Rundown.
+	 * @param connection Connection data including client and header details
+	 * @param event User event string
+	 * @param showStyleBaseId Id of the ShowStyleBase to update
+	 * @param object Blueprint configuration object
+	 */
+	updateShowStyleConfig(
+		connection: Meteor.Connection,
+		event: string,
+		showStyleBaseId: ShowStyleBaseId,
+		config: object
+	): Promise<ClientAPI.ClientResponse<void>>
+	/**
 	 * Gets the Ids of all ShowStyleVariants that belong to a specified ShowStyleBase.
 	 *
 	 * Throws if the specified ShowStyleBase does not exist.
@@ -577,7 +605,7 @@ export interface RestAPI {
 	 * Throws if the Studio already exists and is in use in an active Rundown.
 	 * @param connection Connection data including client and header details
 	 * @param event User event string
-	 * @param studioId Id of the Studio to add or update
+	 * @param studioId Id of the Studio to update
 	 * @param object Blueprint configuration object
 	 */
 	updateStudioConfig(

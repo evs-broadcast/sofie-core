@@ -931,6 +931,90 @@ class ServerRestAPI implements RestAPI {
 		return ClientAPI.responseSuccess(undefined)
 	}
 
+	async getShowStyleConfig(
+		_connection: Meteor.Connection,
+		_event: string,
+		showStyleBaseId: ShowStyleBaseId
+	): Promise<ClientAPI.ClientResponse<object>> {
+		const showStyleBase = await ShowStyleBases.findOneAsync(showStyleBaseId)
+		if (!showStyleBase) throw new Meteor.Error(404, `ShowStyleBase ${showStyleBaseId} does not exist`)
+
+		return ClientAPI.responseSuccess((await APIShowStyleBaseFrom(showStyleBase)).config)
+	}
+
+	async updateShowStyleConfig(
+		_connection: Meteor.Connection,
+		_event: string,
+		showStyleBaseId: ShowStyleBaseId,
+		config: object
+	): Promise<ClientAPI.ClientResponse<void>> {
+		const existingShowStyleBase = await ShowStyleBases.findOneAsync(showStyleBaseId)
+		if (existingShowStyleBase) {
+			const rundowns = (await Rundowns.findFetchAsync(
+				{ showStyleBaseId },
+				{ projection: { playlistId: 1 } }
+			)) as Array<Pick<Rundown, 'playlistId'>>
+			const playlists = (await RundownPlaylists.findFetchAsync(
+				{ _id: { $in: rundowns.map((r) => r.playlistId) } },
+				{
+					projection: {
+						activationId: 1,
+					},
+				}
+			)) as Array<Pick<RundownPlaylist, 'activationId'>>
+			if (playlists.some((playlist) => playlist.activationId !== undefined)) {
+				throw new Meteor.Error(
+					412,
+					`Cannot update ShowStyleBase ${showStyleBaseId} as it is in use by an active Playlist`
+				)
+			}
+		} else throw new Meteor.Error(404, `ShowStyleBase ${showStyleBaseId} not found`)
+
+		const apiShowStyleBase = await APIShowStyleBaseFrom(existingShowStyleBase)
+		apiShowStyleBase.config = config
+
+		const blueprintConfigValidation = await validateAPIBlueprintConfigForShowStyle(
+			apiShowStyleBase,
+			protectString(apiShowStyleBase.blueprintId)
+		)
+		const blueprintConfigValidationOK = blueprintConfigValidation.reduce(
+			(acc, msg) => acc && msg.level === NoteSeverity.INFO,
+			true
+		)
+		if (!blueprintConfigValidationOK) {
+			const details = JSON.stringify(
+				blueprintConfigValidation.filter((msg) => msg.level < NoteSeverity.INFO).map((msg) => msg.message.key),
+				null,
+				2
+			)
+			logger.error(`updateShowStyleBase failed blueprint config validation with errors: ${details}`)
+			throw new Meteor.Error(
+				409,
+				`ShowStyleBase ${showStyleBaseId} has failed blueprint config validation`,
+				details
+			)
+		}
+
+		const showStyle = await showStyleBaseFrom(apiShowStyleBase, showStyleBaseId)
+		if (!showStyle) throw new Meteor.Error(400, `Invalid ShowStyleBase`)
+
+		await ShowStyleBases.upsertAsync(showStyleBaseId, showStyle)
+
+		const validation = await validateConfigForShowStyleBase(showStyleBaseId)
+		const validateOK = validation.messages.reduce((acc, msg) => acc && msg.level === NoteSeverity.INFO, true)
+		if (!validateOK) {
+			const details = JSON.stringify(
+				validation.messages.filter((msg) => msg.level < NoteSeverity.INFO).map((msg) => msg.message.key),
+				null,
+				2
+			)
+			logger.error(`updateShowStyleBase failed validation with errors: ${details}`)
+			throw new Meteor.Error(409, `ShowStyleBase ${showStyleBaseId} has failed validation`, details)
+		}
+
+		return ClientAPI.responseSuccess(await runUpgradeForShowStyleBase(showStyleBaseId))
+	}
+
 	async getShowStyleVariants(
 		_connection: Meteor.Connection,
 		_event: string,
@@ -1998,7 +2082,7 @@ sofieAPIRequest<never, APIShowStyleBase, string>(
 sofieAPIRequest<{ showStyleBaseId: ShowStyleBaseId }, never, APIShowStyleBase>(
 	'get',
 	'/showstyles/:showStyleBaseId',
-	new Map([[404, [UserErrorMessage.BlueprintNotFound]]]),
+	new Map([[404, [UserErrorMessage.ShowStyleBaseNotFound]]]),
 	async (serverAPI, connection, event, params, _body) => {
 		logger.info(`API GET: ShowStyleBase ${params.showStyleBaseId}`)
 		return await serverAPI.getShowStyleBase(connection, event, params.showStyleBaseId)
@@ -2009,7 +2093,7 @@ sofieAPIRequest<{ showStyleBaseId: string }, APIShowStyleBase, void>(
 	'put',
 	'/showstyles/:showStyleBaseId',
 	new Map([
-		[400, [UserErrorMessage.BlueprintNotFound]],
+		[400, [UserErrorMessage.ShowStyleBaseNotFound]],
 		[409, [UserErrorMessage.ValidationFailed]],
 		[412, [UserErrorMessage.RundownAlreadyActive]],
 	]),
@@ -2032,6 +2116,35 @@ sofieAPIRequest<{ showStyleBaseId: string }, never, void>(
 
 		check(showStyleBaseId, String)
 		return await serverAPI.deleteShowStyleBase(connection, event, showStyleBaseId)
+	}
+)
+
+sofieAPIRequest<{ showStyleBaseId: string }, never, object>(
+	'get',
+	'/showstyles/:showStyleBaseId/config',
+	new Map([[404, [UserErrorMessage.ShowStyleBaseNotFound]]]),
+	async (serverAPI, connection, event, params, _) => {
+		const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleBaseId)
+		logger.info(`API GET: ShowStyleBase config ${showStyleBaseId}`)
+
+		check(showStyleBaseId, String)
+		return await serverAPI.getShowStyleConfig(connection, event, showStyleBaseId)
+	}
+)
+
+sofieAPIRequest<{ showStyleBaseId: string }, object, void>(
+	'put',
+	'/showstyles/:showStyleBaseId/config',
+	new Map([
+		[404, [UserErrorMessage.ShowStyleBaseNotFound]],
+		[409, [UserErrorMessage.ValidationFailed]],
+	]),
+	async (serverAPI, connection, event, params, body) => {
+		const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleBaseId)
+		logger.info(`API PUT: Update ShowStyleBase config ${showStyleBaseId}`)
+
+		check(showStyleBaseId, String)
+		return await serverAPI.updateShowStyleConfig(connection, event, showStyleBaseId, body)
 	}
 )
 
