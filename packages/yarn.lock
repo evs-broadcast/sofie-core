@@ -3638,19 +3638,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@evs/cortex-dsom-api@npm:1.2.3":
-  version: 1.2.3
-  resolution: "@evs/cortex-dsom-api@npm:1.2.3::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Fcortex-dsom-api%2F-%2F%40evs%2Fcortex-dsom-api-1.2.3.tgz"
-  checksum: 80399a503b279b6fd3771844fab2ac5fd6ef16b5e551e3d9b4e0f9ac25174c5b7bcb92a842d170db3652c30ec1773608fdf7f94ecf512b9e23b86973182ea53b
+"@evs/cortex-dsom-api@npm:1.2.4":
+  version: 1.2.4
+  resolution: "@evs/cortex-dsom-api@npm:1.2.4::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Fcortex-dsom-api%2F-%2F%40evs%2Fcortex-dsom-api-1.2.4.tgz"
+  checksum: 21cc2c3eabd1434439a56ff4e5a09b88df5e2793b48c90af1c6ec41be47497f8885dfa7ab11f0b0239906b75a2fdf4dc2f5684516dd0a51dfa68658fa2420b0b
   languageName: node
   linkType: hard
 
-"@evs/dsom-connection@npm:0.1.25":
-  version: 0.1.25
-  resolution: "@evs/dsom-connection@npm:0.1.25::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Fdsom-connection%2F-%2F%40evs%2Fdsom-connection-0.1.25.tgz"
+"@evs/dsom-connection@npm:0.1.26":
+  version: 0.1.26
+  resolution: "@evs/dsom-connection@npm:0.1.26::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Fdsom-connection%2F-%2F%40evs%2Fdsom-connection-0.1.26.tgz"
   dependencies:
-    "@evs/cortex-dsom-api": 1.2.3
-  checksum: 8170c1982d1a6366770d566015a30c07456620a3806fdaf6cfa016dec1ae85c31f7e427fefb4f8337dc1ed280eb00021b6bf73f78e8d6b2f5b78dc483cc4cdd1
+    "@evs/cortex-dsom-api": 1.2.4
+  checksum: e9531b38e74779e525d09c00f816c734038260be53ac2859277b5b02bc6e738aade13d29eb26c2e36399c8977cc684e70423e2d461a505f201b63759daa9680d
   languageName: node
   linkType: hard
 
@@ -18437,7 +18437,7 @@ asn1@evs-broadcast/node-asn1:
     "@sofie-automation/shared-lib": 1.50.8
     debug: ^4.3.3
     influx: ^5.9.3
-    timeline-state-resolver: "npm:@evs/timeline-state-resolver@8.0.10"
+    timeline-state-resolver: "npm:@evs/timeline-state-resolver@8.0.11"
     tslib: ^2.5.1
     underscore: ^1.13.4
     winston: ^3.8.2
@@ -22130,11 +22130,20 @@ asn1@evs-broadcast/node-asn1:
   languageName: node
   linkType: hard
 
-"timeline-state-resolver@npm:@evs/timeline-state-resolver@8.0.10":
-  version: 8.0.10
-  resolution: "@evs/timeline-state-resolver@npm:8.0.10::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver%2F-%2F%40evs%2Ftimeline-state-resolver-8.0.10.tgz"
+"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.11":
+  version: 8.0.11
+  resolution: "@evs/timeline-state-resolver-types@npm:8.0.11::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver-types%2F-%2F%40evs%2Ftimeline-state-resolver-types-8.0.11.tgz"
   dependencies:
-    "@evs/dsom-connection": 0.1.25
+    tslib: ^2.5.1
+  checksum: 3823cb163f1ab4d5c86346e7b10e3c0f99ff293fcfd641fe1b2a5497d38323f66cc3cc9f05daa638cf8e6c206fba2e3cd58bade4cc0e78d875e0a2d57aee3d70
+  languageName: node
+  linkType: hard
+
+"timeline-state-resolver@npm:@evs/timeline-state-resolver@8.0.11":
+  version: 8.0.11
+  resolution: "@evs/timeline-state-resolver@npm:8.0.11::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver%2F-%2F%40evs%2Ftimeline-state-resolver-8.0.11.tgz"
+  dependencies:
+    "@evs/dsom-connection": 0.1.26
     "@tv2media/v-connection": ^7.3.0
     atem-connection: 2.4.0
     atem-state: ^0.12.2
@@ -22155,7 +22164,7 @@ asn1@evs-broadcast/node-asn1:
     sprintf-js: ^1.1.2
     superfly-timeline: ^8.3.1
     threadedclass: ^1.2.1
-    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.10"
+    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.11"
     tslib: ^2.5.1
     tv-automation-quantel-gateway-client: ^3.1.11-agent-debug-20230117-160455-c2c4ee4.0
     underscore: ^1.13.6
@@ -22163,7 +22172,7 @@ asn1@evs-broadcast/node-asn1:
     utf-8-validate: ^5.0.10
     ws: ^7.5.9
     xml-js: ^1.6.11
-  checksum: e93a308ceb6e1d75a9f8e8852ba471e928d117fd0ea60587b027dc86a989ba5f23e56de22e663cc06dca4a9b60a082d868783904c4b2fc2d1763dc663400ee32
+  checksum: c259b167da8668e46fa6593fb9d56fc414d308b0b47358b9177992acc2f5f5b020fc41572fbd36e0e4a3e2992b7e241809d2d69284f0afe59177be8b430740d0
   languageName: node
   linkType: hard
 
