@@ -53,7 +53,7 @@ export interface TimelineKeyframeCoreExt<TContent extends { deviceType: TSR.Devi
 
 	abSession?: {
 		poolName: string
-		playerIndex: number
+		playerIndex: number | string
 	}
 }
 
