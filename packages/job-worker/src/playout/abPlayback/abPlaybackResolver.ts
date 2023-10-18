@@ -359,7 +359,7 @@ export function resolveAbAssignmentsFromRequests(
 		const req = remainingLookaheads[i]
 
 		if (slot) {
-			req.playerId = Number(slot[0])
+			req.playerId = slot[0]
 		} else {
 			delete req.playerId
 		}

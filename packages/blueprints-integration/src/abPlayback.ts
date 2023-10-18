@@ -20,7 +20,7 @@ export const AB_MEDIA_PLAYER_AUTO = '__auto__'
  * Description of a player in an AB pool
  */
 export interface ABPlayerDefinition {
-	playerId: number
+	playerId: number | string
 }
 
 /**

@@ -154,7 +154,7 @@ function applyUpdateToKeyframes(
 			// Preserve from other ab pools
 			if (kf.abSession.poolName !== poolName) return kf
 
-			if (kf.abSession.playerIndex === poolId) {
+			if (kf.abSession.playerId === poolId) {
 				// Make sure any ab keyframe is active
 				kf.disabled = false
 				updated = true
