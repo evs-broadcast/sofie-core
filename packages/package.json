@@ -61,8 +61,5 @@
 		"typescript": "~4.9"
 	},
 	"name": "packages",
-	"packageManager": "yarn@3.5.0",
-	"resolutions": {
-		"@sofie-fcr-blueprints/blueprints": "portal:/home/bmic/Workspace/evs-sofie-blueprints/blueprints"
-	}
+	"packageManager": "yarn@3.5.0"
 }
