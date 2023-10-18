@@ -359,7 +359,12 @@ export function resolveAbAssignmentsFromRequests(
 		const req = remainingLookaheads[i]
 
 		if (slot) {
-			req.playerId = slot[0]
+			// Check if we were originally given a player index rather than a string Id
+			if (playerIds.find((id) => typeof id === 'number' && id === Number(slot[0]))) {
+				req.playerId = Number(slot[0])
+			} else {
+				req.playerId = slot[0]
+			}
 		} else {
 			delete req.playerId
 		}
