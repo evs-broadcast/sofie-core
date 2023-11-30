@@ -93,6 +93,8 @@ import { Studio } from '../../../../lib/collections/Studios'
 import { RundownPlaylist } from '../../../../lib/collections/RundownPlaylists'
 import { Rundown } from '@sofie-automation/corelib/dist/dataModel/Rundown'
 import { executePeripheralDeviceFunction } from '../../peripheralDevice/executeFunction'
+import { getSystemStatus } from '../../../systemStatus/systemStatus'
+import { Component, ExternalStatus } from '../../../../lib/api/systemStatus'
 
 function restAPIUserEvent(
 	ctx: Koa.ParameterizedContext<
@@ -1596,6 +1598,76 @@ koaRouter.get('/', async (ctx, next) => {
 	ctx.type = 'application/json'
 	const server = new ServerRestAPI()
 	const response = ClientAPI.responseSuccess(await server.index())
+	ctx.body = JSON.stringify({ status: response.success, result: response.result })
+	ctx.status = response.success
+	await next()
+})
+
+koaRouter.get('/health', async (ctx, next) => {
+	ctx.type = 'application/json'
+	const systemStatus = await getSystemStatus({ userId: null })
+
+	interface ComponentStatus {
+		name: string
+		updated: string
+		status: ExternalStatus
+		version?: string
+		components?: ComponentStatus[]
+		statusMessage?: string
+	}
+
+	// Array of all devices that have a parentId
+	const subComponents =
+		systemStatus.components?.filter((c) => c.instanceId !== undefined && c.parentId !== undefined) ?? []
+
+	function mapComponents(components?: Component[]): ComponentStatus[] | undefined {
+		return (
+			components?.map((c) => {
+				const version = c._internal.versions['_process']
+				const children = subComponents.filter((sub) => sub.parentId === c.instanceId)
+				return {
+					name: c.name,
+					updated: c.updated,
+					status: c.status,
+					version: version ?? undefined,
+					components: children.length ? mapComponents(children) : undefined,
+					statusMessage: c.statusMessage?.length ? c.statusMessage : undefined,
+				}
+			}) ?? undefined
+		)
+	}
+
+	// Patch the component statusMessage to be from the _internal field if required
+	const allComponentsPatched = systemStatus.components?.map((c) => {
+		return {
+			...c,
+			statusMessage: c.statusMessage ?? (c.status !== 'OK' ? c._internal.messages.join(', ') : undefined),
+		}
+	})
+
+	// Report status for all devices that are not children and any non-devices that are not OK
+	const componentStatus =
+		mapComponents(
+			allComponentsPatched?.filter(
+				(c) => (c.instanceId !== undefined || c.status !== 'OK') && c.parentId === undefined
+			)
+		) ?? []
+
+	const allStatusMessages =
+		allComponentsPatched // include children by not using componentStatus here
+			?.filter((c) => c.statusMessage !== undefined)
+			.map((c) => `${c.name}: ${c.statusMessage}`)
+			.join('; ') ?? ''
+
+	const response = ClientAPI.responseSuccess({
+		name: systemStatus.name,
+		updated: systemStatus.updated,
+		status: systemStatus.status,
+		version: systemStatus._internal.versions['core'] ?? 'unknown',
+		components: componentStatus,
+		statusMessage: allStatusMessages,
+	})
+
 	ctx.body = JSON.stringify({ status: response.success, result: response.result })
 	ctx.status = response.success
 	await next()

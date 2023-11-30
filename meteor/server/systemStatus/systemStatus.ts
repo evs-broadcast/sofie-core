@@ -65,7 +65,8 @@ export interface StatusObjectInternal {
 
 function getSystemStatusForDevice(device: PeripheralDevice): StatusResponse {
 	const deviceStatus: StatusCode = device.status.statusCode
-	const deviceStatusMessages: Array<string> = device.status.messages || []
+	const deviceStatusMessages: Array<string> = device.status.messages ?? []
+	if (!device.connected) deviceStatusMessages.push('Disconnected')
 
 	const checks: Array<CheckObj> = []
 	const pushStatusAsCheck = (name: string, statusCode: StatusCode, messages: string[]) => {
@@ -142,6 +143,7 @@ function getSystemStatusForDevice(device: PeripheralDevice): StatusResponse {
 	const so: StatusResponse = {
 		name: device.name,
 		instanceId: device._id,
+		parentId: device.parentDeviceId ? device.parentDeviceId : undefined,
 		status: 'UNDEFINED',
 		updated: new Date(device.lastSeen).toISOString(),
 		_status: deviceStatus,
@@ -151,7 +153,7 @@ function getSystemStatusForDevice(device: PeripheralDevice): StatusResponse {
 			// statusCode: deviceStatus,
 			statusCodeString: StatusCode[deviceStatus],
 			messages: deviceStatusMessages,
-			versions: device.versions || {},
+			versions: device.versions ?? {},
 		},
 		checks: checks,
 	}
