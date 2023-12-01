@@ -279,13 +279,14 @@ components:
           example: '0.1.13'
         components:
           type: array
-          description: Array of components that are children of this component. Components with no child will have no components member
+          description: Array of components that are children of this component. Can recurse - components with no child will have no components member
           items:
-            $ref: '#/components/schemas/healthComponentStatus'
+            type: object
+            description: Components conforming to the same definition as the parent object
           example:
-            name: atem
-            updated: '2023-11-28T15:17:21.712Z'
-            status: OK
+            - name: atem
+              updated: '2023-11-28T15:17:21.712Z'
+              status: OK
         statusMessage:
           type: string
           description: Status messages for this component
