@@ -30,6 +30,7 @@ import { ServerPeripheralDeviceAPI } from '../api/peripheralDevice'
 import { PeripheralDeviceContentWriteAccess } from '../security/peripheralDevice'
 import { MethodContext } from '../../lib/api/methods'
 import { getBlueprintVersions } from './blueprintVersions'
+import { getCoreSystemAsync } from '../coreSystem/collection'
 
 const PackageInfo = require('../../package.json')
 const integrationVersionRange = parseCoreIntegrationCompatabilityRange(PackageInfo.version)
@@ -171,6 +172,7 @@ export async function getSystemStatus(cred0: Credentials, studioId?: StudioId): 
 	const checks: Array<CheckObj> = []
 
 	await SystemReadAccess.systemStatus(cred0)
+	const coreSystemName = (await getCoreSystemAsync())?.name ?? 'Sofie Automation system'
 
 	// Check systemStatuses:
 	for (const [key, status] of Object.entries<StatusObjectInternal>(systemStatuses)) {
@@ -190,7 +192,7 @@ export async function getSystemStatus(cred0: Credentials, studioId?: StudioId): 
 	}
 
 	const statusObj: StatusResponse = {
-		name: 'Sofie Automation system',
+		name: coreSystemName,
 		instanceId: instanceId,
 		updated: new Date(getCurrentTime()).toISOString(),
 		status: 'UNDEFINED',

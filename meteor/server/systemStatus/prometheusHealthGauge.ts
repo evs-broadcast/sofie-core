@@ -2,7 +2,7 @@ import { MetricsGauge } from '@sofie-automation/corelib/dist/prometheus'
 import { getSystemStatus } from './systemStatus'
 
 export const healthGauge = new MetricsGauge({
-	name: 'sofie_health',
+	name: 'sofie_health_status',
 	help: 'Health status of Sofie application and its components',
 	labelNames: ['name', 'updated', 'status', 'version', 'statusMessage'] as const,
 	async collect() {
@@ -22,6 +22,7 @@ export const healthGauge = new MetricsGauge({
 					}
 				}) ?? []
 
+		this.reset() // discard any previous label/value combinations
 		const statusMessage = componentStatus
 			.filter((c) => c.statusMessage !== undefined)
 			.map((c) => `${c.name}: ${c.statusMessage}`)
