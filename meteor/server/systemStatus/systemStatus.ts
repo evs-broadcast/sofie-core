@@ -172,7 +172,8 @@ export async function getSystemStatus(cred0: Credentials, studioId?: StudioId): 
 	const checks: Array<CheckObj> = []
 
 	await SystemReadAccess.systemStatus(cred0)
-	const coreSystemName = (await getCoreSystemAsync())?.name ?? 'Sofie Automation system'
+	const coreSystem = await getCoreSystemAsync()
+	const coreSystemName = coreSystem?.name?.length ? coreSystem.name : 'Sofie Automation system'
 
 	// Check systemStatuses:
 	for (const [key, status] of Object.entries<StatusObjectInternal>(systemStatuses)) {
