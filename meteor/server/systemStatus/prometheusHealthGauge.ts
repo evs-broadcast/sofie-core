@@ -13,5 +13,12 @@ export const healthGauge = new MetricsGauge({
 			name: systemStatus.name,
 			version: systemStatus._internal.versions['core'],
 		}).set(statusValues[systemStatus.status])
+
+		systemStatus.components?.forEach((c) => {
+			this.labels({
+				name: c.name,
+				version: c._internal.versions['_process'] ?? '',
+			}).set(statusValues[c.status])
+		})
 	},
 })
