@@ -30,6 +30,7 @@ import { ServerPeripheralDeviceAPI } from '../api/peripheralDevice'
 import { PeripheralDeviceContentWriteAccess } from '../security/peripheralDevice'
 import { MethodContext } from '../../lib/api/methods'
 import { getBlueprintVersions } from './blueprintVersions'
+import { getCoreSystemAsync } from '../coreSystem/collection'
 
 const PackageInfo = require('../../package.json')
 const integrationVersionRange = parseCoreIntegrationCompatabilityRange(PackageInfo.version)
@@ -65,7 +66,8 @@ export interface StatusObjectInternal {
 
 function getSystemStatusForDevice(device: PeripheralDevice): StatusResponse {
 	const deviceStatus: StatusCode = device.status.statusCode
-	const deviceStatusMessages: Array<string> = device.status.messages || []
+	const deviceStatusMessages: Array<string> = device.status.messages ?? []
+	if (!device.connected) deviceStatusMessages.push('Disconnected')
 
 	const checks: Array<CheckObj> = []
 	const pushStatusAsCheck = (name: string, statusCode: StatusCode, messages: string[]) => {
@@ -142,6 +144,7 @@ function getSystemStatusForDevice(device: PeripheralDevice): StatusResponse {
 	const so: StatusResponse = {
 		name: device.name,
 		instanceId: device._id,
+		parentId: device.parentDeviceId ? device.parentDeviceId : undefined,
 		status: 'UNDEFINED',
 		updated: new Date(device.lastSeen).toISOString(),
 		_status: deviceStatus,
@@ -151,7 +154,7 @@ function getSystemStatusForDevice(device: PeripheralDevice): StatusResponse {
 			// statusCode: deviceStatus,
 			statusCodeString: StatusCode[deviceStatus],
 			messages: deviceStatusMessages,
-			versions: device.versions || {},
+			versions: device.versions ?? {},
 		},
 		checks: checks,
 	}
@@ -169,6 +172,8 @@ export async function getSystemStatus(cred0: Credentials, studioId?: StudioId): 
 	const checks: Array<CheckObj> = []
 
 	await SystemReadAccess.systemStatus(cred0)
+	const coreSystem = await getCoreSystemAsync()
+	const coreSystemName = coreSystem?.name?.length ? coreSystem.name : 'Sofie Automation system'
 
 	// Check systemStatuses:
 	for (const [key, status] of Object.entries<StatusObjectInternal>(systemStatuses)) {
@@ -188,7 +193,7 @@ export async function getSystemStatus(cred0: Credentials, studioId?: StudioId): 
 	}
 
 	const statusObj: StatusResponse = {
-		name: 'Sofie Automation system',
+		name: coreSystemName,
 		instanceId: instanceId,
 		updated: new Date(getCurrentTime()).toISOString(),
 		status: 'UNDEFINED',

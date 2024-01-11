@@ -25,3 +25,4 @@ The current Sofie metrics exposed are:
 | sofie_meteor_jobqueue_queue_total          | Counter | Number of jobs put into each worker job queues                     |
 | sofie_meteor_jobqueue_success              | Counter | Number of successful jobs from each worker                         |
 | sofie_meteor_jobqueue_queue_errors         | Counter | Number of failed jobs from each worker                             |
+| sofie_health                               | Gauge   | Health status of Sofie application and its components              |
