@@ -41,6 +41,7 @@ interface AdLibStatus {
 interface ActivePlaylistStatus {
 	event: string
 	id: string | null
+	externalId: string | null
 	name: string
 	rundownIds: string[]
 	currentPart: PartStatus | null
@@ -181,6 +182,7 @@ export class ActivePlaylistTopic
 					? literal<ActivePlaylistStatus>({
 							event: 'activePlaylist',
 							id: unprotectString(this._activePlaylist._id),
+							externalId: this._activePlaylist.externalId,
 							name: this._activePlaylist.name,
 							rundownIds: this._activePlaylist.rundownIdsInOrder.map((r) => unprotectString(r)),
 							currentPart: currentPart
@@ -203,6 +205,7 @@ export class ActivePlaylistTopic
 					: literal<ActivePlaylistStatus>({
 							event: 'activePlaylist',
 							id: null,
+							externalId: null,
 							name: '',
 							rundownIds: [],
 							currentPart: null,
