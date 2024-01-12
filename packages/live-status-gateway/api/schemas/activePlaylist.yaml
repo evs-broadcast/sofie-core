@@ -37,7 +37,7 @@ $defs:
         type: array
         items:
           $ref: '#/$defs/adLib'
-    required: [event, id, name, rundownIds, currentPart, nextPart, adLibs, globalAdLibs]
+    required: [event, id, externalId, name, rundownIds, currentPart, nextPart, adLibs, globalAdLibs]
     additionalProperties: false
     examples:
       - event: activePlaylist
