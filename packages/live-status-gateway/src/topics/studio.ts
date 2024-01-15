@@ -10,6 +10,7 @@ type PlaylistActivationStatus = 'deactivated' | 'rehearsal' | 'activated'
 
 interface PlaylistStatus {
 	id: string
+	externalId: string
 	name: string
 	activationStatus: PlaylistActivationStatus
 }
@@ -81,6 +82,7 @@ export class StudioTopic
 					if (p.activationId && p.rehearsal) activationStatus = 'rehearsal'
 					return literal<PlaylistStatus>({
 						id: unprotectString(p._id),
+						externalId: p.externalId,
 						name: p.name,
 						activationStatus: activationStatus,
 					})
