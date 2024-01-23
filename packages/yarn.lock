@@ -3638,19 +3638,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@evs/cortex-dsom-api@npm:1.2.4":
-  version: 1.2.4
-  resolution: "@evs/cortex-dsom-api@npm:1.2.4::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Fcortex-dsom-api%2F-%2F%40evs%2Fcortex-dsom-api-1.2.4.tgz"
-  checksum: 21cc2c3eabd1434439a56ff4e5a09b88df5e2793b48c90af1c6ec41be47497f8885dfa7ab11f0b0239906b75a2fdf4dc2f5684516dd0a51dfa68658fa2420b0b
+"@evs/cortex-dsom-api@npm:1.2.9":
+  version: 1.2.9
+  resolution: "@evs/cortex-dsom-api@npm:1.2.9::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Fcortex-dsom-api%2F-%2F%40evs%2Fcortex-dsom-api-1.2.9.tgz"
+  checksum: 8cc47593ad241de04c684b7e66246ad12da74daef3100f531859c444a095dcc02043699c46074b9e9bf7018577d43a297a663a81f1bc3930acc3a050792f5f7f
   languageName: node
   linkType: hard
 
-"@evs/dsom-connection@npm:0.1.26":
-  version: 0.1.26
-  resolution: "@evs/dsom-connection@npm:0.1.26::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Fdsom-connection%2F-%2F%40evs%2Fdsom-connection-0.1.26.tgz"
+"@evs/dsom-connection@npm:0.1.28":
+  version: 0.1.28
+  resolution: "@evs/dsom-connection@npm:0.1.28::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Fdsom-connection%2F-%2F%40evs%2Fdsom-connection-0.1.28.tgz"
   dependencies:
-    "@evs/cortex-dsom-api": 1.2.4
-  checksum: e9531b38e74779e525d09c00f816c734038260be53ac2859277b5b02bc6e738aade13d29eb26c2e36399c8977cc684e70423e2d461a505f201b63759daa9680d
+    "@evs/cortex-dsom-api": 1.2.9
+  checksum: 292e63a159c4523b3907e94fc35b304446304990d337ac6b8d3bf63530c75511751cdcafc66259b6563d3ed1dea9c1152d44f16aa6ec2c8a032e0b016ac36e52
   languageName: node
   linkType: hard
 
@@ -5357,11 +5357,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sofie-automation/blueprints-integration@1.50.10, @sofie-automation/blueprints-integration@workspace:blueprints-integration":
+"@sofie-automation/blueprints-integration@1.50.11, @sofie-automation/blueprints-integration@workspace:blueprints-integration":
   version: 0.0.0-use.local
   resolution: "@sofie-automation/blueprints-integration@workspace:blueprints-integration"
   dependencies:
-    "@sofie-automation/shared-lib": 1.50.10
+    "@sofie-automation/shared-lib": 1.50.11
     tslib: ^2.5.1
     type-fest: ^2.19.0
   languageName: unknown
@@ -5398,12 +5398,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sofie-automation/corelib@1.50.10, @sofie-automation/corelib@workspace:corelib":
+"@sofie-automation/corelib@1.50.11, @sofie-automation/corelib@workspace:corelib":
   version: 0.0.0-use.local
   resolution: "@sofie-automation/corelib@workspace:corelib"
   dependencies:
-    "@sofie-automation/blueprints-integration": 1.50.10
-    "@sofie-automation/shared-lib": 1.50.10
+    "@sofie-automation/blueprints-integration": 1.50.11
+    "@sofie-automation/shared-lib": 1.50.11
     fast-clone: ^1.5.13
     i18next: ^21.9.1
     influx: ^5.9.3
@@ -5434,9 +5434,9 @@ __metadata:
   resolution: "@sofie-automation/job-worker@workspace:job-worker"
   dependencies:
     "@slack/webhook": ^6.1.0
-    "@sofie-automation/blueprints-integration": 1.50.10
-    "@sofie-automation/corelib": 1.50.10
-    "@sofie-automation/shared-lib": 1.50.10
+    "@sofie-automation/blueprints-integration": 1.50.11
+    "@sofie-automation/corelib": 1.50.11
+    "@sofie-automation/shared-lib": 1.50.11
     amqplib: ^0.10.3
     deepmerge: ^4.3.1
     elastic-apm-node: ^3.43.0
@@ -5465,11 +5465,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@sofie-automation/server-core-integration@1.50.10, @sofie-automation/server-core-integration@workspace:server-core-integration":
+"@sofie-automation/server-core-integration@1.50.11, @sofie-automation/server-core-integration@workspace:server-core-integration":
   version: 0.0.0-use.local
   resolution: "@sofie-automation/server-core-integration@workspace:server-core-integration"
   dependencies:
-    "@sofie-automation/shared-lib": 1.50.10
+    "@sofie-automation/shared-lib": 1.50.11
     ejson: ^2.2.3
     eventemitter3: ^4.0.7
     faye-websocket: ^0.11.4
@@ -5479,7 +5479,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@sofie-automation/shared-lib@1.50.10, @sofie-automation/shared-lib@workspace:shared-lib":
+"@sofie-automation/shared-lib@1.50.11, @sofie-automation/shared-lib@workspace:shared-lib":
   version: 0.0.0-use.local
   resolution: "@sofie-automation/shared-lib@workspace:shared-lib"
   dependencies:
@@ -15376,10 +15376,10 @@ asn1@evs-broadcast/node-asn1:
     "@asyncapi/generator": 1.9.13
     "@asyncapi/html-template": 0.26.0
     "@asyncapi/nodejs-ws-template": 0.9.25
-    "@sofie-automation/blueprints-integration": 1.50.10
-    "@sofie-automation/corelib": 1.50.10
-    "@sofie-automation/server-core-integration": 1.50.10
-    "@sofie-automation/shared-lib": 1.50.10
+    "@sofie-automation/blueprints-integration": 1.50.11
+    "@sofie-automation/corelib": 1.50.11
+    "@sofie-automation/server-core-integration": 1.50.11
+    "@sofie-automation/shared-lib": 1.50.11
     debug: ^4.3.2
     fast-clone: ^1.5.13
     influx: ^5.9.2
@@ -16457,8 +16457,8 @@ asn1@evs-broadcast/node-asn1:
   resolution: "mos-gateway@workspace:mos-gateway"
   dependencies:
     "@mos-connection/connector": ^3.0.4
-    "@sofie-automation/server-core-integration": 1.50.10
-    "@sofie-automation/shared-lib": 1.50.10
+    "@sofie-automation/server-core-integration": 1.50.11
+    "@sofie-automation/shared-lib": 1.50.11
     tslib: ^2.5.1
     type-fest: ^2.19.0
     underscore: ^1.13.4
@@ -18433,11 +18433,11 @@ asn1@evs-broadcast/node-asn1:
   version: 0.0.0-use.local
   resolution: "playout-gateway@workspace:playout-gateway"
   dependencies:
-    "@sofie-automation/server-core-integration": 1.50.10
-    "@sofie-automation/shared-lib": 1.50.10
+    "@sofie-automation/server-core-integration": 1.50.11
+    "@sofie-automation/shared-lib": 1.50.11
     debug: ^4.3.3
     influx: ^5.9.3
-    timeline-state-resolver: "npm:@evs/timeline-state-resolver@8.0.11"
+    timeline-state-resolver: "npm:@evs/timeline-state-resolver@8.0.12"
     tslib: ^2.5.1
     underscore: ^1.13.4
     winston: ^3.8.2
@@ -22130,20 +22130,20 @@ asn1@evs-broadcast/node-asn1:
   languageName: node
   linkType: hard
 
-"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.11":
-  version: 8.0.11
-  resolution: "@evs/timeline-state-resolver-types@npm:8.0.11::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver-types%2F-%2F%40evs%2Ftimeline-state-resolver-types-8.0.11.tgz"
+"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.12":
+  version: 8.0.12
+  resolution: "@evs/timeline-state-resolver-types@npm:8.0.12::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver-types%2F-%2F%40evs%2Ftimeline-state-resolver-types-8.0.12.tgz"
   dependencies:
     tslib: ^2.5.1
-  checksum: 3823cb163f1ab4d5c86346e7b10e3c0f99ff293fcfd641fe1b2a5497d38323f66cc3cc9f05daa638cf8e6c206fba2e3cd58bade4cc0e78d875e0a2d57aee3d70
+  checksum: 1ea6f8caae36ef8d36d18381f63f665b5ef5aaad32fa51be738b439e0e004799156779314d4e6379a5e46c7ce29577313a464a9ea5a2e38990a28291121c5903
   languageName: node
   linkType: hard
 
-"timeline-state-resolver@npm:@evs/timeline-state-resolver@8.0.11":
-  version: 8.0.11
-  resolution: "@evs/timeline-state-resolver@npm:8.0.11::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver%2F-%2F%40evs%2Ftimeline-state-resolver-8.0.11.tgz"
+"timeline-state-resolver@npm:@evs/timeline-state-resolver@8.0.12":
+  version: 8.0.12
+  resolution: "@evs/timeline-state-resolver@npm:8.0.12::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver%2F-%2F%40evs%2Ftimeline-state-resolver-8.0.12.tgz"
   dependencies:
-    "@evs/dsom-connection": 0.1.26
+    "@evs/dsom-connection": 0.1.28
     "@tv2media/v-connection": ^7.3.0
     atem-connection: 2.4.0
     atem-state: ^0.12.2
@@ -22164,7 +22164,7 @@ asn1@evs-broadcast/node-asn1:
     sprintf-js: ^1.1.2
     superfly-timeline: ^8.3.1
     threadedclass: ^1.2.1
-    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.11"
+    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.12"
     tslib: ^2.5.1
     tv-automation-quantel-gateway-client: ^3.1.11-agent-debug-20230117-160455-c2c4ee4.0
     underscore: ^1.13.6
@@ -22172,7 +22172,7 @@ asn1@evs-broadcast/node-asn1:
     utf-8-validate: ^5.0.10
     ws: ^7.5.9
     xml-js: ^1.6.11
-  checksum: c259b167da8668e46fa6593fb9d56fc414d308b0b47358b9177992acc2f5f5b020fc41572fbd36e0e4a3e2992b7e241809d2d69284f0afe59177be8b430740d0
+  checksum: ea7642b615ccf7f18b89ecbf80102be7fc0baf8c2bfb039e9c5447cee8cfa8e7a739b905b4c851dfb6d1283c27ae762804d38fb1605437d930acff09a632fff2
   languageName: node
   linkType: hard
 
