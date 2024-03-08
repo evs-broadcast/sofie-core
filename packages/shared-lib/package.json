@@ -40,7 +40,7 @@
 	],
 	"dependencies": {
 		"@mos-connection/model": "^3.0.4",
-		"timeline-state-resolver-types": "npm:@evs/timeline-state-resolver-types@8.0.12-PA-362-cortex-api-v1.2.13.363",
+		"timeline-state-resolver-types": "npm:@evs/timeline-state-resolver-types@8.0.12-PA-362-cortex-api-v1.2.13.364",
 		"tslib": "^2.5.1",
 		"type-fest": "^2.19.0"
 	},

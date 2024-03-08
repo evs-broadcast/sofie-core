@@ -61,7 +61,7 @@
 		"@sofie-automation/shared-lib": "1.50.11",
 		"debug": "^4.3.3",
 		"influx": "^5.9.3",
-		"timeline-state-resolver": "npm:@evs/timeline-state-resolver@8.0.12-PA-362-cortex-api-v1.2.13.363",
+		"timeline-state-resolver": "npm:@evs/timeline-state-resolver@8.0.12-PA-362-cortex-api-v1.2.13.364",
 		"tslib": "^2.5.1",
 		"underscore": "^1.13.4",
 		"winston": "^3.8.2"

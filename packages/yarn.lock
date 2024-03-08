@@ -3638,19 +3638,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@evs/cortex-dsom-api@npm:1.2.13":
-  version: 1.2.13
-  resolution: "@evs/cortex-dsom-api@npm:1.2.13::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Fcortex-dsom-api%2F-%2F%40evs%2Fcortex-dsom-api-1.2.13.tgz"
-  checksum: 59687abe62c6a4045217943358e3905c44205451a99d4b6beec66b211905570c395dcbe1b513983f6ca322c80dc4ac8ef3ffdbe28c0f456100c24573a6aaf802
+"@evs/cortex-dsom-api@npm:1.2.15":
+  version: 1.2.15
+  resolution: "@evs/cortex-dsom-api@npm:1.2.15::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Fcortex-dsom-api%2F-%2F%40evs%2Fcortex-dsom-api-1.2.15.tgz"
+  checksum: 198ab23f8e6352e3f95519f3fc5bf47e32e005d080f8edf1251c357cefcef83e47feb035a7c971d115dd1eebd2a2c1547871ed45e3c246d97051ee6981133f17
   languageName: node
   linkType: hard
 
-"@evs/dsom-connection@npm:0.1.28-PA-362-cortex-api-v1.2.13.200":
-  version: 0.1.28-PA-362-cortex-api-v1.2.13.200
-  resolution: "@evs/dsom-connection@npm:0.1.28-PA-362-cortex-api-v1.2.13.200::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Fdsom-connection%2F-%2F%40evs%2Fdsom-connection-0.1.28-PA-362-cortex-api-v1.2.13.200.tgz"
+"@evs/dsom-connection@npm:0.1.28-PA-362-cortex-api-v1.2.13.201":
+  version: 0.1.28-PA-362-cortex-api-v1.2.13.201
+  resolution: "@evs/dsom-connection@npm:0.1.28-PA-362-cortex-api-v1.2.13.201::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Fdsom-connection%2F-%2F%40evs%2Fdsom-connection-0.1.28-PA-362-cortex-api-v1.2.13.201.tgz"
   dependencies:
-    "@evs/cortex-dsom-api": 1.2.13
-  checksum: 9fadeeeae6f179367c539e2f54917a29a85a965e79e4e98a201831a960edcbed92f1c8f0748dd9847ee5fe96d2b5985cb4d766804f76be6725d65f1f46eee14f
+    "@evs/cortex-dsom-api": 1.2.15
+  checksum: a525831dbab83eeffa900d892a90a7fcbbb895ff86bdc5106269af35af0ca0e185c88f8aa27ca9dfd150d16587ede230e6a53282198e036048dec4db43be8375
   languageName: node
   linkType: hard
 
@@ -5484,7 +5484,7 @@ __metadata:
   resolution: "@sofie-automation/shared-lib@workspace:shared-lib"
   dependencies:
     "@mos-connection/model": ^3.0.4
-    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.12-PA-362-cortex-api-v1.2.13.363"
+    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.12-PA-362-cortex-api-v1.2.13.364"
     tslib: ^2.5.1
     type-fest: ^2.19.0
   languageName: unknown
@@ -18437,7 +18437,7 @@ asn1@evs-broadcast/node-asn1:
     "@sofie-automation/shared-lib": 1.50.11
     debug: ^4.3.3
     influx: ^5.9.3
-    timeline-state-resolver: "npm:@evs/timeline-state-resolver@8.0.12-PA-362-cortex-api-v1.2.13.363"
+    timeline-state-resolver: "npm:@evs/timeline-state-resolver@8.0.12-PA-362-cortex-api-v1.2.13.364"
     tslib: ^2.5.1
     underscore: ^1.13.4
     winston: ^3.8.2
@@ -22121,20 +22121,20 @@ asn1@evs-broadcast/node-asn1:
   languageName: node
   linkType: hard
 
-"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.12-PA-362-cortex-api-v1.2.13.363":
-  version: 8.0.12-PA-362-cortex-api-v1.2.13.363
-  resolution: "@evs/timeline-state-resolver-types@npm:8.0.12-PA-362-cortex-api-v1.2.13.363::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver-types%2F-%2F%40evs%2Ftimeline-state-resolver-types-8.0.12-PA-362-cortex-api-v1.2.13.363.tgz"
+"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.12-PA-362-cortex-api-v1.2.13.364":
+  version: 8.0.12-PA-362-cortex-api-v1.2.13.364
+  resolution: "@evs/timeline-state-resolver-types@npm:8.0.12-PA-362-cortex-api-v1.2.13.364::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver-types%2F-%2F%40evs%2Ftimeline-state-resolver-types-8.0.12-PA-362-cortex-api-v1.2.13.364.tgz"
   dependencies:
     tslib: ^2.5.1
-  checksum: 90389aea2e77c400a3d28f5bf19f5d1e4425fa98bdda2284833b972c0aef9f5f3b0331e2e07f5c83489447c271dc6e4394ef85cb993443886795d00165c3a7b9
+  checksum: a1e15bd1119098a6f43ef97cc747caf5d85ae903b7cb4e7b65ed32adb7e0b3101d1afbb4ff22ad623cf5dea781dad76da77eaa3a6ae1fae14cfb22b89a5f2c83
   languageName: node
   linkType: hard
 
-"timeline-state-resolver@npm:@evs/timeline-state-resolver@8.0.12-PA-362-cortex-api-v1.2.13.363":
-  version: 8.0.12-PA-362-cortex-api-v1.2.13.363
-  resolution: "@evs/timeline-state-resolver@npm:8.0.12-PA-362-cortex-api-v1.2.13.363::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver%2F-%2F%40evs%2Ftimeline-state-resolver-8.0.12-PA-362-cortex-api-v1.2.13.363.tgz"
+"timeline-state-resolver@npm:@evs/timeline-state-resolver@8.0.12-PA-362-cortex-api-v1.2.13.364":
+  version: 8.0.12-PA-362-cortex-api-v1.2.13.364
+  resolution: "@evs/timeline-state-resolver@npm:8.0.12-PA-362-cortex-api-v1.2.13.364::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver%2F-%2F%40evs%2Ftimeline-state-resolver-8.0.12-PA-362-cortex-api-v1.2.13.364.tgz"
   dependencies:
-    "@evs/dsom-connection": 0.1.28-PA-362-cortex-api-v1.2.13.200
+    "@evs/dsom-connection": 0.1.28-PA-362-cortex-api-v1.2.13.201
     "@tv2media/v-connection": ^7.3.0
     atem-connection: 2.4.0
     atem-state: ^0.12.2
@@ -22155,7 +22155,7 @@ asn1@evs-broadcast/node-asn1:
     sprintf-js: ^1.1.2
     superfly-timeline: ^8.3.1
     threadedclass: ^1.2.1
-    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.12-PA-362-cortex-api-v1.2.13.363"
+    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.12-PA-362-cortex-api-v1.2.13.364"
     tslib: ^2.5.1
     tv-automation-quantel-gateway-client: ^3.1.11-agent-debug-20230117-160455-c2c4ee4.0
     underscore: ^1.13.6
@@ -22163,7 +22163,7 @@ asn1@evs-broadcast/node-asn1:
     utf-8-validate: ^5.0.10
     ws: ^7.5.9
     xml-js: ^1.6.11
-  checksum: 155b87fce1956f6c9147788f985bdec2915c3c36a0b625f19cb0f9fef163d64944e41e29a34fb0104e21e6ebabcb3eb57d12b846f6c000fdd7e759c3a3b02755
+  checksum: 3fce34d903255f2196f94edd99b2056c7ee557adf16449a49289db36fb395430cb4c68c5fcfc8985cc379ddbcf573cb8857d2ecaf80efac15a8ffd12ab582c8a
   languageName: node
   linkType: hard
 
