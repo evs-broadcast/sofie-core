@@ -1,6 +1,6 @@
 {
 	"name": "@sofie-automation/openapi",
-	"version": "1.50.11",
+	"version": "1.50.12",
 	"private": true,
 	"license": "MIT",
 	"repository": {
@@ -21,6 +21,7 @@
 		"lint-fix": "run lint --fix",
 		"genclient:ts": "run -T rimraf client/ts && openapi-generator-cli generate -i ./api/actions.yaml -o client/ts -g typescript-fetch -p supportsES6=true",
 		"genclient:rs": "run -T rimraf client/rs && openapi-generator-cli generate -i ./api/actions.yaml -o client/rs -g rust",
+		"genclient:cs": "run -T rimraf client/cs && openapi-generator-cli generate -i ./api/actions.yaml -o client/cs -g csharp",
 		"gendocs": "run -T rimraf docs && node install_swagger.js && java -jar ./jars/swagger-codegen-cli.jar generate -i ./api/actions.yaml -l html2 -o ./docs",
 		"genserver": "run -T rimraf server && node install_swagger.js && java -jar ./jars/swagger-codegen-cli.jar generate -i ./api/actions.yaml -l nodejs-server -o server && cd server && npm install && cd ../",
 		"runserver": "run genserver && cd server && node index.js",
