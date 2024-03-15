@@ -3645,12 +3645,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@evs/dsom-connection@npm:0.1.29":
-  version: 0.1.29
-  resolution: "@evs/dsom-connection@npm:0.1.29::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Fdsom-connection%2F-%2F%40evs%2Fdsom-connection-0.1.29.tgz"
+"@evs/dsom-connection@npm:0.1.29-PA-365-remove-credentials-from-logs.207":
+  version: 0.1.29-PA-365-remove-credentials-from-logs.207
+  resolution: "@evs/dsom-connection@npm:0.1.29-PA-365-remove-credentials-from-logs.207::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Fdsom-connection%2F-%2F%40evs%2Fdsom-connection-0.1.29-PA-365-remove-credentials-from-logs.207.tgz"
   dependencies:
     "@evs/cortex-dsom-api": 1.2.15
-  checksum: 1e9785eb6e41f0ddde37dc79cd2064c2ef99db7766de472aba82d309044038e3f4bbdf4d4a89e96f71a93b40024de73cbb4887070b960d6ec5cb694265ec6b30
+  checksum: de5337656fbed9cb2b382ee34270b065414296d5469d9de873fed5b48ac4ed5b1912c4ca7801a7eb8411400029b2d98e3b41e675515dbd7ce6970adea01e881a
   languageName: node
   linkType: hard
 
@@ -5484,7 +5484,7 @@ __metadata:
   resolution: "@sofie-automation/shared-lib@workspace:shared-lib"
   dependencies:
     "@mos-connection/model": ^3.0.4
-    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.13"
+    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.13-PA-365-remove-credentials-from-logs.370"
     tslib: ^2.5.1
     type-fest: ^2.19.0
   languageName: unknown
@@ -18437,7 +18437,7 @@ asn1@evs-broadcast/node-asn1:
     "@sofie-automation/shared-lib": 1.50.12
     debug: ^4.3.3
     influx: ^5.9.3
-    timeline-state-resolver: "npm:@evs/timeline-state-resolver@8.0.13"
+    timeline-state-resolver: "npm:@evs/timeline-state-resolver@8.0.13-PA-365-remove-credentials-from-logs.370"
     tslib: ^2.5.1
     underscore: ^1.13.4
     winston: ^3.8.2
@@ -22121,20 +22121,20 @@ asn1@evs-broadcast/node-asn1:
   languageName: node
   linkType: hard
 
-"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.13":
-  version: 8.0.13
-  resolution: "@evs/timeline-state-resolver-types@npm:8.0.13::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver-types%2F-%2F%40evs%2Ftimeline-state-resolver-types-8.0.13.tgz"
+"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.13-PA-365-remove-credentials-from-logs.370":
+  version: 8.0.13-PA-365-remove-credentials-from-logs.370
+  resolution: "@evs/timeline-state-resolver-types@npm:8.0.13-PA-365-remove-credentials-from-logs.370::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver-types%2F-%2F%40evs%2Ftimeline-state-resolver-types-8.0.13-PA-365-remove-credentials-from-logs.370.tgz"
   dependencies:
     tslib: ^2.5.1
-  checksum: 4d76b3a5c79081fbd0a1fd4d8726dd804c742a73b39c2b36ae12bd62e3b5f642a25c4fc3112394b18a311d45dae679bad16505d75b91ed281c958463180d9e56
+  checksum: 6daf5a6b0f06c5e28a556a5ae6c56d61b4f625ac18acdfd103538d76b715a8f0964671d33a0bc77391df75fbc0f48d39f027f3b0d9337abd569db16616162733
   languageName: node
   linkType: hard
 
-"timeline-state-resolver@npm:@evs/timeline-state-resolver@8.0.13":
-  version: 8.0.13
-  resolution: "@evs/timeline-state-resolver@npm:8.0.13::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver%2F-%2F%40evs%2Ftimeline-state-resolver-8.0.13.tgz"
+"timeline-state-resolver@npm:@evs/timeline-state-resolver@8.0.13-PA-365-remove-credentials-from-logs.370":
+  version: 8.0.13-PA-365-remove-credentials-from-logs.370
+  resolution: "@evs/timeline-state-resolver@npm:8.0.13-PA-365-remove-credentials-from-logs.370::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver%2F-%2F%40evs%2Ftimeline-state-resolver-8.0.13-PA-365-remove-credentials-from-logs.370.tgz"
   dependencies:
-    "@evs/dsom-connection": 0.1.29
+    "@evs/dsom-connection": 0.1.29-PA-365-remove-credentials-from-logs.207
     "@tv2media/v-connection": ^7.3.0
     atem-connection: 2.4.0
     atem-state: ^0.12.2
@@ -22155,7 +22155,7 @@ asn1@evs-broadcast/node-asn1:
     sprintf-js: ^1.1.2
     superfly-timeline: ^8.3.1
     threadedclass: ^1.2.1
-    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.13"
+    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.13-PA-365-remove-credentials-from-logs.370"
     tslib: ^2.5.1
     tv-automation-quantel-gateway-client: ^3.1.11-agent-debug-20230117-160455-c2c4ee4.0
     underscore: ^1.13.6
@@ -22163,7 +22163,7 @@ asn1@evs-broadcast/node-asn1:
     utf-8-validate: ^5.0.10
     ws: ^7.5.9
     xml-js: ^1.6.11
-  checksum: 06873c9acc673dc5c6087997e38b2b1b3640fb13b0b2af136fa75b6669b9f38ccfe827a2f87b0a0103f295b718775d510fee0afe784e9549ec341410e41212f5
+  checksum: daeb94a4325ebd08d9232ac0435a49d998b20b6e61a5ad3a44c91cc54645957de395bc8e2ad61c7b1834139563d4ed1c77f1e5cdc803094509c14554262a9833
   languageName: node
   linkType: hard
 

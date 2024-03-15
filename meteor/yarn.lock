@@ -2180,7 +2180,7 @@ __metadata:
   resolution: "@sofie-automation/shared-lib@portal:../packages/shared-lib::locator=automation-core%40workspace%3A."
   dependencies:
     "@mos-connection/model": ^3.0.4
-    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.13"
+    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.13-PA-365-remove-credentials-from-logs.370"
     tslib: ^2.5.1
     type-fest: ^2.19.0
   languageName: node
@@ -12534,12 +12534,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.13":
-  version: 8.0.13
-  resolution: "@evs/timeline-state-resolver-types@npm:8.0.13::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver-types%2F-%2F%40evs%2Ftimeline-state-resolver-types-8.0.13.tgz"
+"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.13-PA-365-remove-credentials-from-logs.370":
+  version: 8.0.13-PA-365-remove-credentials-from-logs.370
+  resolution: "@evs/timeline-state-resolver-types@npm:8.0.13-PA-365-remove-credentials-from-logs.370::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver-types%2F-%2F%40evs%2Ftimeline-state-resolver-types-8.0.13-PA-365-remove-credentials-from-logs.370.tgz"
   dependencies:
     tslib: ^2.5.1
-  checksum: 4d76b3a5c79081fbd0a1fd4d8726dd804c742a73b39c2b36ae12bd62e3b5f642a25c4fc3112394b18a311d45dae679bad16505d75b91ed281c958463180d9e56
+  checksum: 6daf5a6b0f06c5e28a556a5ae6c56d61b4f625ac18acdfd103538d76b715a8f0964671d33a0bc77391df75fbc0f48d39f027f3b0d9337abd569db16616162733
   languageName: node
   linkType: hard
 
