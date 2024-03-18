@@ -2083,7 +2083,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@sofie-automation/blueprints-integration@portal:../packages/blueprints-integration::locator=automation-core%40workspace%3A."
   dependencies:
-    "@sofie-automation/shared-lib": 1.50.12
+    "@sofie-automation/shared-lib": 1.50.13
     tslib: ^2.5.1
     type-fest: ^2.19.0
   languageName: node
@@ -2124,8 +2124,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@sofie-automation/corelib@portal:../packages/corelib::locator=automation-core%40workspace%3A."
   dependencies:
-    "@sofie-automation/blueprints-integration": 1.50.12
-    "@sofie-automation/shared-lib": 1.50.12
+    "@sofie-automation/blueprints-integration": 1.50.13
+    "@sofie-automation/shared-lib": 1.50.13
     fast-clone: ^1.5.13
     i18next: ^21.9.1
     influx: ^5.9.3
@@ -2156,9 +2156,9 @@ __metadata:
   resolution: "@sofie-automation/job-worker@portal:../packages/job-worker::locator=automation-core%40workspace%3A."
   dependencies:
     "@slack/webhook": ^6.1.0
-    "@sofie-automation/blueprints-integration": 1.50.12
-    "@sofie-automation/corelib": 1.50.12
-    "@sofie-automation/shared-lib": 1.50.12
+    "@sofie-automation/blueprints-integration": 1.50.13
+    "@sofie-automation/corelib": 1.50.13
+    "@sofie-automation/shared-lib": 1.50.13
     amqplib: ^0.10.3
     deepmerge: ^4.3.1
     elastic-apm-node: ^3.43.0
@@ -2180,7 +2180,7 @@ __metadata:
   resolution: "@sofie-automation/shared-lib@portal:../packages/shared-lib::locator=automation-core%40workspace%3A."
   dependencies:
     "@mos-connection/model": ^3.0.4
-    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.13-PA-365-remove-credentials-from-logs.370"
+    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@8.0.14"
     tslib: ^2.5.1
     type-fest: ^2.19.0
   languageName: node
@@ -12534,12 +12534,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.13-PA-365-remove-credentials-from-logs.370":
-  version: 8.0.13-PA-365-remove-credentials-from-logs.370
-  resolution: "@evs/timeline-state-resolver-types@npm:8.0.13-PA-365-remove-credentials-from-logs.370::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver-types%2F-%2F%40evs%2Ftimeline-state-resolver-types-8.0.13-PA-365-remove-credentials-from-logs.370.tgz"
+"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@8.0.14":
+  version: 8.0.14
+  resolution: "@evs/timeline-state-resolver-types@npm:8.0.14::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver-types%2F-%2F%40evs%2Ftimeline-state-resolver-types-8.0.14.tgz"
   dependencies:
     tslib: ^2.5.1
-  checksum: 6daf5a6b0f06c5e28a556a5ae6c56d61b4f625ac18acdfd103538d76b715a8f0964671d33a0bc77391df75fbc0f48d39f027f3b0d9337abd569db16616162733
+  checksum: 487a315fe284aa3f996c2642d75f9a11d4f4bece4c58f3b00666c9f9e995a019ab1df8b648ea3a6b7e42e0147b251b1fb6c3cb45786793b8934d1bf0846c82fe
   languageName: node
   linkType: hard
 
