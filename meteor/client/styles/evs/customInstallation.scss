@@ -37,6 +37,23 @@ $fcr-button-hover: #1889e6;
 $fcr-stroke: #1889e6;
 $fcr-widget-highlight: #3c3e43;
 
+// Scrollbar
+::-webkit-scrollbar {
+	width: 14px;
+}
+
+::-webkit-scrollbar-track {
+	background-color: #202327;
+}
+
+::-webkit-scrollbar-thumb {
+	border-radius: 8px;
+	background-color: #797b7d;
+	border: 3px solid #202327;
+	cursor: pointer;
+	background-clip: padding-box;
+}
+
 body.evs {
 	--general-live-color: #{$evs-color-red-600};
 	--general-next-color: #{lighten($evs-color-lightgreen-600, 3%)};
@@ -453,11 +470,11 @@ body.evs {
 
 	.btn-primary:disabled {
 		pointer-events: none;
-		color: #E0E3E4;
+		color: #e0e3e4;
 		border-color: rgba(224, 227, 228, 0.5);
 		background-color: transparent;
 	}
-	  
+
 	.settings-studio-mappings-table,
 	.settings-studio-source-table,
 	.settings-studio-output-table {

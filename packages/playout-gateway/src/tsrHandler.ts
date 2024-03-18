@@ -127,9 +127,9 @@ export class TSRHandler {
 
 		const peripheralDevice = await coreHandler.core.getPeripheralDevice()
 		const settings: PlayoutGatewayConfig = peripheralDevice.deviceSettings as PlayoutGatewayConfig
-		const devices = peripheralDevice.playoutDevices
+		// const devices = peripheralDevice.playoutDevices
 
-		this.logger.info('Devices', devices)
+		// this.logger.info('Devices', devices)
 		const c: ConductorOptions = {
 			getCurrentTime: (): number => {
 				return this._coreHandler.core.getCurrentTime()
@@ -524,7 +524,7 @@ export class TSRHandler {
 				if (!oldDevice) {
 					if (deviceOptions.options) {
 						this.logger.info('Initializing device: ' + deviceId)
-						this.logger.info('new', deviceOptions)
+						// this.logger.info('new', deviceOptions)
 						ps.push(keepTrack(this._addDevice(deviceId, deviceOptions), deviceId, DeviceAction.ADD))
 					}
 				} else {
