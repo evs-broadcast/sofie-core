@@ -30,7 +30,7 @@ $evs-color-cyan-600: #00acc1;
 $evs-color-lightgreen-600: #7cb342;
 
 // Custom
-$fcr-widget-bg: #36393e;
+$fcr-widget-bg: #2f3136;
 $fcr-widget-header: #1e2124;
 $fcr-button: #0c4473;
 $fcr-button-hover: #1889e6;
@@ -157,13 +157,97 @@ body.evs {
 		}
 	}
 
+	// Storyboard shaddow
+	.segment-storyboard
+		> .segment-storyboard__part-list__container
+		> .segment-storyboard__part-list
+		> .segment-storyboard__part-list.segment-storyboard__part-list--squished-parts
+		> .segment-storyboard__part {
+		& > .segment-storyboard__identifier,
+		& > .segment-storyboard__part__thumbnail,
+		&
+			> .segment-storyboard__part__secondary-pieces
+			> .segment-storyboard__part__output-group
+			> .segment-storyboard__part__source-layer
+			> .segment-storyboard__part__piece {
+			box-shadow: 0 0 10px var(--ui-dark-color);
+		}
+	}
+
+	// When lacking enough width, reduce opacity of future parts
+	.segment-storyboard
+		> .segment-storyboard__part-list__container
+		> .segment-storyboard__part-list
+		> .segment-storyboard__part-list.segment-storyboard__part-list--squished-parts
+		> .segment-storyboard__part.background {
+		filter: none; // Filter makes it darker!
+		opacity: 0.3;
+	}
+
 	// Segment box
 	.segment-timeline {
 		box-shadow: none;
-		margin: 0.8em 0.75em 0.8em 0;
+		// margin: 0.8em 0.75em 0.8em 0;
 		border-radius: 8px;
 		background: $segment-color;
 		border: 0;
+
+		.segment-timeline__timeline
+			.segment-timeline__small-parts-flag
+			.segment-timeline__small-parts-flag__part.invalid::after,
+		.segment-timeline__next-preview
+			.segment-timeline__small-parts-flag
+			.segment-timeline__small-parts-flag__part.invalid::after {
+			opacity: 1;
+		}
+
+		// Invalid part - Segment
+		.segment-timeline__timeline .segment-timeline__part,
+		.segment-timeline__next-preview .segment-timeline__part {
+			--invalid-reason-color-opaque: var(--ui-dark-color);
+		}
+
+		.segment-timeline__timeline .segment-timeline__part .segment-timeline__part__invalid-cover,
+		.segment-timeline__next-preview .segment-timeline__part .segment-timeline__part__invalid-cover {
+			background-color: $fcr-widget-highlight;
+		}
+
+		.segment-timeline__timeline .segment-timeline__small-parts-flag .segment-timeline__small-parts-flag__part,
+		.segment-timeline__next-preview .segment-timeline__small-parts-flag .segment-timeline__small-parts-flag__part {
+			--invalid-reason-color-opaque: #1e2124;
+		}
+
+		svg.piece_icon rect.unknown {
+			fill: #3c3e43;
+		}
+
+		// Invalid part - Storyboard
+		.segment-storyboard__part {
+			--invalid-reason-color-opaque: var(--ui-dark-color);
+		}
+
+		.segment-storyboard__part > .segment-storyboard__part__invalid-cover {
+			background-color: $fcr-widget-highlight;
+		}
+
+		// Invalid part - List
+		.segment-opl__main-piece.invalid {
+			background-color: $fcr-widget-highlight;
+			background-image: repeating-linear-gradient(
+					45deg,
+					rgba(0, 0, 0, 0) 0%,
+					rgba(0, 0, 0, 0) 5px,
+					var(--ui-dark-color) 5px,
+					var(--ui-dark-color) 10px
+				),
+				repeating-linear-gradient(
+					-45deg,
+					rgba(0, 0, 0, 0) 0%,
+					rgba(0, 0, 0, 0) 5px,
+					var(--ui-dark-color) 5px,
+					var(--ui-dark-color) 10px
+				);
+		}
 
 		// List view
 		&.segment-opl > .segment-opl__part-list {
