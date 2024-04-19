@@ -240,6 +240,10 @@ components:
           type: string
           description: Sofie core software version
           example: '1.50.10'
+        blueprintsVersion:
+          type: string
+          description: Sofie blueprints version
+          example: '1.0.60'
         components:
           type: array
           description: Array of components that are part of the Sofie software
@@ -254,6 +258,7 @@ components:
         - updated
         - status
         - version
+        - blueprintsVersion
         - components
         - statusMessage
       additionalProperties: false
