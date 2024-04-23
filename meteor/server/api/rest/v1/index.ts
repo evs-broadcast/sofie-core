@@ -1610,6 +1610,11 @@ koaRouter.get('/', async (ctx, next) => {
 koaRouter.get('/health', async (ctx, next) => {
 	ctx.type = 'application/json'
 	const systemStatus = await getSystemStatus({ userId: null })
+	const coreVersion = systemStatus._internal.versions['core'] ?? 'unknown'
+	const blueprint = Object.keys(systemStatus._internal.versions).find((component) =>
+		component.startsWith('blueprint')
+	)
+	const blueprintsVersion = blueprint ? systemStatus._internal.versions[blueprint] : 'unknown'
 
 	interface ComponentStatus {
 		name: string
@@ -1667,7 +1672,8 @@ koaRouter.get('/health', async (ctx, next) => {
 		name: systemStatus.name,
 		updated: systemStatus.updated,
 		status: systemStatus.status,
-		version: systemStatus._internal.versions['core'] ?? 'unknown',
+		version: coreVersion,
+		blueprintsVersion: blueprintsVersion,
 		components: componentStatus,
 		statusMessage: allStatusMessages,
 	})
