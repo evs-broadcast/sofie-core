@@ -12,6 +12,7 @@
 		"libs:syncVersionsAndChangelogs": "node scripts/libs-sync-version-and-changelog.js",
 		"postinstall": "meteor yarn run prepareForTest",
 		"prepareForTest": "node ../scripts/fixTestFibers.js",
+		"inject-extended-version": "node ./scripts/set-extended-version.js",
 		"inject-git-hash": "node ./scripts/generate-version-file.js",
 		"unit": "jest",
 		"unitci": "jest --runInBand --coverage",
