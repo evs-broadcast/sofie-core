@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { NoteSeverity } from '@sofie-automation/blueprints-integration'
-import { RundownPlaylist } from '../../../lib/collections/RundownPlaylists'
+import { DBRundownPlaylist } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
 import { IContextMenuContext } from '../RundownView'
 import { IOutputLayerUi, PartUi, PieceUi, SegmentNoteCounts, SegmentUi } from '../SegmentContainer/withResolvedSegment'
 import { ContextMenuTrigger } from '@jstarpl/react-contextmenu'
@@ -8,7 +8,7 @@ import { CriticalIconSmall, WarningIconSmall } from '../../lib/ui/icons/notifica
 import { SegmentDuration } from '../RundownView/RundownTiming/SegmentDuration'
 import { PartCountdown } from '../RundownView/RundownTiming/PartCountdown'
 import { contextMenuHoldToDisplayTime, useCombinedRefs } from '../../lib/lib'
-import { isPartPlayable } from '../../../lib/collections/Parts'
+import { isPartPlayable } from '@sofie-automation/corelib/dist/dataModel/Part'
 import { useTranslation } from 'react-i18next'
 import { UIStateStorage } from '../../lib/UIStateStorage'
 import { literal, unprotectString } from '../../../lib/lib'
@@ -36,12 +36,13 @@ import { PartId, SegmentId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import { RundownHoldState } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
 import { CalculateTimingsPiece } from '@sofie-automation/corelib/dist/playout/timings'
 import { SegmentTimeAnchorTime } from '../RundownView/RundownTiming/SegmentTimeAnchorTime'
+import { logger } from '../../../lib/logging'
 
 interface IProps {
 	id: string
 	key: string
 	segment: SegmentUi
-	playlist: RundownPlaylist
+	playlist: DBRundownPlaylist
 	studio: UIStudio
 	parts: Array<PartUi>
 	pieces: Map<PartId, CalculateTimingsPiece[]>
@@ -132,7 +133,7 @@ export const SegmentStoryboard = React.memo(
 			)
 		)
 
-		const getSegmentContext = (_props) => {
+		const getSegmentContext = () => {
 			const ctx = literal<IContextMenuContext>({
 				segment: props.segment,
 				part: props.parts.find((p) => isPartPlayable(p.instance.part)) || null,
@@ -157,7 +158,7 @@ export const SegmentStoryboard = React.memo(
 
 		const onClickPartIdent = (partId: PartId) => {
 			scrollToPart(partId, false, true, true).catch((error) => {
-				if (!error.toString().match(/another scroll/)) console.error(error)
+				if (!error.toString().match(/another scroll/)) logger.error('scrollToPart', error)
 			})
 		}
 
@@ -645,9 +646,6 @@ export const SegmentStoryboard = React.memo(
 									)
 								}
 							/>
-						)}
-						{props.studio.settings.preserveUnsyncedPlayingSegmentContents && props.segment.orphaned && (
-							<span className="segment-timeline__unsynced">{t('Unsynced')}</span>
 						)}
 					</div>
 				)}

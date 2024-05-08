@@ -20,10 +20,11 @@ describe('Network client', () => {
 		const devices = await devicesApi.devices()
 		expect(devices.status).toBe(200)
 		expect(devices).toHaveProperty('result')
-		expect(devices.result).toHaveProperty('playout')
-		devices.result.playout.forEach((device) => {
-			expect(typeof device).toBe('string')
-			deviceIds.push(device)
+		devices.result.forEach((device) => {
+			expect(typeof device).toBe('object')
+			expect(device).toHaveProperty('id')
+			expect(typeof device.id).toBe('string')
+			deviceIds.push(device.id)
 		})
 	})
 

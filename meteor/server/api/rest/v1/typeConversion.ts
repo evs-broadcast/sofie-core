@@ -13,6 +13,7 @@ import { PeripheralDevice, PeripheralDeviceType } from '@sofie-automation/coreli
 import { Blueprint } from '@sofie-automation/corelib/dist/dataModel/Blueprint'
 import {
 	BlueprintId,
+	BucketId,
 	ShowStyleBaseId,
 	ShowStyleVariantId,
 	StudioId,
@@ -29,6 +30,8 @@ import {
 } from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
 import {
 	APIBlueprint,
+	APIBucket,
+	APIBucketComplete,
 	APIOutputLayer,
 	APIPeripheralDevice,
 	APIShowStyleBase,
@@ -36,15 +39,16 @@ import {
 	APISourceLayer,
 	APIStudio,
 	APIStudioSettings,
-} from '../../../../lib/api/rest'
-import { DBShowStyleBase, ShowStyleBase } from '../../../../lib/collections/ShowStyleBases'
-import { ShowStyleVariant } from '../../../../lib/collections/ShowStyleVariants'
-import { Studio } from '../../../../lib/collections/Studios'
+} from '../../../../lib/api/rest/v1'
+import { DBShowStyleBase } from '@sofie-automation/corelib/dist/dataModel/ShowStyleBase'
+import { DBShowStyleVariant } from '@sofie-automation/corelib/dist/dataModel/ShowStyleVariant'
 import { Blueprints, ShowStyleBases, Studios } from '../../../collections'
 import { Meteor } from 'meteor/meteor'
 import { evalBlueprint } from '../../blueprints/cache'
 import { CommonContext } from '../../../migration/upgrades/context'
 import { logger } from '../../../logging'
+import { DEFAULT_MINIMUM_TAKE_SPAN } from '@sofie-automation/shared-lib/dist/core/constants'
+import { Bucket } from '../../../../lib/collections/Buckets'
 
 /*
 This file contains functions that convert between the internal Sofie-Core types and types exposed to the external API.
@@ -54,7 +58,7 @@ When making changes to this file, be wary of breaking changes to the API.
 export async function showStyleBaseFrom(
 	apiShowStyleBase: APIShowStyleBase,
 	existingId?: ShowStyleBaseId
-): Promise<ShowStyleBase | undefined> {
+): Promise<DBShowStyleBase | undefined> {
 	const blueprint = await Blueprints.findOneAsync(protectString(apiShowStyleBase.blueprintId))
 	if (!blueprint) return undefined
 	if (blueprint.blueprintType !== BlueprintManifestType.SHOWSTYLE) return undefined
@@ -96,10 +100,11 @@ export async function showStyleBaseFrom(
 		blueprintConfigWithOverrides: blueprintConfig,
 		_rundownVersionHash: '',
 		lastBlueprintConfig: undefined,
+		lastBlueprintFixUpHash: undefined,
 	}
 }
 
-export async function APIShowStyleBaseFrom(showStyleBase: ShowStyleBase): Promise<APIShowStyleBase> {
+export async function APIShowStyleBaseFrom(showStyleBase: DBShowStyleBase): Promise<APIShowStyleBase> {
 	const blueprintConfig = await APIShowStyleBlueprintConfigFrom(showStyleBase, showStyleBase.blueprintId)
 	return {
 		name: showStyleBase.name,
@@ -118,7 +123,7 @@ export async function APIShowStyleBaseFrom(showStyleBase: ShowStyleBase): Promis
 export function showStyleVariantFrom(
 	apiShowStyleVariant: APIShowStyleVariant,
 	existingId?: ShowStyleVariantId
-): ShowStyleVariant | undefined {
+): DBShowStyleVariant | undefined {
 	const blueprintConfig = wrapDefaultObject({})
 	blueprintConfig.overrides = Object.entries<any>(apiShowStyleVariant.config).map(([key, value]) =>
 		literal<ObjectOverrideSetOp>({
@@ -131,7 +136,6 @@ export function showStyleVariantFrom(
 		_id: existingId ?? getRandomId(),
 		_rank: apiShowStyleVariant.rank,
 		showStyleBaseId: protectString(apiShowStyleVariant.showStyleBaseId),
-		blueprintConfigPresetId: apiShowStyleVariant.blueprintConfigPresetId,
 		name: apiShowStyleVariant.name,
 		blueprintConfigWithOverrides: blueprintConfig,
 		_rundownVersionHash: '',
@@ -139,15 +143,14 @@ export function showStyleVariantFrom(
 }
 
 export async function APIShowStyleVariantFrom(
-	showStyleBase: ShowStyleBase,
-	showStyleVariant: ShowStyleVariant
+	showStyleBase: DBShowStyleBase,
+	showStyleVariant: DBShowStyleVariant
 ): Promise<APIShowStyleVariant> {
 	const blueprintConfig = await APIShowStyleBlueprintConfigFrom(showStyleVariant, showStyleBase.blueprintId)
 	return {
 		name: showStyleVariant.name,
 		rank: showStyleVariant._rank,
 		showStyleBaseId: unprotectString(showStyleVariant.showStyleBaseId),
-		blueprintConfigPresetId: showStyleVariant.blueprintConfigPresetId,
 		config: blueprintConfig,
 	}
 }
@@ -260,7 +263,7 @@ export function APISourceLayerFrom(sourceLayer: ISourceLayer): APISourceLayer {
 	}
 }
 
-export async function studioFrom(apiStudio: APIStudio, existingId?: StudioId): Promise<Studio | undefined> {
+export async function studioFrom(apiStudio: APIStudio, existingId?: StudioId): Promise<DBStudio | undefined> {
 	let blueprint: Blueprint | undefined
 	if (apiStudio.blueprintId) {
 		blueprint = await Blueprints.findOneAsync(protectString(apiStudio.blueprintId))
@@ -297,10 +300,11 @@ export async function studioFrom(apiStudio: APIStudio, existingId?: StudioId): P
 			inputDevices: wrapDefaultObject({}),
 		},
 		lastBlueprintConfig: undefined,
+		lastBlueprintFixUpHash: undefined,
 	}
 }
 
-export async function APIStudioFrom(studio: Studio): Promise<APIStudio> {
+export async function APIStudioFrom(studio: DBStudio): Promise<APIStudio> {
 	const studioSettings = APIStudioSettingsFrom(studio.settings)
 	const blueprintConfig = await APIStudioBlueprintConfigFrom(studio)
 	return {
@@ -323,9 +327,9 @@ export function studioSettingsFrom(apiStudioSettings: APIStudioSettings): IStudi
 		enablePlayFromAnywhere: apiStudioSettings.enablePlayFromAnywhere,
 		forceMultiGatewayMode: apiStudioSettings.forceMultiGatewayMode,
 		multiGatewayNowSafeLatency: apiStudioSettings.multiGatewayNowSafeLatency,
-		preserveUnsyncedPlayingSegmentContents: apiStudioSettings.preserveUnsyncedPlayingSegmentContents,
 		allowRundownResetOnAir: apiStudioSettings.allowRundownResetOnAir,
 		preserveOrphanedSegmentPositionInRundown: apiStudioSettings.preserveOrphanedSegmentPositionInRundown,
+		minimumTakeSpan: apiStudioSettings.minimumTakeSpan ?? DEFAULT_MINIMUM_TAKE_SPAN,
 	}
 }
 
@@ -339,9 +343,9 @@ export function APIStudioSettingsFrom(settings: IStudioSettings): APIStudioSetti
 		enablePlayFromAnywhere: settings.enablePlayFromAnywhere,
 		forceMultiGatewayMode: settings.forceMultiGatewayMode,
 		multiGatewayNowSafeLatency: settings.multiGatewayNowSafeLatency,
-		preserveUnsyncedPlayingSegmentContents: settings.preserveUnsyncedPlayingSegmentContents,
 		allowRundownResetOnAir: settings.allowRundownResetOnAir,
 		preserveOrphanedSegmentPositionInRundown: settings.preserveOrphanedSegmentPositionInRundown,
+		minimumTakeSpan: settings.minimumTakeSpan,
 	}
 }
 
@@ -489,7 +493,7 @@ export async function ShowStyleBaseBlueprintConfigFromAPI(
 }
 
 export async function APIShowStyleBlueprintConfigFrom(
-	showStyle: ShowStyleBase | ShowStyleVariant,
+	showStyle: DBShowStyleBase | DBShowStyleVariant,
 	blueprintId: BlueprintId | undefined
 ): Promise<object> {
 	if (!showStyle.blueprintConfigPresetId)
@@ -547,7 +551,7 @@ export async function StudioBlueprintConfigFromAPI(apiStudio: APIStudio): Promis
 	return blueprintManifest.blueprintConfigFromAPI(blueprintContext, apiStudio.config)
 }
 
-export async function APIStudioBlueprintConfigFrom(studio: Studio): Promise<object> {
+export async function APIStudioBlueprintConfigFrom(studio: DBStudio): Promise<object> {
 	if (!studio.blueprintConfigPresetId) throw new Meteor.Error(500, `Studio ${studio._id} is missing config preset`)
 	const blueprint = await getBlueprint(studio.blueprintId, BlueprintManifestType.STUDIO)
 	const blueprintManifest = evalBlueprint(blueprint) as StudioBlueprintManifest
@@ -564,4 +568,24 @@ export async function APIStudioBlueprintConfigFrom(studio: Studio): Promise<obje
 		blueprintContext,
 		applyAndValidateOverrides(studio.blueprintConfigWithOverrides).obj
 	)
+}
+
+export function bucketFrom(apiBucket: APIBucket, existingId?: BucketId): Bucket {
+	return {
+		_id: existingId ?? getRandomId(),
+		studioId: protectString(apiBucket.studioId),
+		name: apiBucket.name,
+		_rank: 0,
+		width: undefined,
+		buttonWidthScale: 1,
+		buttonHeightScale: 1,
+	}
+}
+
+export function APIBucketFrom(bucket: Bucket): APIBucketComplete {
+	return {
+		id: unprotectString(bucket._id),
+		name: bucket.name,
+		studioId: unprotectString(bucket.studioId),
+	}
 }

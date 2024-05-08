@@ -16,14 +16,16 @@ jobs:
     continue-on-error: true
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version-file: ".node-version"
       - uses: ./.github/actions/setup-meteor
       - name: restore node_modules
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             node_modules
@@ -40,6 +42,10 @@ jobs:
       - name: Run typecheck and linter
         run: |
           cd meteor
+
+          # setup zodern:types. No linters are setup, so this simply installs the packages
+          meteor lint
+
           meteor yarn ci:lint
         env:
           CI: true
@@ -49,14 +55,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version-file: ".node-version"
       - uses: ./.github/actions/setup-meteor
       - name: restore node_modules
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             node_modules
@@ -73,11 +81,18 @@ jobs:
       - name: Run Tests
         run: |
           cd meteor
+
+          # setup zodern:types. No linters are setup, so this simply installs the packages
+          meteor lint
+
           NODE_OPTIONS="--max-old-space-size=6144" meteor yarn unitci --force-exit
         env:
           CI: true
       - name: Send coverage
-        uses: codecov/codecov-action@v3
+        if: ((github.event_name == 'pull_request') && (!startsWith(github.head_ref, 'release'))) || ((github.event_name == 'push') && (!startsWith(github.ref_name, 'release')))
+        uses: codecov/codecov-action@v4
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   build-core:
     # TODO - should this be dependant on tests or something passing if we are on a tag?
@@ -85,7 +100,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Determine if images should be published to DockerHub
         id: dockerhub
         run: |
@@ -117,7 +134,7 @@ jobs:
       - name: Get the Docker tag for GHCR
         id: ghcr-tag
         if: steps.check-build-and-push.outputs.enable == 'true'
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: |
             ghcr.io/${{ github.repository }}-server-core
@@ -129,7 +146,7 @@ jobs:
       - name: Get the Docker tag for DockerHub
         id: dockerhub-tag
         if: steps.check-build-and-push.outputs.enable == 'true'
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: |
             ${{ secrets.DOCKERHUB_IMAGE_PREFIX }}server-core
@@ -140,13 +157,13 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
       - name: Use Node.js
         if: steps.check-build-and-push.outputs.enable == 'true'
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version-file: ".node-version"
       - uses: ./.github/actions/setup-meteor
         if: steps.check-build-and-push.outputs.enable == 'true'
       - name: restore node_modules
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         if: steps.check-build-and-push.outputs.enable == 'true'
         with:
           path: |
@@ -179,23 +196,23 @@ jobs:
           meteor npm install
       - name: Set up Docker Buildx
         if: steps.check-build-and-push.outputs.enable == 'true'
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
       - name: Login to DockerHub
         if: steps.check-build-and-push.outputs.enable == 'true' && steps.dockerhub.outputs.dockerhub-publish == '1'
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Login to GitHub Container Registry
         if: steps.check-build-and-push.outputs.enable == 'true' && steps.check-ghcr.outputs.enable == 'true'
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and push to GHCR
         if: steps.check-build-and-push.outputs.enable == 'true' && steps.check-ghcr.outputs.enable == 'true' && steps.ghcr-tag.outputs.tags != 0
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           context: .
           file: ./meteor/Dockerfile.circle
@@ -203,16 +220,42 @@ jobs:
           provenance: false
           labels: ${{ steps.ghcr-tag.outputs.labels }}
           tags: "${{ steps.ghcr-tag.outputs.tags }}"
+          github-token: ${{ github.token }}
       - name: Build and push to DockerHub
         if: steps.check-build-and-push.outputs.enable == 'true' && steps.dockerhub.outputs.dockerhub-publish == '1'
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           context: .
           file: ./meteor/Dockerfile.circle
           push: true
           provenance: false
           labels: ${{ steps.dockerhub-tag.outputs.labels }}
-          tags: "${{ steps.dockerhub-tag.outputs.tags }}"
+          tags: ${{ steps.dockerhub-tag.outputs.tags }}
+      - name: Get image for Trivy scanning
+        id: trivy-image
+        if: steps.check-build-and-push.outputs.enable == 'true' && steps.check-ghcr.outputs.enable == 'true' && steps.ghcr-tag.outputs.tags != 0
+        run: |
+          image=$(echo ${{ steps.ghcr-tag.outputs.tags }} | head -n 1)
+          echo "image=$image" >> $GITHUB_OUTPUT
+      - name: Trivy scanning
+        if: steps.check-build-and-push.outputs.enable == 'true' && steps.check-ghcr.outputs.enable == 'true' && steps.ghcr-tag.outputs.tags != 0
+        uses: aquasecurity/trivy-action@0.17.0
+        with:
+          image-ref: "${{ steps.trivy-image.outputs.image }}"
+          format: "table"
+          output: trivy-scan-result.txt
+          ignore-unfixed: true
+          severity: "CRITICAL,HIGH"
+      - name: Post all Trivy scan results to Github Summary as a table
+        if: steps.check-build-and-push.outputs.enable == 'true' && steps.check-ghcr.outputs.enable == 'true' && steps.ghcr-tag.outputs.tags != 0
+        env:
+          CODE_BLOCK: "```"
+        run: |
+          echo "# Trivy scan results ~ core" >> $GITHUB_STEP_SUMMARY
+
+          echo $CODE_BLOCK >> $GITHUB_STEP_SUMMARY
+          cat trivy-scan-result.txt >> $GITHUB_STEP_SUMMARY
+          echo $CODE_BLOCK >> $GITHUB_STEP_SUMMARY
 
   build-gateways:
     # TODO - should this be dependant on tests or something passing if we are on a tag?
@@ -226,7 +269,9 @@ jobs:
         gateway-name: [playout-gateway, mos-gateway, "live-status-gateway"]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Determine if images should be published to DockerHub
         id: dockerhub
         run: |
@@ -258,7 +303,7 @@ jobs:
       - name: Get the Docker tag for GHCR
         id: ghcr-tag
         if: steps.check-build-and-push.outputs.enable == 'true'
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: |
             ghcr.io/${{ github.repository }}-${{ matrix.gateway-name }}
@@ -270,7 +315,7 @@ jobs:
       - name: Get the Docker tag for DockerHub
         id: dockerhub-tag
         if: steps.check-build-and-push.outputs.enable == 'true'
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: |
             ${{ secrets.DOCKERHUB_IMAGE_PREFIX }}${{ matrix.gateway-name }}
@@ -280,13 +325,13 @@ jobs:
             type=ref,event=tag
             type=raw,value=latest,enable={{is_default_branch}}
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         if: steps.check-build-and-push.outputs.enable == 'true'
         with:
           node-version-file: ".node-version"
       - name: restore node_modules
         if: steps.check-build-and-push.outputs.enable == 'true'
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             packages/node_modules
@@ -301,23 +346,23 @@ jobs:
           yarn workspaces focus --all --production
       - name: Set up Docker Buildx
         if: steps.check-build-and-push.outputs.enable == 'true'
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
       - name: Login to DockerHub
         if: steps.check-build-and-push.outputs.enable == 'true' && steps.dockerhub.outputs.dockerhub-publish == '1'
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Login to GitHub Container Registry
         if: steps.check-build-and-push.outputs.enable == 'true' && steps.check-ghcr.outputs.enable == 'true'
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and push to GHCR
         if: steps.check-build-and-push.outputs.enable == 'true' && steps.check-ghcr.outputs.enable == 'true' && steps.ghcr-tag.outputs.tags != 0
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           context: ./packages
           file: ./packages/${{ matrix.gateway-name }}/Dockerfile.circle
@@ -327,7 +372,7 @@ jobs:
           tags: "${{ steps.ghcr-tag.outputs.tags }}"
       - name: Build and push to DockerHub
         if: steps.check-build-and-push.outputs.enable == 'true' && steps.dockerhub.outputs.dockerhub-publish == '1'
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           context: ./packages
           file: ./packages/${{ matrix.gateway-name }}/Dockerfile.circle
@@ -335,6 +380,31 @@ jobs:
           provenance: false
           labels: ${{ steps.dockerhub-tag.outputs.labels }}
           tags: "${{ steps.dockerhub-tag.outputs.tags }}"
+      - name: Get image for Trivy scanning
+        id: trivy-image
+        if: steps.check-build-and-push.outputs.enable == 'true' && steps.check-ghcr.outputs.enable == 'true' && steps.ghcr-tag.outputs.tags != 0
+        run: |
+          image=$(echo ${{ steps.ghcr-tag.outputs.tags }} | head -n 1)
+          echo "image=$image" >> $GITHUB_OUTPUT
+      - name: Trivy scanning
+        if: steps.check-build-and-push.outputs.enable == 'true' && steps.check-ghcr.outputs.enable == 'true' && steps.ghcr-tag.outputs.tags != 0
+        uses: aquasecurity/trivy-action@0.17.0
+        with:
+          image-ref: "${{ steps.trivy-image.outputs.image }}"
+          format: "table"
+          output: ${{ matrix.gateway-name }}-trivy-scan-result.txt
+          ignore-unfixed: true
+          severity: "CRITICAL,HIGH"
+      - name: Post all Trivy scan results to Github Summary as a table
+        if: steps.check-build-and-push.outputs.enable == 'true' && steps.check-ghcr.outputs.enable == 'true' && steps.ghcr-tag.outputs.tags != 0
+        env:
+          CODE_BLOCK: "```"
+        run: |
+          echo "# Trivy scan results ~ ${{ matrix.gateway-name }}" >> $GITHUB_STEP_SUMMARY
+
+          echo $CODE_BLOCK >> $GITHUB_STEP_SUMMARY
+          cat ${{ matrix.gateway-name }}-trivy-scan-result.txt >> $GITHUB_STEP_SUMMARY
+          echo $CODE_BLOCK >> $GITHUB_STEP_SUMMARY
 
   lint-packages:
     name: Lint Package
@@ -357,13 +427,15 @@ jobs:
           - live-status-gateway
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version-file: ".node-version"
       - name: restore node_modules
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             packages/node_modules
@@ -410,21 +482,23 @@ jobs:
           - node-version: 18.x
             package-name: openapi
           # No tests for the gateways yet
-          # - node-version: 16.x
+          # - node-version: 18.x
           #   package-name: playout-gateway
-          # - node-version: 16.x
+          # - node-version: 18.x
           #   package-name: mos-gateway
-          # - node-version: 16.x
-          #   package-name: live-status-gateway
+          - node-version: 18.x
+            package-name: live-status-gateway
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
       - name: restore node_modules
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             packages/node_modules
@@ -444,8 +518,66 @@ jobs:
         env:
           CI: true
       - name: Send coverage
-        if: matrix.node-version == '16.x' || matrix.send-coverage == true
-        uses: codecov/codecov-action@v3
+        if: (matrix.node-version == '16.x' || matrix.send-coverage == true) && ((github.event_name == 'pull_request') && ((!startsWith(github.head_ref, 'release'))) || ((github.event_name == 'push') && (!startsWith(github.ref_name, 'release'))))
+        uses: codecov/codecov-action@v4
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  asyncapi-generation:
+    name: AsyncAPI Generation
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".node-version"
+      - name: Prepare Environment
+        run: |
+          cd packages
+          yarn
+        env:
+          CI: true
+      - name: Run generator
+        run: |
+          cd packages/live-status-gateway
+
+          yarn gendocs
+          yarn genserver
+        env:
+          CI: true
+  openapi-generation:
+    name: OpenAPI Generation
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".node-version"
+      - name: Prepare Environment
+        run: |
+          cd packages
+          yarn
+        env:
+          CI: true
+      - name: Run generator
+        run: |
+          cd packages/openapi
+
+          yarn gendocs
+          yarn genserver
+          yarn genclient:ts
+        env:
+          CI: true
 
   publish-docs:
     name: Publish Docs
@@ -454,13 +586,15 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version-file: ".node-version"
       - name: restore node_modules
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             packages/node_modules
@@ -506,24 +640,19 @@ jobs:
       # core must be published first
       - build-core
 
-    strategy:
-      fail-fast: false
-      matrix:
-        package-name:
-          - blueprints-integration
-          - server-core-integration
-          - shared-lib
-
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version-file: ".node-version"
       - name: Prepare Environment # have to run this first to make sure the semver lib is available
         run: |
-          cd packages
           yarn config set cacheFolder /home/runner/release-libs-cache
+
+          cd packages
           yarn install
         env:
           CI: true
@@ -533,14 +662,14 @@ jobs:
           if [ -z "${{ secrets.NPM_TOKEN }}" ]; then
             echo "No Token"
           else
-
-            yarn --ignore-scripts
-
-            cd packages/${{ matrix.package-name }}
-            PACKAGE_NAME=$(yarn info -s . name)
-            PUBLISHED_VERSION=$(yarn info -s $PACKAGE_NAME version)
-            THIS_VERSION=$(node -p "require('./package.json').version")
-            NPM_TAG=$(node ../../scripts/determine-npm-tag.js $PUBLISHED_VERSION $THIS_VERSION)
+            # make dependencies of `determine-npm-tag` available
+            yarn install --mode=skip-build
+            
+            cd packages
+            PACKAGE_NAME="@sofie-automation/shared-lib"
+            PUBLISHED_VERSION=$(yarn npm info --json $PACKAGE_NAME | jq -c '.version' -r)
+            THIS_VERSION=$(node -p "require('./lerna.json').version")
+            NPM_TAG=$(node ../scripts/determine-npm-tag.js $PUBLISHED_VERSION $THIS_VERSION)
 
             echo "Publishing $NPM_TAG"
             echo "tag=$NPM_TAG" >> $GITHUB_OUTPUT
@@ -550,7 +679,7 @@ jobs:
         if: ${{ steps.do-publish.outputs.tag }}
         run: |
           cd packages
-          yarn lerna run --scope \*\*/${{ matrix.package-name }} --include-dependencies --stream build
+          yarn build
         env:
           CI: true
       - name: Modify dependencies to use npm packages
@@ -558,13 +687,20 @@ jobs:
       - name: Publish to NPM
         if: ${{ steps.do-publish.outputs.tag }}
         run: |
-          yarn config set npmAuthToken $NPM_AUTH_TOKEN
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
 
-          cd packages/${{ matrix.package-name }}
+          # hack as it can sometimes have unexpected changes
+          git checkout .yarnrc.yml
+
+          cd packages
+          git checkout .yarnrc.yml
+
+          yarn lerna publish from-package --tag-version-prefix='' --dist-tag ${{ steps.do-publish.outputs.tag }} --yes --no-verify-access
+
           NEW_VERSION=$(node -p "require('./package.json').version")
-          yarn npm publish --access=public --tag ${{ steps.do-publish.outputs.tag }}
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "**Published:** $NEW_VERSION" >> $GITHUB_STEP_SUMMARY
         env:
-          NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           CI: true
 
   check-for-multiple-library-versions:
@@ -573,14 +709,16 @@ jobs:
     continue-on-error: true
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version-file: ".node-version"
       - uses: ./.github/actions/setup-meteor
       - name: restore node_modules
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             node_modules

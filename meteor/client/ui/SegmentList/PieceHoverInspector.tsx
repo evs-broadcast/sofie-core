@@ -24,7 +24,7 @@ export function PieceHoverInspector({
 	originPosition,
 	mousePosition,
 	layer,
-}: {
+}: Readonly<{
 	studio: UIStudio
 	pieceInstance: PieceUi
 	hovering: boolean
@@ -32,23 +32,21 @@ export function PieceHoverInspector({
 	originPosition: OffsetPosition
 	mousePosition: number
 	layer: ISourceLayer | undefined
-}): JSX.Element | null {
-	const mediaPreviewUrl = studio.settings.mediaPreviewsUrl
-
-	const status = pieceInstance.instance.piece.status
+}>): JSX.Element | null {
+	const status = pieceInstance.contentStatus?.status
 
 	const vtContent = pieceInstance.instance.piece.content as VTContent
 	const graphicsContent = pieceInstance.instance.piece.content as GraphicsContent
 	const transitionContent = pieceInstance.instance.piece.content as TransitionContent
 
-	const noticeLevel = status !== null && status !== undefined ? getNoticeLevelForPieceStatus(status) : null
+	const noticeLevel = getNoticeLevelForPieceStatus(status)
 
 	switch (layer?.type) {
 		case SourceLayerType.TRANSITION:
 			// TODO: Move this code to a shared TransitionFloatingInspector
 			return (
 				<FloatingInspector shown={hovering}>
-					{transitionContent && transitionContent.preview && (
+					{transitionContent?.preview && (
 						<div
 							className="segment-timeline__mini-inspector segment-timeline__mini-inspector--video"
 							style={{
@@ -57,7 +55,7 @@ export function PieceHoverInspector({
 								transform: 'translate(0, -100%)',
 							}}
 						>
-							<img src={'/blueprints/assets/' + transitionContent.preview} className="thumbnail" />
+							<img src={'/api/private/blueprints/assets/' + transitionContent.preview} className="thumbnail" />
 						</div>
 					)}
 				</FloatingInspector>
@@ -86,7 +84,7 @@ export function PieceHoverInspector({
 		case SourceLayerType.LIVE_SPEAK:
 			return (
 				<VTFloatingInspector
-					status={status || PieceStatusCode.UNKNOWN}
+					status={status ?? PieceStatusCode.UNKNOWN}
 					showMiniInspector={hovering}
 					timePosition={hoverScrubTimePosition}
 					content={vtContent}
@@ -98,14 +96,10 @@ export function PieceHoverInspector({
 					}}
 					typeClass={layer && RundownUtils.getSourceLayerClassName(layer.type)}
 					itemElement={null}
-					contentMetaData={pieceInstance.contentMetaData || null}
-					noticeMessages={pieceInstance.messages || null}
+					noticeMessages={pieceInstance.contentStatus?.messages ?? null}
 					noticeLevel={noticeLevel}
-					mediaPreviewUrl={mediaPreviewUrl}
-					contentPackageInfos={pieceInstance.contentPackageInfos}
-					pieceId={pieceInstance.instance.piece._id}
-					expectedPackages={pieceInstance.instance.piece.expectedPackages}
 					studio={studio}
+					previewUrl={pieceInstance.contentStatus?.previewUrl}
 				/>
 			)
 	}

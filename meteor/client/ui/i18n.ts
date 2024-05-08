@@ -5,7 +5,7 @@ import Backend from 'i18next-http-backend'
 import LanguageDetector from 'i18next-browser-languagedetector'
 import { initReactI18next } from 'react-i18next'
 import { WithManagedTracker } from '../lib/reactiveData/reactiveDataHelper'
-import { PubSub } from '../../lib/api/pubsub'
+import { MeteorPubSub } from '../../lib/api/pubsub'
 import { Translation, TranslationsBundle } from '../../lib/collections/TranslationsBundles'
 import { I18NextData } from '@sofie-automation/blueprints-integration'
 import { MeteorCall } from '../../lib/api/methods'
@@ -13,6 +13,7 @@ import { ClientAPI } from '../../lib/api/client'
 import { interpollateTranslation } from '@sofie-automation/corelib/dist/TranslatableMessage'
 import { TranslationsBundleId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import { TranslationsBundles } from '../collections'
+import { catchError } from '../lib/lib'
 
 const i18nOptions = {
 	fallbackLng: {
@@ -53,7 +54,7 @@ const i18nOptions = {
 }
 
 function toI18NextData(translations: Translation[]): I18NextData {
-	const data = {}
+	const data: I18NextData = {}
 	for (const { original, translation } of translations) {
 		data[original] = translation
 	}
@@ -100,11 +101,9 @@ class I18nContainer extends WithManagedTracker {
 					webManifestLink.setAttribute('href', sourceHref + `?lng=${i18n.language}`)
 				}
 			})
-			.catch((err: Error) => {
-				console.error('Error initializing i18Next:', err)
-			})
+			.catch(catchError('i18nInstance.init'))
 
-		this.subscribe(PubSub.translationsBundles, {})
+		this.subscribe(MeteorPubSub.translationsBundles)
 		this.autorun(() => {
 			const bundlesInfo = TranslationsBundles.find().fetch() as Omit<TranslationsBundle, 'data'>[]
 
@@ -139,13 +138,9 @@ class I18nContainer extends WithManagedTracker {
 								true
 							)
 						})
-						.catch((reason) => {
-							console.error(`Failed to fetch translations bundle "${bundleMetadata._id}": `, reason)
-						})
+						.catch(catchError(`Failed to fetch translations bundle "${bundleMetadata._id}"`))
 				)
-			).catch((reason) => {
-				console.error(`One of the translation bundles failed to load: `, reason)
-			})
+			).catch(catchError(`One of the translation bundles failed to load`))
 		})
 	}
 

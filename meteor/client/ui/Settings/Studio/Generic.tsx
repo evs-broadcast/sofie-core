@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Studio } from '../../../../lib/collections/Studios'
+import { DBStudio } from '@sofie-automation/corelib/dist/dataModel/Studio'
 import { Translated } from '../../../lib/ReactMeteorData/react-meteor-data'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faExclamationTriangle } from '@fortawesome/free-solid-svg-icons'
@@ -7,18 +7,19 @@ import { withTranslation } from 'react-i18next'
 import { EditAttribute } from '../../../lib/EditAttribute'
 import { StudioBaselineStatus } from './Baseline'
 import { ShowStyleBaseId } from '@sofie-automation/corelib/dist/dataModel/Ids'
-import { ShowStyleBase } from '../../../../lib/collections/ShowStyleBases'
+import { DBShowStyleBase } from '@sofie-automation/corelib/dist/dataModel/ShowStyleBase'
 import { Studios } from '../../../collections'
 import { useHistory } from 'react-router-dom'
 import { MeteorCall } from '../../../../lib/api/methods'
 import { LabelActual } from '../../../lib/Components/LabelAndOverrides'
+import { catchError } from '../../../lib/lib'
 
 interface IStudioGenericPropertiesProps {
-	studio: Studio
+	studio: DBStudio
 	availableShowStyleBases: Array<{
 		name: string
 		value: ShowStyleBaseId
-		showStyleBase: ShowStyleBase
+		showStyleBase: DBShowStyleBase
 	}>
 }
 interface IStudioGenericPropertiesState {}
@@ -41,7 +42,7 @@ export const StudioGenericProperties = withTranslation()(
 					if (showStyleBase) {
 						buttons.push(
 							<RedirectToShowStyleButton
-								key={'settings-nevigation-' + showStyleBase.showStyleBase.name}
+								key={'settings-nevigation-' + showStyleBase.showStyleBase._id}
 								name={showStyleBase.showStyleBase.name}
 								id={showStyleBase.showStyleBase._id}
 							/>
@@ -60,7 +61,7 @@ export const StudioGenericProperties = withTranslation()(
 					<label className="field">
 						<LabelActual label={t('Studio Name')} />
 						{!this.props.studio.name ? (
-							<div className="error-notice inline">
+							<div className="error-notice">
 								{t('No name set')} <FontAwesomeIcon icon={faExclamationTriangle} />
 							</div>
 						) : null}
@@ -76,13 +77,8 @@ export const StudioGenericProperties = withTranslation()(
 							<span className="mdfx"></span>
 						</div>
 					</label>
-					<label className="field">
+					<div className="field">
 						{t('Select Compatible Show Styles')}
-						{!this.props.studio.supportedShowStyleBase.length ? (
-							<div className="error-notice inline">
-								{t('Show style not set')} <FontAwesomeIcon icon={faExclamationTriangle} />
-							</div>
-						) : null}
 						<div className="mdi">
 							<EditAttribute
 								attribute="supportedShowStyleBase"
@@ -95,13 +91,32 @@ export const StudioGenericProperties = withTranslation()(
 							{this.renderShowStyleEditButtons()}
 							<NewShowStyleButton />
 						</div>
-					</label>
+						{!this.props.studio.supportedShowStyleBase.length ? (
+							<div className="error-notice">
+								{t('Show style not set')} <FontAwesomeIcon icon={faExclamationTriangle} />
+							</div>
+						) : null}
+					</div>
 					<label className="field">
 						<LabelActual label={t('Frame Rate')} />
 						<div className="mdi">
 							<EditAttribute
 								modifiedClassName="bghl"
 								attribute="settings.frameRate"
+								obj={this.props.studio}
+								type="int"
+								collection={Studios}
+								className="mdinput"
+							/>
+							<span className="mdfx"></span>
+						</div>
+					</label>
+					<label className="field">
+						<LabelActual label={t('Minimum Take Span')} />
+						<div className="mdi">
+							<EditAttribute
+								modifiedClassName="bghl"
+								attribute="settings.minimumTakeSpan"
 								obj={this.props.studio}
 								type="int"
 								collection={Studios}
@@ -198,16 +213,6 @@ export const StudioGenericProperties = withTranslation()(
 						/>
 					</label>
 					<label className="field">
-						<LabelActual label={t('Preserve contents of playing segment when unsynced')} />
-						<EditAttribute
-							modifiedClassName="bghl"
-							attribute="settings.preserveUnsyncedPlayingSegmentContents"
-							obj={this.props.studio}
-							type="checkbox"
-							collection={Studios}
-						/>
-					</label>
-					<label className="field">
 						<LabelActual label={t('Allow Rundowns to be reset while on-air')} />
 						<EditAttribute
 							modifiedClassName="bghl"
@@ -218,11 +223,7 @@ export const StudioGenericProperties = withTranslation()(
 						/>
 					</label>
 					<label className="field">
-						<LabelActual
-							label={t(
-								'Preserve position of segments when unsynced relative to other segments. Note: this has only been tested for the iNews gateway'
-							)}
-						/>
+						<LabelActual label={t('Preserve position of segments when unsynced relative to other segments')} />
 						<EditAttribute
 							modifiedClassName="bghl"
 							attribute="settings.preserveOrphanedSegmentPositionInRundown"
@@ -230,11 +231,21 @@ export const StudioGenericProperties = withTranslation()(
 							type="checkbox"
 							collection={Studios}
 						/>
+						<span className="text-s dimmed field-hint">{t('This has only been tested for the iNews gateway')}</span>
 					</label>
 
-					<div className="col c12 r1-c12">
-						<StudioBaselineStatus studioId={this.props.studio._id} />
-					</div>
+					<label className="field">
+						<LabelActual label={t('Enable Scratchpad mode, for testing adlibs before taking the first Part')} />
+						<EditAttribute
+							modifiedClassName="bghl"
+							attribute="settings.allowScratchpad"
+							obj={this.props.studio}
+							type="checkbox"
+							collection={Studios}
+						/>
+					</label>
+
+					<StudioBaselineStatus studioId={this.props.studio._id} />
 				</div>
 			)
 		}
@@ -250,11 +261,11 @@ const NewShowStyleButton = React.memo(function NewShowStyleButton() {
 			.then((showStyleBaseId) => {
 				history.push('/settings/showStyleBase/' + showStyleBaseId)
 			})
-			.catch(console.error)
+			.catch(catchError('showstyles.insertShowStyleBase'))
 	}
 
 	return (
-		<button className="btn btn-primary btn-add-new" onClick={onShowStyleAdd}>
+		<button className="btn btn-primary mts" onClick={onShowStyleAdd}>
 			New Show Style
 		</button>
 	)
@@ -269,7 +280,7 @@ const RedirectToShowStyleButton = React.memo(function RedirectToShowStyleButton(
 	const doRedirect = () => history.push('/settings/showStyleBase/' + props.id)
 
 	return (
-		<button className="btn btn-primary btn-add-new" onClick={doRedirect}>
+		<button className="btn mrs mts" onClick={doRedirect}>
 			Edit {props.name}
 		</button>
 	)

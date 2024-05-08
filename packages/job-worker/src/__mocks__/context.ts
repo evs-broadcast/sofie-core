@@ -1,36 +1,4 @@
 import {
-	StudioId,
-	RundownPlaylistId,
-	ShowStyleBaseId,
-	ShowStyleVariantId,
-	RundownId,
-} from '@sofie-automation/corelib/dist/dataModel/Ids'
-import { DBStudio } from '@sofie-automation/corelib/dist/dataModel/Studio'
-import { EventsJobFunc } from '@sofie-automation/corelib/dist/worker/events'
-import { IngestJobFunc } from '@sofie-automation/corelib/dist/worker/ingest'
-import { StudioJobFunc } from '@sofie-automation/corelib/dist/worker/studio'
-import { WrappedStudioBlueprint, WrappedShowStyleBlueprint } from '../blueprints/cache'
-import {
-	ProcessedStudioConfig,
-	ProcessedShowStyleConfig,
-	preprocessStudioConfig,
-	preprocessShowStyleConfig,
-} from '../blueprints/config'
-import { ReadOnlyCacheBase } from '../cache/CacheBase'
-import { PlaylistLock, RundownLock } from '../jobs/lock'
-import { ReadonlyDeep } from 'type-fest'
-import {
-	ApmSpan,
-	ProcessedShowStyleBase,
-	JobContext,
-	ProcessedShowStyleCompound,
-	ProcessedShowStyleVariant,
-} from '../jobs'
-import { createShowStyleCompound } from '../showStyles'
-import { IMockCollections, getMockCollections } from './collection'
-import { clone } from '@sofie-automation/corelib/dist/lib'
-import { IDirectCollections } from '../db'
-import {
 	BlueprintManifestType,
 	BlueprintResultPart,
 	BlueprintResultRundown,
@@ -42,19 +10,52 @@ import {
 	IBlueprintPiece,
 	IBlueprintRundown,
 	IBlueprintSegment,
-	IngestSegment,
 	ISegmentUserContext,
 	IShowStyleContext,
+	IngestSegment,
 	PlaylistTimingType,
 	ShowStyleBlueprintManifest,
 	StudioBlueprintManifest,
 } from '@sofie-automation/blueprints-integration'
+import {
+	RundownId,
+	RundownPlaylistId,
+	ShowStyleBaseId,
+	ShowStyleVariantId,
+	StudioId,
+} from '@sofie-automation/corelib/dist/dataModel/Ids'
+import { DBStudio } from '@sofie-automation/corelib/dist/dataModel/Studio'
+import { clone } from '@sofie-automation/corelib/dist/lib'
 import { protectString } from '@sofie-automation/corelib/dist/protectedString'
+import { EventsJobFunc } from '@sofie-automation/corelib/dist/worker/events'
+import { IngestJobFunc } from '@sofie-automation/corelib/dist/worker/ingest'
+import { StudioJobFunc } from '@sofie-automation/corelib/dist/worker/studio'
+import { ReadonlyDeep } from 'type-fest'
+import { WrappedShowStyleBlueprint, WrappedStudioBlueprint } from '../blueprints/cache'
+import {
+	ProcessedShowStyleConfig,
+	ProcessedStudioConfig,
+	preprocessShowStyleConfig,
+	preprocessStudioConfig,
+} from '../blueprints/config'
+import { IDirectCollections } from '../db'
+import {
+	ApmSpan,
+	JobContext,
+	ProcessedShowStyleBase,
+	ProcessedShowStyleCompound,
+	ProcessedShowStyleVariant,
+} from '../jobs'
+import { PlaylistLock, RundownLock } from '../jobs/lock'
+import { BaseModel } from '../modelBase'
+import { createShowStyleCompound } from '../showStyles'
+import { IMockCollections, getMockCollections } from './collection'
 // import _ = require('underscore')
-import { defaultStudio } from './defaultCollectionObjects'
 import { TimelineComplete } from '@sofie-automation/corelib/dist/dataModel/Timeline'
-import { processShowStyleBase, processShowStyleVariant } from '../jobs/showStyle'
 import { JSONBlobStringify } from '@sofie-automation/shared-lib/dist/lib/JSONBlob'
+import { removeRundownPlaylistFromDb } from '../ingest/__tests__/lib'
+import { processShowStyleBase, processShowStyleVariant } from '../jobs/showStyle'
+import { defaultStudio } from './defaultCollectionObjects'
 
 export function setupDefaultJobEnvironment(studioId?: StudioId): MockJobContext {
 	const { mockCollections, jobCollections } = getMockCollections()
@@ -114,7 +115,7 @@ export class MockJobContext implements JobContext {
 		}
 	}
 
-	trackCache(_cache: ReadOnlyCacheBase<any>): void {
+	trackCache(_model: BaseModel): void {
 		// TODO
 		// throw new Error('Method not implemented.')
 	}
@@ -153,12 +154,12 @@ export class MockJobContext implements JobContext {
 		return preprocessStudioConfig(this.studio, this.#studioBlueprint)
 	}
 	async getShowStyleBases(): Promise<ReadonlyDeep<Array<ProcessedShowStyleBase>>> {
-		const docs = await this.directCollections.ShowStyleBases.findFetch(undefined, undefined, null)
+		const docs = await this.directCollections.ShowStyleBases.findFetch(undefined)
 
 		return docs.map(processShowStyleBase)
 	}
 	async getShowStyleBase(id: ShowStyleBaseId): Promise<ReadonlyDeep<ProcessedShowStyleBase>> {
-		const doc = await this.directCollections.ShowStyleBases.findOne(id, undefined, null)
+		const doc = await this.directCollections.ShowStyleBases.findOne(id)
 		if (!doc) throw new Error(`ShowStyleBase "${id}" Not found!`)
 		return processShowStyleBase(doc)
 	}
@@ -172,14 +173,13 @@ export class MockJobContext implements JobContext {
 					_rank: 1,
 					_id: 1,
 				},
-			},
-			null
+			}
 		)
 
 		return docs.map(processShowStyleVariant)
 	}
 	async getShowStyleVariant(id: ShowStyleVariantId): Promise<ReadonlyDeep<ProcessedShowStyleVariant>> {
-		const doc = await this.directCollections.ShowStyleVariants.findOne(id, undefined, null)
+		const doc = await this.directCollections.ShowStyleVariants.findOne(id)
 		if (!doc) throw new Error(`ShowStyleVariant "${id}" Not found!`)
 		return processShowStyleVariant(doc)
 	}
@@ -243,6 +243,15 @@ export class MockJobContext implements JobContext {
 			...blueprint,
 		}
 	}
+
+	async clearAllRundownsAndPlaylists(): Promise<void> {
+		// Cleanup any rundowns / playlists
+		const playlists = await this.mockCollections.RundownPlaylists.findFetch({})
+		await removeRundownPlaylistFromDb(
+			this,
+			playlists.map((p) => p._id)
+		)
+	}
 }
 
 const MockStudioBlueprint: () => StudioBlueprintManifest = () => ({
@@ -301,7 +310,7 @@ const MockShowStyleBlueprint: () => ShowStyleBlueprintManifest = () => ({
 			name: ingestRundown.name,
 			// expectedStart?:
 			// expectedDuration?: number;
-			metaData: {
+			privateData: {
 				payload: ingestRundown.payload,
 				airStatus: ingestRundown.coreData?.airStatus,
 			},
@@ -324,7 +333,7 @@ const MockShowStyleBlueprint: () => ShowStyleBlueprintManifest = () => ({
 	getSegment: (_context: ISegmentUserContext, ingestSegment: IngestSegment): BlueprintResultSegment => {
 		const segment: IBlueprintSegment = {
 			name: ingestSegment.name ? ingestSegment.name : ingestSegment.externalId,
-			metaData: ingestSegment.payload,
+			privateData: ingestSegment.payload,
 			isHidden: ingestSegment.payload?.hidden,
 		}
 		const parts: BlueprintResultPart[] = []
@@ -333,7 +342,7 @@ const MockShowStyleBlueprint: () => ShowStyleBlueprintManifest = () => ({
 			const part: IBlueprintPart = {
 				externalId: ingestPart.externalId,
 				title: ingestPart.name,
-				metaData: ingestPart.payload,
+				privateData: ingestPart.payload,
 				// autoNext?: boolean;
 				// autoNextOverlap?: number;
 				// prerollDuration?: number;

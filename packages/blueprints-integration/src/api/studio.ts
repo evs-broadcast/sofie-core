@@ -4,12 +4,12 @@ import type { BlueprintConfigCoreConfig, BlueprintManifestBase, BlueprintManifes
 import type { JSONSchema } from '@sofie-automation/shared-lib/dist/lib/JSONSchemaTypes'
 import type { JSONBlob } from '@sofie-automation/shared-lib/dist/lib/JSONBlob'
 import type { MigrationStepStudio } from '../migrations'
-import type { ICommonContext, IStudioBaselineContext, IStudioUserContext } from '../context'
+import type { ICommonContext, IFixUpConfigContext, IStudioBaselineContext, IStudioUserContext } from '../context'
 import type { IBlueprintShowStyleBase } from '../showStyle'
 import type { ExtendedIngestRundown } from '../ingest'
 import type { ExpectedPlayoutItemGeneric, IBlueprintResultRundownPlaylist, IBlueprintRundownDB } from '../documents'
 import type { BlueprintMappings } from '../studio'
-import type { TSR } from '../timeline'
+import type { TimelineObjectCoreExt, TSR } from '../timeline'
 import type { ExpectedPackage } from '../package'
 
 export interface StudioBlueprintManifest<TRawConfig = IBlueprintConfig, TProcessedConfig = unknown>
@@ -18,7 +18,9 @@ export interface StudioBlueprintManifest<TRawConfig = IBlueprintConfig, TProcess
 
 	/** A list of config items this blueprint expects to be available on the Studio */
 	studioConfigSchema: JSONBlob<JSONSchema>
-	/** A list of Migration steps related to a Studio */
+	/** A list of Migration steps related to a Studio
+	 * @deprecated This has been replaced with `validateConfig` and `applyConfig`
+	 */
 	studioMigrations: MigrationStepStudio[]
 
 	/** The config presets exposed by this blueprint */
@@ -43,6 +45,12 @@ export interface StudioBlueprintManifest<TRawConfig = IBlueprintConfig, TProcess
 		rundowns: IBlueprintRundownDB[],
 		playlistExternalId: string
 	) => BlueprintResultRundownPlaylist | null
+
+	/**
+	 * Apply automatic upgrades to the structure of user specified config overrides
+	 * This lets you apply various changes to the user's values in an abstract way
+	 */
+	fixUpConfig?: (context: IFixUpConfigContext<TRawConfig>) => void
 
 	/**
 	 * Validate the config passed to this blueprint
@@ -79,8 +87,7 @@ export interface StudioBlueprintManifest<TRawConfig = IBlueprintConfig, TProcess
 }
 
 export interface BlueprintResultStudioBaseline {
-	timelineObjects: TSR.TSRTimelineObj<TSR.TSRTimelineContent>[]
-	/** @deprecated */
+	timelineObjects: TimelineObjectCoreExt<TSR.TSRTimelineContent>[]
 	expectedPlayoutItems?: ExpectedPlayoutItemGeneric[]
 	expectedPackages?: ExpectedPackage.Any[]
 }

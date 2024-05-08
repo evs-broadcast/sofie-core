@@ -6,12 +6,13 @@ import { GraphicsContent, NoraContent } from '@sofie-automation/blueprints-integ
 import { NoraFloatingInspector } from './NoraFloatingInspector'
 import { FloatingInspector } from '../FloatingInspector'
 import { Time } from '../../../lib/lib'
-import { PieceInstancePiece } from '../../../lib/collections/PieceInstances'
+import { PieceInstancePiece } from '@sofie-automation/corelib/dist/dataModel/PieceInstance'
 import { FloatingInspectorTimeInformationRow } from './FloatingInspectorHelpers/FloatingInspectorTimeInformationRow'
 import { IFloatingInspectorPosition, useInspectorPosition } from './IFloatingInspectorPosition'
+import { ReadonlyDeep } from 'type-fest'
 
 interface IProps {
-	piece: Omit<PieceInstancePiece, 'timelineObjectsString'>
+	piece: ReadonlyDeep<Omit<PieceInstancePiece, 'timelineObjectsString'>>
 	pieceRenderedDuration: number | null
 	pieceRenderedIn: number | null
 	showMiniInspector: boolean
@@ -83,7 +84,7 @@ export const L3rdFloatingInspector: React.FunctionComponent<IProps> = ({
 
 	return noraContent && noraContent.payload && noraContent.previewRenderer ? (
 		showMiniInspector ? (
-			<NoraFloatingInspector ref={ref} noraContent={noraContent} style={floatingInspectorStyle ?? {}} />
+			<NoraFloatingInspector ref={ref} noraContent={noraContent} style={floatingInspectorStyle} />
 		) : null
 	) : (
 		<FloatingInspector shown={showMiniInspector} displayOn="viewport">

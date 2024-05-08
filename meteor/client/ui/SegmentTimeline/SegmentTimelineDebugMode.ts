@@ -1,5 +1,5 @@
-let DEBUG_MODE: boolean = false
-window['setDebugMode'] = (d) => {
+let DEBUG_MODE = false
+;(window as any)['setDebugMode'] = (d: boolean) => {
 	DEBUG_MODE = d
 }
 export { DEBUG_MODE }

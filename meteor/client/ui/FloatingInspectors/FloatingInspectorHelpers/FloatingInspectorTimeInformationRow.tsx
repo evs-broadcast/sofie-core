@@ -1,23 +1,24 @@
 import React from 'react'
-import { PieceInstancePiece } from '../../../../lib/collections/PieceInstances'
+import { PieceInstancePiece } from '@sofie-automation/corelib/dist/dataModel/PieceInstance'
 import { RundownUtils } from '../../../lib/rundown'
 import { PieceLifespan } from '@sofie-automation/blueprints-integration'
-import * as _ from 'underscore'
-import { useTranslation } from 'react-i18next'
+import { TFunction, useTranslation } from 'react-i18next'
 import { Time } from '../../../../lib/lib'
 import Moment from 'react-moment'
+import { ReadonlyDeep } from 'type-fest'
 
 interface IProps {
-	piece: Omit<PieceInstancePiece, 'timelineObjectsString'>
+	piece: ReadonlyDeep<Omit<PieceInstancePiece, 'timelineObjectsString'>>
 	pieceRenderedDuration: number | null
 	pieceRenderedIn: number | null
 	changed?: Time
 }
 
 export const FloatingInspectorTimeInformationRow: React.FunctionComponent<IProps> = (props: IProps) => {
+	const { t } = useTranslation()
 	const durationText: string =
 		!props.pieceRenderedDuration && !props.piece.enable.duration
-			? getLifeSpanText(props.piece)
+			? getLifeSpanText(t, props.piece)
 			: getDuration(props.piece, props.pieceRenderedDuration)
 
 	return (
@@ -39,8 +40,7 @@ export const FloatingInspectorTimeInformationRow: React.FunctionComponent<IProps
 	)
 }
 
-function getLifeSpanText(piece: Omit<PieceInstancePiece, 'timelineObjectsString'>): string {
-	const { t } = useTranslation()
+function getLifeSpanText(t: TFunction, piece: ReadonlyDeep<Omit<PieceInstancePiece, 'timelineObjectsString'>>): string {
 	switch (piece.lifespan) {
 		case PieceLifespan.WithinPart:
 			return t('Until next take')
@@ -51,7 +51,7 @@ function getLifeSpanText(piece: Omit<PieceInstancePiece, 'timelineObjectsString'
 		case PieceLifespan.OutOnRundownChange:
 			return t('Until next rundown')
 		case PieceLifespan.OutOnRundownEnd:
-			return t('Until next rundown')
+			return t('Until end of rundown')
 		case PieceLifespan.OutOnShowStyleEnd:
 			return t('Until end of showstyle')
 		default:
@@ -60,11 +60,10 @@ function getLifeSpanText(piece: Omit<PieceInstancePiece, 'timelineObjectsString'
 }
 
 function getDuration(
-	piece: Omit<PieceInstancePiece, 'timelineObjectsString'>,
+	piece: ReadonlyDeep<Omit<PieceInstancePiece, 'timelineObjectsString'>>,
 	pieceRenderedDuration: number | null
 ): string {
 	return RundownUtils.formatTimeToShortTime(
-		pieceRenderedDuration ||
-			(_.isNumber(piece.enable.duration) ? parseFloat(piece.enable.duration as any as string) : 0)
+		pieceRenderedDuration || (typeof piece.enable.duration === 'number' ? piece.enable.duration : 0)
 	)
 }

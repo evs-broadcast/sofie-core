@@ -13,7 +13,7 @@ import { CollectionName } from '@sofie-automation/corelib/dist/dataModel/Collect
 import { DBShowStyleBase } from '@sofie-automation/corelib/dist/dataModel/ShowStyleBase'
 import { DBShowStyleVariant } from '@sofie-automation/corelib/dist/dataModel/ShowStyleVariant'
 import { DBStudio } from '@sofie-automation/corelib/dist/dataModel/Studio'
-import { stringifyError } from '@sofie-automation/corelib/dist/lib'
+import { stringifyError } from '@sofie-automation/shared-lib/dist/lib/stringifyError'
 import { InvalidateWorkerDataCache } from './caches'
 
 export class StudioWorkerSet {
@@ -51,7 +51,8 @@ export class StudioWorkerSet {
 		studioId: StudioId,
 		jobManager: JobManager,
 		logLine: LogLineWithSourceFunc,
-		fastTrackTimeline: FastTrackTimelineFunc | null
+		fastTrackTimeline: FastTrackTimelineFunc | null,
+		enableFreezeLimit: boolean
 	): Promise<StudioWorkerSet> {
 		const result = new StudioWorkerSet(studioId, mongoClient)
 
@@ -78,6 +79,7 @@ export class StudioWorkerSet {
 			locksManager: result.#locksManager,
 			studioId,
 			jobManager,
+			enableFreezeLimit,
 		}
 
 		tryAddThread(StudioWorkerParent.start(baseOptions, mongoUri, logLine, fastTrackTimeline))

@@ -2,11 +2,11 @@ import { JobContext } from '../jobs'
 import { logger } from '../logging'
 import { updateRundownFromIngestData, updateRundownMetadataFromIngestData } from './generationRundown'
 import { makeNewIngestRundown } from './ingestCache'
-import { canRundownBeUpdated, getRundown } from './lib'
+import { canRundownBeUpdated } from './lib'
 import { CommitIngestData, runIngestJob, runWithRundownLock, UpdateIngestRundownAction } from './lock'
 import { removeRundownFromDb } from '../rundownPlaylists'
 import { literal } from '@sofie-automation/corelib/dist/lib'
-import { DBRundown } from '@sofie-automation/corelib/dist/dataModel/Rundown'
+import { DBRundown, RundownOrphanedReason } from '@sofie-automation/corelib/dist/dataModel/Rundown'
 import {
 	IngestRegenerateRundownProps,
 	IngestRemoveRundownProps,
@@ -28,8 +28,8 @@ export async function handleRemovedRundown(context: JobContext, data: IngestRemo
 			// Remove it
 			return UpdateIngestRundownAction.DELETE
 		},
-		async (_context, cache) => {
-			const rundown = getRundown(cache)
+		async (_context, ingestModel) => {
+			const rundown = ingestModel.getRundown()
 
 			const canRemove = data.forceDelete || canRundownBeUpdated(rundown, false)
 			if (!canRemove) throw UserError.create(UserErrorMessage.RundownRemoveWhileActive, { name: rundown.name })
@@ -63,22 +63,19 @@ export async function handleUserRemoveRundown(context: JobContext, data: UserRem
 		// Its from a snapshot, so we need to use a lighter locking flow
 		return runWithRundownLock(context, data.rundownId, async (rundown, lock) => {
 			if (rundown) {
-				await context.directCollections.runInTransaction(async (transaction) => {
-					// It's from a snapshot, so should be removed directly, as that means it cannot run ingest operations
-					// Note: this bypasses activation checks, but that probably doesnt matter
-					await removeRundownFromDb(context, lock, transaction)
+				// It's from a snapshot, so should be removed directly, as that means it cannot run ingest operations
+				// Note: this bypasses activation checks, but that probably doesnt matter
+				await removeRundownFromDb(context, lock)
 
-					// check if the playlist is now empty
-					const rundownCount: Pick<DBRundown, '_id'>[] = await context.directCollections.Rundowns.findFetch(
-						{ playlistId: rundown.playlistId },
-						{ projection: { _id: 1 } },
-						transaction
-					)
-					if (rundownCount.length === 0) {
-						// A lazy approach, but good enough for snapshots
-						await context.directCollections.RundownPlaylists.remove(rundown.playlistId, transaction)
-					}
-				})
+				// check if the playlist is now empty
+				const rundownCount: Pick<DBRundown, '_id'>[] = await context.directCollections.Rundowns.findFetch(
+					{ playlistId: rundown.playlistId },
+					{ projection: { _id: 1 } }
+				)
+				if (rundownCount.length === 0) {
+					// A lazy approach, but good enough for snapshots
+					await context.directCollections.RundownPlaylists.remove(rundown.playlistId)
+				}
 			}
 		})
 	} else {
@@ -106,15 +103,15 @@ export async function handleUpdatedRundown(context: JobContext, data: IngestUpda
 				throw new Error(`Rundown "${data.rundownExternalId}" not found`)
 			}
 		},
-		async (context, cache, ingestRundown) => {
+		async (context, ingestModel, ingestRundown) => {
 			if (!ingestRundown) throw new Error(`regenerateRundown lost the IngestRundown...`)
 
 			return updateRundownFromIngestData(
 				context,
-				cache,
+				ingestModel,
 				ingestRundown,
 				data.isCreateAction,
-				data.peripheralDeviceId ?? cache.Rundown.doc?.peripheralDeviceId ?? null
+				data.peripheralDeviceId ?? ingestModel.rundown?.peripheralDeviceId ?? null
 			)
 		}
 	)
@@ -140,14 +137,14 @@ export async function handleUpdatedRundownMetaData(
 				throw new Error(`Rundown "${data.rundownExternalId}" not found`)
 			}
 		},
-		async (context, cache, ingestRundown) => {
+		async (context, ingestModel, ingestRundown) => {
 			if (!ingestRundown) throw new Error(`handleUpdatedRundownMetaData lost the IngestRundown...`)
 
 			return updateRundownMetadataFromIngestData(
 				context,
-				cache,
+				ingestModel,
 				ingestRundown,
-				data.peripheralDeviceId ?? cache.Rundown.doc?.peripheralDeviceId ?? null
+				data.peripheralDeviceId ?? ingestModel.rundown?.peripheralDeviceId ?? null
 			)
 		}
 	)
@@ -168,11 +165,11 @@ export async function handleRegenerateRundown(context: JobContext, data: IngestR
 				throw new Error(`Rundown "${data.rundownExternalId}" not found`)
 			}
 		},
-		async (context, cache, ingestRundown) => {
+		async (context, ingestModel, ingestRundown) => {
 			// If the rundown is orphaned, then we can't regenerate as there wont be any data to use!
 			if (!ingestRundown) return null
 
-			return updateRundownFromIngestData(context, cache, ingestRundown, false, data.peripheralDeviceId)
+			return updateRundownFromIngestData(context, ingestModel, ingestRundown, false, data.peripheralDeviceId)
 		}
 	)
 }
@@ -184,15 +181,11 @@ export async function handleUserUnsyncRundown(context: JobContext, data: UserUns
 	return runWithRundownLock(context, data.rundownId, async (rundown) => {
 		if (rundown) {
 			if (!rundown.orphaned) {
-				await context.directCollections.Rundowns.update(
-					rundown._id,
-					{
-						$set: {
-							orphaned: 'manual',
-						},
+				await context.directCollections.Rundowns.update(rundown._id, {
+					$set: {
+						orphaned: RundownOrphanedReason.MANUAL,
 					},
-					null // Single operation of this job
-				)
+				})
 			} else {
 				logger.info(`Rundown "${rundown._id}" was already unsynced`)
 			}

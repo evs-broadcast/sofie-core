@@ -2,12 +2,12 @@ import { StudioId, WorkerId, WorkerThreadId } from '@sofie-automation/corelib/di
 import {
 	ManualPromise,
 	createManualPromise,
-	stringifyError,
 	assertNever,
 	sleep,
 	getRandomString,
 	deferAsync,
 } from '@sofie-automation/corelib/dist/lib'
+import { stringifyError } from '@sofie-automation/shared-lib/dist/lib/stringifyError'
 import { protectString, unprotectString } from '@sofie-automation/corelib/dist/protectedString'
 import { startTransaction } from '../profiler'
 import { MongoClient } from 'mongodb'
@@ -43,6 +43,7 @@ export interface WorkerParentOptions {
 	mongoDbName: string
 	locksManager: LocksManager
 	jobManager: JobManager
+	enableFreezeLimit: boolean
 }
 export interface WorkerParentBaseOptions extends WorkerParentOptions {
 	/** The internal job-queue */

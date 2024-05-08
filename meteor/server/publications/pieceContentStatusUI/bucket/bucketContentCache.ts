@@ -1,17 +1,13 @@
-import { Meteor } from 'meteor/meteor'
-import _ from 'underscore'
 import { ReactiveCacheCollection } from '../../lib/ReactiveCacheCollection'
-import { SourceLayers } from '@sofie-automation/corelib/dist/dataModel/ShowStyleBase'
-import { ProtectedString } from '@sofie-automation/corelib/dist/protectedString'
+import { DBShowStyleBase, SourceLayers } from '@sofie-automation/corelib/dist/dataModel/ShowStyleBase'
 import { literal } from '@sofie-automation/corelib/dist/lib'
-import { IncludeAllMongoFieldSpecifier } from '@sofie-automation/corelib/dist/mongo'
+import { MongoFieldSpecifierOnesStrict } from '@sofie-automation/corelib/dist/mongo'
 import { BucketAdLibAction } from '@sofie-automation/corelib/dist/dataModel/BucketAdLibAction'
 import { BucketAdLib } from '@sofie-automation/corelib/dist/dataModel/BucketAdLibPiece'
-import { BlueprintId } from '@sofie-automation/corelib/dist/dataModel/Ids'
+import { BlueprintId, ShowStyleBaseId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 
-export type SourceLayersDocId = ProtectedString<'SourceLayersDocId'>
 export interface SourceLayersDoc {
-	_id: SourceLayersDocId
+	_id: ShowStyleBaseId
 	blueprintId: BlueprintId
 	sourceLayers: SourceLayers
 }
@@ -25,7 +21,7 @@ export type BucketAdLibFields =
 	| 'sourceLayerId'
 	| 'content'
 	| 'expectedPackages'
-export const bucketAdlibFieldSpecifier = literal<IncludeAllMongoFieldSpecifier<BucketAdLibFields>>({
+export const bucketAdlibFieldSpecifier = literal<MongoFieldSpecifierOnesStrict<Pick<BucketAdLib, BucketAdLibFields>>>({
 	_id: 1,
 	bucketId: 1,
 	studioId: 1,
@@ -37,7 +33,9 @@ export const bucketAdlibFieldSpecifier = literal<IncludeAllMongoFieldSpecifier<B
 })
 
 export type BucketActionFields = '_id' | 'bucketId' | 'studioId' | 'showStyleBaseId' | 'display' | 'expectedPackages'
-export const bucketActionFieldSpecifier = literal<IncludeAllMongoFieldSpecifier<BucketActionFields>>({
+export const bucketActionFieldSpecifier = literal<
+	MongoFieldSpecifierOnesStrict<Pick<BucketAdLibAction, BucketActionFields>>
+>({
 	_id: 1,
 	bucketId: 1,
 	studioId: 1,
@@ -47,7 +45,9 @@ export const bucketActionFieldSpecifier = literal<IncludeAllMongoFieldSpecifier<
 })
 
 export type ShowStyleBaseFields = '_id' | 'blueprintId' | 'sourceLayersWithOverrides'
-export const showStyleBaseFieldSpecifier = literal<IncludeAllMongoFieldSpecifier<ShowStyleBaseFields>>({
+export const showStyleBaseFieldSpecifier = literal<
+	MongoFieldSpecifierOnesStrict<Pick<DBShowStyleBase, ShowStyleBaseFields>>
+>({
 	_id: 1,
 	blueprintId: 1,
 	sourceLayersWithOverrides: 1,
@@ -59,34 +59,14 @@ export interface BucketContentCache {
 	ShowStyleSourceLayers: ReactiveCacheCollection<SourceLayersDoc>
 }
 
-type ReactionWithCache = (cache: BucketContentCache) => void
-
-export function createReactiveContentCache(
-	reaction: ReactionWithCache,
-	reactivityDebounce: number
-): { cache: BucketContentCache; cancel: () => void } {
-	let isCancelled = false
-	const innerReaction = _.debounce(
-		Meteor.bindEnvironment(() => {
-			if (!isCancelled) reaction(cache)
-		}),
-		reactivityDebounce
-	)
-	const cancel = () => {
-		isCancelled = true
-		innerReaction.cancel()
-	}
-
+export function createReactiveContentCache(): BucketContentCache {
 	const cache: BucketContentCache = {
-		BucketAdLibs: new ReactiveCacheCollection<Pick<BucketAdLib, BucketAdLibFields>>('bucketAdlibs', innerReaction),
+		BucketAdLibs: new ReactiveCacheCollection<Pick<BucketAdLib, BucketAdLibFields>>('bucketAdlibs'),
 		BucketAdLibActions: new ReactiveCacheCollection<Pick<BucketAdLibAction, BucketActionFields>>(
-			'bucketAdlibActions',
-			innerReaction
+			'bucketAdlibActions'
 		),
-		ShowStyleSourceLayers: new ReactiveCacheCollection<SourceLayersDoc>('sourceLayers', innerReaction),
+		ShowStyleSourceLayers: new ReactiveCacheCollection<SourceLayersDoc>('sourceLayers'),
 	}
 
-	innerReaction()
-
-	return { cache, cancel }
+	return cache
 }

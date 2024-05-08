@@ -4,19 +4,19 @@
  */
 
 import { CollectionName } from '@sofie-automation/corelib/dist/dataModel/Collections'
-import { AdLibAction } from './AdLibActions'
-import { AdLibPiece } from './AdLibPieces'
+import { AdLibAction } from '@sofie-automation/corelib/dist/dataModel/AdlibAction'
+import { AdLibPiece } from '@sofie-automation/corelib/dist/dataModel/AdLibPiece'
 import { createSyncMongoCollection, createSyncReadOnlyMongoCollection } from './lib'
 import { DBOrganization } from './Organization'
 import { PartInstance } from './PartInstances'
-import { Part } from './Parts'
-import { PieceInstance } from './PieceInstances'
-import { Piece } from './Pieces'
-import { RundownBaselineAdLibAction } from './RundownBaselineAdLibActions'
-import { RundownBaselineAdLibItem } from './RundownBaselineAdLibPieces'
-import { DBRundownPlaylist } from './RundownPlaylists'
-import { DBRundown } from './Rundowns'
-import { Segment } from './Segments'
+import { DBPart } from '@sofie-automation/corelib/dist/dataModel/Part'
+import { PieceInstance } from '@sofie-automation/corelib/dist/dataModel/PieceInstance'
+import { Piece } from '@sofie-automation/corelib/dist/dataModel/Piece'
+import { RundownBaselineAdLibAction } from '@sofie-automation/corelib/dist/dataModel/RundownBaselineAdLibAction'
+import { RundownBaselineAdLibItem } from '@sofie-automation/corelib/dist/dataModel/RundownBaselineAdLibPiece'
+import { DBRundownPlaylist } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
+import { DBRundown } from '@sofie-automation/corelib/dist/dataModel/Rundown'
+import { DBSegment } from '@sofie-automation/corelib/dist/dataModel/Segment'
 
 export const AdLibActions = createSyncReadOnlyMongoCollection<AdLibAction>(CollectionName.AdLibActions)
 
@@ -30,7 +30,7 @@ export const Pieces = createSyncReadOnlyMongoCollection<Piece>(CollectionName.Pi
 
 export const PartInstances = createSyncReadOnlyMongoCollection<PartInstance>(CollectionName.PartInstances)
 
-export const Parts = createSyncReadOnlyMongoCollection<Part>(CollectionName.Parts)
+export const Parts = createSyncReadOnlyMongoCollection<DBPart>(CollectionName.Parts)
 
 export const RundownBaselineAdLibActions = createSyncReadOnlyMongoCollection<RundownBaselineAdLibAction>(
 	CollectionName.RundownBaselineAdLibActions
@@ -44,4 +44,4 @@ export const RundownPlaylists = createSyncReadOnlyMongoCollection<DBRundownPlayl
 
 export const Rundowns = createSyncReadOnlyMongoCollection<DBRundown>(CollectionName.Rundowns)
 
-export const Segments = createSyncReadOnlyMongoCollection<Segment>(CollectionName.Segments)
+export const Segments = createSyncReadOnlyMongoCollection<DBSegment>(CollectionName.Segments)

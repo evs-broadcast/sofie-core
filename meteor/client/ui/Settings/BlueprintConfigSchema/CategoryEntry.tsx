@@ -29,7 +29,7 @@ export function ConfigCategoryEntry({
 	toggleExpanded,
 	overrideHelper,
 	sofieEnumDefinitons,
-}: ConfigCategoryEntryProps): JSX.Element {
+}: Readonly<ConfigCategoryEntryProps>): JSX.Element {
 	const { t } = useTranslation()
 
 	const toggleEditItem = useCallback(() => toggleExpanded(categoryName), [toggleExpanded, categoryName])
@@ -60,6 +60,7 @@ export function ConfigCategoryEntry({
 								item={wrappedItem}
 								overrideHelper={overrideHelper}
 								sofieEnumDefinitons={sofieEnumDefinitons}
+								isRequired
 							/>
 						</div>
 						<div className="mod alright">

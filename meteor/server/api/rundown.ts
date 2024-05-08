@@ -3,8 +3,8 @@ import { check } from '../../lib/check'
 import { logger } from '../logging'
 import { registerClassToMeteorMethods } from '../methods'
 import { NewRundownAPI, RundownAPIMethods } from '../../lib/api/rundown'
-import { ShowStyleVariant } from '../../lib/collections/ShowStyleVariants'
-import { ShowStyleBase } from '../../lib/collections/ShowStyleBases'
+import { DBShowStyleVariant } from '@sofie-automation/corelib/dist/dataModel/ShowStyleVariant'
+import { DBShowStyleBase } from '@sofie-automation/corelib/dist/dataModel/ShowStyleBase'
 import { PackageInfo } from '../coreSystem'
 import { IngestActions } from './ingest/actions'
 import { ReloadRundownPlaylistResponse, TriggerReloadDataResponse } from '../../lib/api/userActions'
@@ -13,8 +13,8 @@ import { StudioContentWriteAccess } from '../security/studio'
 import { runIngestOperation } from './ingest/lib'
 import { IngestJobs } from '@sofie-automation/corelib/dist/worker/ingest'
 import { VerifiedRundownContentAccess, VerifiedRundownPlaylistContentAccess } from './lib'
-import { Blueprint } from '../../lib/collections/Blueprints'
-import { Studio } from '../../lib/collections/Studios'
+import { Blueprint } from '@sofie-automation/corelib/dist/dataModel/Blueprint'
+import { DBStudio } from '@sofie-automation/corelib/dist/dataModel/Studio'
 import { RundownPlaylistId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import { Blueprints, Rundowns, ShowStyleBases, ShowStyleVariants, Studios } from '../collections'
 
@@ -87,7 +87,7 @@ export namespace ClientRundownAPI {
 						_id: 1,
 						_rundownVersionHash: 1,
 					},
-				})) as Pick<ShowStyleVariant, '_id' | '_rundownVersionHash'>
+				})) as Pick<DBShowStyleVariant, '_id' | '_rundownVersionHash'>
 				if (!showStyleVariant) return 'missing showStyleVariant'
 				if (rundown.importVersions.showStyleVariant !== (showStyleVariant._rundownVersionHash || 0))
 					return 'showStyleVariant'
@@ -98,7 +98,7 @@ export namespace ClientRundownAPI {
 						_rundownVersionHash: 1,
 						blueprintId: 1,
 					},
-				})) as Pick<ShowStyleBase, '_id' | '_rundownVersionHash' | 'blueprintId'>
+				})) as Pick<DBShowStyleBase, '_id' | '_rundownVersionHash' | 'blueprintId'>
 				if (!showStyleBase) return 'missing showStyleBase'
 				if (rundown.importVersions.showStyleBase !== (showStyleBase._rundownVersionHash || 0))
 					return 'showStyleBase'
@@ -117,7 +117,7 @@ export namespace ClientRundownAPI {
 						_id: 1,
 						_rundownVersionHash: 1,
 					},
-				})) as Pick<Studio, '_id' | '_rundownVersionHash'>
+				})) as Pick<DBStudio, '_id' | '_rundownVersionHash'>
 				if (!studio) return 'missing studio'
 				if (rundown.importVersions.studio !== (studio._rundownVersionHash || 0)) return 'studio'
 			})

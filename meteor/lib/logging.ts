@@ -1,6 +1,7 @@
 import { Meteor } from 'meteor/meteor'
-import * as _ from 'underscore'
-import { stringifyError } from './lib'
+import { stringifyError } from '@sofie-automation/shared-lib/dist/lib/stringifyError'
+
+export const LOGGER_METHOD_NAME = 'logger'
 
 export interface LoggerInstanceFixed {
 	error: LeveledLogMethodFixed
@@ -29,12 +30,12 @@ export interface LeveledLogMethodFixed {
 
 let logger: LoggerInstanceFixed
 if (Meteor.isServer) {
-	const getLogMethod = (type) => {
-		return (...args) => {
-			const stringifiedArgs: string[] = _.map(args, (arg) => {
+	const getLogMethod = (type: string) => {
+		return (...args: any[]) => {
+			const stringifiedArgs: string[] = args.map((arg) => {
 				return stringifyError(arg)
 			})
-			return Meteor.call('logger', type, ...stringifiedArgs)
+			return Meteor.call(LOGGER_METHOD_NAME, type, ...stringifiedArgs)
 		}
 	}
 
@@ -57,15 +58,22 @@ if (Meteor.isServer) {
 		notice: getLogMethod('notice'),
 	}
 } else {
-	const getLogMethod = (type) => {
-		return (...args) => {
-			// TODO: Should we also send errors and warnings to the server?
+	const getLogMethod = (type: string) => {
+		return (...args: any[]) => {
 			console.log(type, ...args)
+
+			if (type === 'error' || type === 'warn' || type === 'info') {
+				// Also send log entry to server, for logging:
+				const stringifiedArgs: string[] = args.map((arg) => {
+					return stringifyError(arg)
+				})
+				Meteor.call(LOGGER_METHOD_NAME, type, `Client ${type}`, ...stringifiedArgs)
+			}
 			return logger
 		}
 	}
 
-	const noop = (_type) => {
+	const noop = (_type: string) => {
 		// do nothing
 		return logger
 	}

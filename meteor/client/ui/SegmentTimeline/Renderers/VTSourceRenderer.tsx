@@ -1,24 +1,16 @@
 import * as React from 'react'
 import ReactDOM from 'react-dom'
-import * as _ from 'underscore'
 
 import { getElementWidth } from '../../../utils/dimensions'
 
 import ClassNames from 'classnames'
 import { CustomLayerItemRenderer, ICustomLayerItemProps } from './CustomLayerItemRenderer'
-import { MediaObject } from '../../../../lib/collections/MediaObjects'
-import { PackageInfo } from '@sofie-automation/blueprints-integration'
 
-import { Lottie } from '@crello/react-lottie'
-// @ts-expect-error Not recognized by Typescript
-import * as loopAnimation from './icon-loop.json'
 import { withTranslation, WithTranslation } from 'react-i18next'
 import { VTContent } from '@sofie-automation/blueprints-integration'
 import { PieceStatusIcon } from '../../../lib/ui/PieceStatusIcon'
 import { NoticeLevel, getNoticeLevelForPieceStatus } from '../../../../lib/notifications/notifications'
 import { VTFloatingInspector } from '../../FloatingInspectors/VTFloatingInspector'
-import { ScanInfoForPackage, ScanInfoForPackages } from '../../../../lib/mediaObjects'
-import { clone } from '../../../../lib/lib'
 import { RundownUtils } from '../../../lib/rundown'
 import { FreezeFrameIcon } from '../../../lib/ui/icons/freezeFrame'
 import StudioContext from '../../RundownView/StudioContext'
@@ -27,15 +19,12 @@ import { UIStudio } from '../../../../lib/api/studios'
 import { PieceStatusCode } from '@sofie-automation/corelib/dist/dataModel/Piece'
 import { HourglassIconSmall } from '../../../lib/ui/icons/notifications'
 import { IFloatingInspectorPosition } from '../../FloatingInspectors/IFloatingInspectorPosition'
+import { logger } from '../../../../lib/logging'
 
 interface IProps extends ICustomLayerItemProps {
 	studio: UIStudio | undefined
 }
 interface IState {
-	scenes?: Array<number>
-	blacks?: Array<PackageInfo.Anomaly>
-	freezes?: Array<PackageInfo.Anomaly>
-
 	rightLabelIsAppendage?: boolean
 	noticeLevel: NoticeLevel | null
 	begin: string
@@ -44,26 +33,14 @@ interface IState {
 	sourceEndCountdownAppendage?: boolean
 }
 export class VTSourceRendererBase extends CustomLayerItemRenderer<IProps & WithTranslation, IState> {
-	private leftLabel: HTMLSpanElement
-	private rightLabel: HTMLSpanElement
-
-	private metadataRev: string | undefined
-	private cachedContentPackageInfos: ScanInfoForPackages | undefined
+	private leftLabel: HTMLSpanElement | null = null
+	private rightLabel: HTMLSpanElement | null = null
 
 	private leftLabelNodes: JSX.Element | null = null
 	private rightLabelNodes: JSX.Element | null = null
 
 	private rightLabelContainer: HTMLSpanElement | null = null
 	private countdownContainer: HTMLSpanElement | null = null
-
-	private static readonly defaultLottieOptions = {
-		loop: true,
-		autoplay: false,
-		animationData: loopAnimation,
-		rendererSettings: {
-			preserveAspectRatio: 'xMidYMid slice',
-		},
-	}
 
 	constructor(props: IProps & WithTranslation) {
 		super(props)
@@ -73,7 +50,7 @@ export class VTSourceRendererBase extends CustomLayerItemRenderer<IProps & WithT
 		const labelItems = innerPiece.name.split('||')
 
 		this.state = {
-			noticeLevel: getNoticeLevelForPieceStatus(innerPiece.status),
+			noticeLevel: getNoticeLevelForPieceStatus(props.piece.contentStatus?.status),
 			begin: labelItems[0] || '',
 			end: labelItems[1] || '',
 		}
@@ -116,7 +93,7 @@ export class VTSourceRendererBase extends CustomLayerItemRenderer<IProps & WithT
 					try {
 						this.rightLabelContainer?.remove()
 					} catch (err) {
-						console.error('Error in VTSourceRendererBase.mountRightLabelContainer 1', err)
+						logger.error('Error in VTSourceRendererBase.mountRightLabelContainer 1', err)
 					}
 					itemElement.appendChild(this.rightLabelContainer)
 					newState.rightLabelIsAppendage = false
@@ -130,7 +107,7 @@ export class VTSourceRendererBase extends CustomLayerItemRenderer<IProps & WithT
 					try {
 						this.rightLabelContainer?.remove()
 					} catch (err) {
-						console.error('Error in VTSourceRendererBase.mountRightLabelContainer 2', err)
+						logger.error('Error in VTSourceRendererBase.mountRightLabelContainer 2', err)
 					}
 					itemElement.appendChild(this.rightLabelContainer)
 					newState.rightLabelIsAppendage = false
@@ -171,7 +148,7 @@ export class VTSourceRendererBase extends CustomLayerItemRenderer<IProps & WithT
 			try {
 				this.countdownContainer.remove()
 			} catch (err) {
-				console.error('Error in VTSourceRendererBase.mountSourceEndedCountdownContainer 1', err)
+				logger.error('Error in VTSourceRendererBase.mountSourceEndedCountdownContainer 1', err)
 			}
 			newState.sourceEndCountdownAppendage = false
 		}
@@ -189,25 +166,6 @@ export class VTSourceRendererBase extends CustomLayerItemRenderer<IProps & WithT
 		let newState: Partial<IState> = {}
 
 		this.updateAnchoredElsWidths()
-		if (this.props.piece.contentPackageInfos) {
-			this.setState({
-				scenes: this.getScenes(),
-				freezes: this.getFreezes(),
-				blacks: this.getBlacks(),
-			})
-		} else {
-			// Fallback to Media objects:
-			const metadata = this.props.piece.contentMetaData as MediaObject
-			if (metadata && metadata._rev) {
-				this.metadataRev = metadata._rev // update only if the metadata object changed
-
-				this.setState({
-					scenes: this.getScenes(),
-					freezes: this.getFreezes(),
-					blacks: this.getBlacks(),
-				})
-			}
-		}
 
 		newState = this.mountRightLabelContainer(this.props, null, newState, itemElement)
 		newState = this.mountSourceEndedCountdownContainer(this.props, newState, itemElement)
@@ -239,38 +197,12 @@ export class VTSourceRendererBase extends CustomLayerItemRenderer<IProps & WithT
 		let newState: Partial<IState> = {}
 		if (
 			innerPiece.name !== prevProps.piece.instance.piece.name ||
-			innerPiece.status !== prevProps.piece.instance.piece.status
+			this.props.piece.contentStatus?.status !== prevProps.piece.contentStatus?.status
 		) {
 			const labelItems = innerPiece.name.split('||')
-			newState.noticeLevel = getNoticeLevelForPieceStatus(innerPiece.status)
+			newState.noticeLevel = getNoticeLevelForPieceStatus(this.props.piece.contentStatus?.status)
 			newState.begin = labelItems[0] || ''
 			newState.end = labelItems[1] || ''
-		}
-
-		if (this.props.piece.contentPackageInfos) {
-			if (!_.isEqual(this.cachedContentPackageInfos, this.props.piece.contentPackageInfos)) {
-				this.cachedContentPackageInfos = clone(this.props.piece.contentPackageInfos) // update only if the metadata object changed
-
-				newState.scenes = this.getScenes()
-				newState.freezes = this.getFreezes()
-				newState.blacks = this.getBlacks()
-			}
-		} else {
-			// Fallback to mediaObjects:
-
-			const metadata = this.props.piece.contentMetaData as MediaObject
-			if (metadata && metadata._rev && metadata._rev !== this.metadataRev) {
-				this.metadataRev = metadata._rev // update only if the metadata object changed
-				newState.scenes = this.getScenes()
-				newState.freezes = this.getFreezes()
-				newState.blacks = this.getBlacks()
-			} else if (!metadata && this.metadataRev !== undefined) {
-				this.metadataRev = undefined
-
-				newState.scenes = undefined
-				newState.freezes = undefined
-				newState.blacks = undefined
-			}
 		}
 
 		newState = this.mountRightLabelContainer(this.props, prevProps, newState, itemElement)
@@ -294,7 +226,7 @@ export class VTSourceRendererBase extends CustomLayerItemRenderer<IProps & WithT
 			try {
 				this.rightLabelContainer.remove()
 			} catch (err) {
-				console.error('Error in VTSourceRendererBase.componentWillUnmount 1', err)
+				logger.error('Error in VTSourceRendererBase.componentWillUnmount 1', err)
 			}
 			this.rightLabelContainer = null
 		}
@@ -303,114 +235,21 @@ export class VTSourceRendererBase extends CustomLayerItemRenderer<IProps & WithT
 			try {
 				this.countdownContainer.remove()
 			} catch (err) {
-				console.error('Error in VTSourceRendererBase.componentWillUnmount 2', err)
+				logger.error('Error in VTSourceRendererBase.componentWillUnmount 2', err)
 			}
 			this.countdownContainer = null
-		}
-	}
-
-	private getScenes = (): Array<number> | undefined => {
-		if (this.props.piece) {
-			const piece = this.props.piece
-			if (piece.contentPackageInfos) {
-				// TODO: support multiple packages:
-				const contentPackageInfos = Object.values<ScanInfoForPackage>(piece.contentPackageInfos)
-				if (contentPackageInfos[0]?.deepScan?.scenes) {
-					return _.compact(contentPackageInfos[0].deepScan.scenes.map((i) => i * 1000)) // convert into milliseconds
-				}
-			} else {
-				// Fallback to media objects:
-				const metadata = piece.contentMetaData as MediaObject
-				if (metadata && metadata.mediainfo && metadata.mediainfo.scenes) {
-					return _.compact(metadata.mediainfo.scenes.map((i) => i * 1000)) // convert into milliseconds
-				}
-			}
-		}
-	}
-
-	private getFreezes = (): Array<PackageInfo.Anomaly> | undefined => {
-		if (this.props.piece) {
-			if ((this.props.piece.instance.piece.content as VTContent | undefined)?.ignoreFreezeFrame) {
-				return
-			}
-
-			const piece = this.props.piece
-			if (piece.contentPackageInfos) {
-				let items: Array<PackageInfo.Anomaly> = []
-				// add freezes
-				// TODO: support multiple packages:
-				const contentPackageInfos = Object.values<ScanInfoForPackage>(piece.contentPackageInfos)
-				if (contentPackageInfos[0]?.deepScan?.freezes?.length) {
-					items = contentPackageInfos[0].deepScan.freezes.map((i): PackageInfo.Anomaly => {
-						return { start: i.start * 1000, end: i.end * 1000, duration: i.duration * 1000 }
-					})
-				}
-				return items
-			} else {
-				// Fallback to media objects:
-				const metadata = piece.contentMetaData as MediaObject
-				let items: Array<PackageInfo.Anomaly> = []
-				// add freezes
-				if (metadata && metadata.mediainfo && metadata.mediainfo.freezes?.length) {
-					items = metadata.mediainfo.freezes.map((i): PackageInfo.Anomaly => {
-						return { start: i.start * 1000, end: i.end * 1000, duration: i.duration * 1000 }
-					})
-				}
-				return items
-			}
-		}
-	}
-
-	private getBlacks = (): Array<PackageInfo.Anomaly> | undefined => {
-		if (this.props.piece) {
-			if ((this.props.piece.instance.piece.content as VTContent | undefined)?.ignoreBlackFrames) {
-				return
-			}
-
-			const piece = this.props.piece
-			if (piece.contentPackageInfos) {
-				let items: Array<PackageInfo.Anomaly> = []
-				// add blacks
-				// TODO: support multiple packages:
-				const contentPackageInfos = Object.values<ScanInfoForPackage>(piece.contentPackageInfos)
-				if (contentPackageInfos[0]?.deepScan?.blacks) {
-					items = [
-						...items,
-						...contentPackageInfos[0].deepScan.blacks.map((i): PackageInfo.Anomaly => {
-							return { start: i.start * 1000, end: i.end * 1000, duration: i.duration * 1000 }
-						}),
-					]
-				}
-				return items
-			} else {
-				// Fallback to media objects:
-				const metadata = piece.contentMetaData as MediaObject
-				let items: Array<PackageInfo.Anomaly> = []
-				// add blacks
-				if (metadata && metadata.mediainfo && metadata.mediainfo.blacks) {
-					items = [
-						...items,
-						...metadata.mediainfo.blacks.map((i): PackageInfo.Anomaly => {
-							return { start: i.start * 1000, end: i.end * 1000, duration: i.duration * 1000 }
-						}),
-					]
-				}
-				return items
-			}
 		}
 	}
 
 	private renderLeftLabel() {
 		const { noticeLevel, begin, end } = this.state
 
-		const vtContent = this.props.piece.instance.piece.content as VTContent | undefined
-
 		const duration = this.renderDuration()
 
 		return !this.props.piece.hasOriginInPreceedingPart || this.props.isLiveLine ? (
 			<span className="segment-timeline__piece__label" ref={this.setLeftLabelRef} style={this.getItemLabelOffsetLeft()}>
 				{noticeLevel !== null && <PieceStatusIcon noticeLevel={noticeLevel} />}
-				{this.props.piece.instance.piece.status === PieceStatusCode.SOURCE_NOT_READY && (
+				{this.props.piece.contentStatus?.status === PieceStatusCode.SOURCE_NOT_READY && (
 					<div className="piece__status-icon type-hourglass">
 						<HourglassIconSmall />
 					</div>
@@ -431,16 +270,7 @@ export class VTSourceRendererBase extends CustomLayerItemRenderer<IProps & WithT
 						begin
 					)}
 				</span>
-				{begin && end === '' && vtContent && vtContent.loop && (
-					<div className="segment-timeline__piece__label label-icon label-loop-icon">
-						<Lottie
-							config={VTSourceRendererBase.defaultLottieOptions}
-							width="24px"
-							height="24px"
-							playingState={this.props.showMiniInspector ? 'playing' : 'stopped'}
-						/>
-					</div>
-				)}
+				{begin && end === '' && this.renderLoopIcon()}
 				{this.renderContentTrimmed()}
 			</span>
 		) : null
@@ -449,8 +279,6 @@ export class VTSourceRendererBase extends CustomLayerItemRenderer<IProps & WithT
 	private renderRightLabel() {
 		const { end } = this.state
 		const { isLiveLine, part } = this.props
-
-		const vtContent = this.props.piece.instance.piece.content as VTContent | undefined
 
 		return (
 			<span
@@ -461,16 +289,7 @@ export class VTSourceRendererBase extends CustomLayerItemRenderer<IProps & WithT
 				ref={this.setRightLabelRef}
 				style={this.getItemLabelOffsetRight()}
 			>
-				{end && vtContent && vtContent.loop && (
-					<div className="segment-timeline__piece__label label-icon label-loop-icon">
-						<Lottie
-							config={VTSourceRendererBase.defaultLottieOptions}
-							width="24px"
-							height="24px"
-							playingState={this.props.showMiniInspector ? 'playing' : 'stopped'}
-						/>
-					</div>
-				)}
+				{end && this.renderLoopIcon()}
 				<span className="segment-timeline__piece__label last-words">{end}</span>
 				{this.renderInfiniteIcon()}
 				{
@@ -496,19 +315,22 @@ export class VTSourceRendererBase extends CustomLayerItemRenderer<IProps & WithT
 			livePositionInPart < (uiPiece.renderedInPoint || 0) + (uiPiece.renderedDuration || Number.POSITIVE_INFINITY) &&
 			vtContent &&
 			vtContent.sourceDuration !== undefined &&
+			!vtContent.loop &&
 			((part.instance.part.autoNext &&
 				(uiPiece.renderedInPoint || 0) + (vtContent.sourceDuration - seek) < (this.props.partDuration || 0)) ||
 				(!part.instance.part.autoNext &&
 					Math.abs(
 						(this.props.piece.renderedInPoint || 0) +
 							(vtContent.sourceDuration - seek) -
-							(this.props.partExpectedDuration || 0)
+							(this.props.partDisplayDuration || 0)
 					) > 500))
 		) {
 			let endOfContentAt: number = vtContent.sourceDuration + (vtContent.postrollDuration || 0)
 
 			if (Settings.useCountdownToFreezeFrame) {
-				const lastFreeze = this.state.freezes && this.state.freezes[this.state.freezes.length - 1]
+				const lastFreeze =
+					this.props.piece.contentStatus?.freezes &&
+					this.props.piece.contentStatus?.freezes[this.props.piece.contentStatus?.freezes.length - 1]
 				const endingFreezeStart =
 					lastFreeze &&
 					lastFreeze.start >= vtContent.sourceDuration &&
@@ -568,8 +390,8 @@ export class VTSourceRendererBase extends CustomLayerItemRenderer<IProps & WithT
 					<>
 						{this.renderInfiniteItemContentEnded()}
 						{this.renderContentEndCountdown()}
-						{this.state.scenes &&
-							this.state.scenes.map(
+						{this.props.piece.contentStatus?.scenes &&
+							this.props.piece.contentStatus?.scenes.map(
 								(i) =>
 									i < itemDuration &&
 									i - seek >= 0 && (
@@ -580,8 +402,8 @@ export class VTSourceRendererBase extends CustomLayerItemRenderer<IProps & WithT
 										></span>
 									)
 							)}
-						{this.state.freezes &&
-							this.state.freezes.map(
+						{this.props.piece.contentStatus?.freezes &&
+							this.props.piece.contentStatus?.freezes.map(
 								(i) =>
 									i.start < itemDuration &&
 									i.start - seek >= 0 && (
@@ -598,8 +420,8 @@ export class VTSourceRendererBase extends CustomLayerItemRenderer<IProps & WithT
 										></span>
 									)
 							)}
-						{this.state.blacks &&
-							this.state.blacks.map(
+						{this.props.piece.contentStatus?.blacks &&
+							this.props.piece.contentStatus?.blacks.map(
 								(i) =>
 									i.start < itemDuration &&
 									i.start - seek >= 0 && (
@@ -620,22 +442,18 @@ export class VTSourceRendererBase extends CustomLayerItemRenderer<IProps & WithT
 				{this.leftLabelNodes}
 				{this.rightLabelContainer && ReactDOM.createPortal(this.rightLabelNodes, this.rightLabelContainer)}
 				<VTFloatingInspector
-					status={this.props.piece.instance.piece.status}
+					status={this.props.piece.contentStatus?.status}
 					position={this.getFloatingInspectorStyle()}
 					content={vtContent}
 					itemElement={this.props.itemElement}
 					noticeLevel={this.state.noticeLevel}
 					showMiniInspector={this.props.showMiniInspector}
 					timePosition={realCursorTimePosition}
-					mediaPreviewUrl={this.props.mediaPreviewUrl}
 					typeClass={this.props.typeClass}
-					contentMetaData={this.props.piece.contentMetaData}
-					noticeMessages={this.props.piece.messages || []}
+					noticeMessages={this.props.piece.contentStatus?.messages || []}
 					renderedDuration={this.props.piece.renderedDuration || undefined}
-					contentPackageInfos={this.props.piece.contentPackageInfos}
-					pieceId={this.props.piece.instance.piece._id}
-					expectedPackages={this.props.piece.instance.piece.expectedPackages}
 					studio={this.props.studio}
+					previewUrl={this.props.piece.contentStatus?.previewUrl}
 				/>
 			</React.Fragment>
 		)

@@ -1,14 +1,12 @@
 import { Meteor } from 'meteor/meteor'
-import { check } from '../../lib/check'
+import { check, Match } from '../../lib/check'
 import { meteorPublish, AutoFillSelector } from './lib'
-import { CustomCollectionName, PubSub } from '../../lib/api/pubsub'
-import { DBStudio, getActiveRoutes, getRoutedMappings, RoutedMappings } from '../../lib/collections/Studios'
+import { MeteorPubSub } from '../../lib/api/pubsub'
+import { getActiveRoutes, getRoutedMappings } from '../../lib/collections/Studios'
 import { PeripheralDeviceReadAccess } from '../security/peripheralDevice'
-import { ExternalMessageQueueObj } from '../../lib/collections/ExternalMessageQueue'
-import { MediaObject } from '../../lib/collections/MediaObjects'
+import { ExternalMessageQueueObj } from '@sofie-automation/corelib/dist/dataModel/ExternalMessageQueue'
 import { StudioReadAccess } from '../security/studio'
 import { OrganizationReadAccess } from '../security/organization'
-import { MongoQuery } from '../../lib/typings/meteor'
 import { NoSecurityReadAccess } from '../security/noSecurity'
 import {
 	CustomPublish,
@@ -16,155 +14,122 @@ import {
 	setUpOptimizedObserverArray,
 	TriggerUpdate,
 } from '../lib/customPublication'
-import { ExpectedPackageDBBase } from '../../lib/collections/ExpectedPackages'
-import { ExpectedPackageWorkStatus } from '../../lib/collections/ExpectedPackageWorkStatuses'
-import { PackageContainerPackageStatusDB } from '../../lib/collections/PackageContainerPackageStatus'
-import { Match } from 'meteor/check'
 import { literal } from '../../lib/lib'
 import { ReadonlyDeep } from 'type-fest'
-import { FindOptions, MongoCursor } from '../../lib/collections/lib'
+import { FindOptions } from '../../lib/collections/lib'
 import { applyAndValidateOverrides } from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
-import { ExpectedPackageId, PeripheralDeviceId, StudioId } from '@sofie-automation/corelib/dist/dataModel/Ids'
+import { PeripheralDeviceId, StudioId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import {
 	ExpectedPackages,
 	ExpectedPackageWorkStatuses,
 	ExternalMessageQueue,
-	MediaObjects,
-	PackageContainerPackageStatuses,
 	PackageContainerStatuses,
+	PackageInfos,
 	PeripheralDevices,
 	Studios,
 } from '../collections'
+import { MongoQuery } from '@sofie-automation/corelib/dist/mongo'
+import { RoutedMappings } from '@sofie-automation/shared-lib/dist/core/model/Timeline'
+import { DBStudio } from '@sofie-automation/corelib/dist/dataModel/Studio'
+import { CorelibPubSub } from '@sofie-automation/corelib/dist/pubsub'
+import {
+	PeripheralDevicePubSub,
+	PeripheralDevicePubSubCollectionsNames,
+} from '@sofie-automation/shared-lib/dist/pubsub/peripheralDevice'
 
-meteorPublish(PubSub.studios, async function (selector0, token) {
-	const { cred, selector } = await AutoFillSelector.organizationId<DBStudio>(this.userId, selector0, token)
-	const modifier: FindOptions<DBStudio> = {
-		fields: {},
-	}
+meteorPublish(CorelibPubSub.studios, async function (studioIds: StudioId[] | null, token: string | undefined) {
+	check(studioIds, Match.Maybe(Array))
+
+	// If values were provided, they must have values
+	if (studioIds && studioIds.length === 0) return null
+
+	const { cred, selector } = await AutoFillSelector.organizationId<DBStudio>(this.userId, {}, token)
+
+	// Add the requested filter
+	if (studioIds) selector._id = { $in: studioIds }
+
 	if (
 		!cred ||
 		NoSecurityReadAccess.any() ||
 		(selector._id && (await StudioReadAccess.studio(selector._id, cred))) ||
 		(selector.organizationId && (await OrganizationReadAccess.organizationContent(selector.organizationId, cred)))
 	) {
-		return Studios.findWithCursor(selector, modifier)
+		return Studios.findWithCursor(selector)
 	}
 	return null
 })
 
-meteorPublish(PubSub.externalMessageQueue, async function (selector, token) {
-	if (!selector) throw new Meteor.Error(400, 'selector argument missing')
-	const modifier: FindOptions<ExternalMessageQueueObj> = {
-		fields: {},
-	}
-	if (await StudioReadAccess.studioContent(selector.studioId, { userId: this.userId, token })) {
-		return ExternalMessageQueue.findWithCursor(selector, modifier)
-	}
-	return null
-})
-
-meteorPublish(PubSub.mediaObjects, async function (studioId, selector, token) {
-	if (!studioId) throw new Meteor.Error(400, 'studioId argument missing')
-	selector = selector || {}
-	check(studioId, String)
-	check(selector, Object)
-	const modifier: FindOptions<MediaObject> = {
-		fields: {},
-	}
-	selector.studioId = studioId
-	if (await StudioReadAccess.studioContent(selector.studioId, { userId: this.userId, token })) {
-		return MediaObjects.findWithCursor(selector, modifier)
-	}
-	return null
-})
-meteorPublish(PubSub.expectedPackages, async function (selector, token) {
-	// Note: This differs from the expected packages sent to the Package Manager, instead @see PubSub.expectedPackagesForDevice
-	if (!selector) throw new Meteor.Error(400, 'selector argument missing')
-	const modifier: FindOptions<ExpectedPackageDBBase> = {
-		fields: {},
-	}
-	if (await StudioReadAccess.studioContent(selector.studioId, { userId: this.userId, token })) {
-		return ExpectedPackages.findWithCursor(selector, modifier)
-	}
-	return null
-})
-meteorPublish(PubSub.expectedPackageWorkStatuses, async function (selector, token) {
-	if (!selector) throw new Meteor.Error(400, 'selector argument missing')
-	const modifier: FindOptions<ExpectedPackageWorkStatus> = {
-		fields: {},
-	}
-	if (await StudioReadAccess.studioContent(selector.studioId, { userId: this.userId, token })) {
-		return ExpectedPackageWorkStatuses.findWithCursor(selector, modifier)
-	}
-	return null
-})
-meteorPublish(PubSub.packageContainerStatuses, async function (selector, token) {
-	if (!selector) throw new Meteor.Error(400, 'selector argument missing')
-	const modifier: FindOptions<ExpectedPackageWorkStatus> = {
-		fields: {},
-	}
-	if (await StudioReadAccess.studioContent(selector.studioId, { userId: this.userId, token })) {
-		return PackageContainerStatuses.findWithCursor(selector, modifier)
-	}
-	return null
-})
 meteorPublish(
-	PubSub.packageContainerPackageStatuses,
-	async function (studioId: StudioId, containerId?: string | null, packageId?: ExpectedPackageId | null) {
-		if (!studioId) throw new Meteor.Error(400, 'studioId argument missing')
-
-		check(studioId, String)
-		check(containerId, Match.Maybe(String))
-		check(packageId, Match.Maybe(String))
-
-		const modifier: FindOptions<PackageContainerPackageStatusDB> = {
+	CorelibPubSub.externalMessageQueue,
+	async function (selector: MongoQuery<ExternalMessageQueueObj>, token: string | undefined) {
+		if (!selector) throw new Meteor.Error(400, 'selector argument missing')
+		const modifier: FindOptions<ExternalMessageQueueObj> = {
 			fields: {},
 		}
-		const selector: MongoQuery<PackageContainerPackageStatusDB> = {
-			studioId: studioId,
+		if (await StudioReadAccess.studioContent(selector.studioId, { userId: this.userId, token })) {
+			return ExternalMessageQueue.findWithCursor(selector, modifier)
 		}
-		if (containerId) selector.containerId = containerId
-		if (packageId) selector.packageId = packageId
+		return null
+	}
+)
 
-		if (await StudioReadAccess.studioContent(selector.studioId, { userId: this.userId })) {
-			return PackageContainerPackageStatuses.findWithCursor(selector, modifier)
+meteorPublish(CorelibPubSub.expectedPackages, async function (studioIds: StudioId[], token: string | undefined) {
+	// Note: This differs from the expected packages sent to the Package Manager, instead @see PubSub.expectedPackagesForDevice
+	check(studioIds, Array)
+
+	if (studioIds.length === 0) return null
+
+	if (await StudioReadAccess.studioContent(studioIds, { userId: this.userId, token })) {
+		return ExpectedPackages.findWithCursor({
+			studioId: { $in: studioIds },
+		})
+	}
+	return null
+})
+meteorPublish(
+	CorelibPubSub.expectedPackageWorkStatuses,
+	async function (studioIds: StudioId[], token: string | undefined) {
+		check(studioIds, Array)
+
+		if (studioIds.length === 0) return null
+
+		if (await StudioReadAccess.studioContent(studioIds, { userId: this.userId, token })) {
+			return ExpectedPackageWorkStatuses.findWithCursor({
+				studioId: { $in: studioIds },
+			})
 		}
 		return null
 	}
 )
 meteorPublish(
-	PubSub.packageContainerPackageStatusesSimple,
-	async function (studioId: StudioId, containerId?: string | null, packageId?: ExpectedPackageId | null) {
-		if (!studioId) throw new Meteor.Error(400, 'studioId argument missing')
+	CorelibPubSub.packageContainerStatuses,
+	async function (studioIds: StudioId[], token: string | undefined) {
+		check(studioIds, Array)
 
-		check(studioId, String)
-		check(containerId, Match.Maybe(String))
-		check(packageId, Match.Maybe(String))
+		if (studioIds.length === 0) return null
 
-		const modifier: FindOptions<PackageContainerPackageStatusDB> = {
-			projection: {
-				modified: 0,
-			},
-		}
-		const selector: MongoQuery<PackageContainerPackageStatusDB> = {
-			studioId: studioId,
-		}
-		if (containerId) selector.containerId = containerId
-		if (packageId) selector.packageId = packageId
-
-		if (await StudioReadAccess.studioContent(selector.studioId, { userId: this.userId })) {
-			return PackageContainerPackageStatuses.findWithCursor(selector, modifier) as Promise<
-				MongoCursor<Omit<PackageContainerPackageStatusDB, 'modified'>>
-			>
+		if (await StudioReadAccess.studioContent(studioIds, { userId: this.userId, token })) {
+			return PackageContainerStatuses.findWithCursor({
+				studioId: { $in: studioIds },
+			})
 		}
 		return null
 	}
 )
 
+meteorPublish(CorelibPubSub.packageInfos, async function (deviceId: PeripheralDeviceId, token: string | undefined) {
+	if (!deviceId) throw new Meteor.Error(400, 'deviceId argument missing')
+
+	if (await PeripheralDeviceReadAccess.peripheralDeviceContent(deviceId, { userId: this.userId, token })) {
+		return PackageInfos.findWithCursor({ deviceId })
+	}
+	return null
+})
+
 meteorCustomPublish(
-	PubSub.mappingsForDevice,
-	CustomCollectionName.StudioMappings,
-	async function (pub, deviceId: PeripheralDeviceId, token) {
+	PeripheralDevicePubSub.mappingsForDevice,
+	PeripheralDevicePubSubCollectionsNames.studioMappings,
+	async function (pub, deviceId: PeripheralDeviceId, token: string | undefined) {
 		check(deviceId, String)
 
 		if (await PeripheralDeviceReadAccess.peripheralDeviceContent(deviceId, { userId: this.userId, token })) {
@@ -181,9 +146,9 @@ meteorCustomPublish(
 )
 
 meteorCustomPublish(
-	PubSub.mappingsForStudio,
-	CustomCollectionName.StudioMappings,
-	async function (pub, studioId: StudioId, token) {
+	MeteorPubSub.mappingsForStudio,
+	PeripheralDevicePubSubCollectionsNames.studioMappings,
+	async function (pub, studioId: StudioId, token: string | undefined) {
 		check(studioId, String)
 
 		if (await StudioReadAccess.studio(studioId, { userId: this.userId, token })) {
@@ -258,7 +223,7 @@ async function createObserverForMappingsPublication(pub: CustomPublish<RoutedMap
 		RoutedMappingsState,
 		RoutedMappingsUpdateProps
 	>(
-		`${CustomCollectionName.StudioMappings}_${studioId}`,
+		`${PeripheralDevicePubSubCollectionsNames.studioMappings}_${studioId}`,
 		{ studioId },
 		setupMappingsPublicationObservers,
 		manipulateMappingsPublicationData,

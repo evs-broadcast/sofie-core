@@ -13,27 +13,25 @@ import { BucketAdLib } from '@sofie-automation/corelib/dist/dataModel/BucketAdLi
 import { CollectionName } from '@sofie-automation/corelib/dist/dataModel/Collections'
 import { ExpectedPackageWorkStatus } from '@sofie-automation/corelib/dist/dataModel/ExpectedPackageWorkStatuses'
 import { ExternalMessageQueueObj } from '@sofie-automation/corelib/dist/dataModel/ExternalMessageQueue'
-import { PackageContainerPackageStatusDB } from '@sofie-automation/corelib/dist/dataModel/PackageContainerPackageStatus'
 import { PackageContainerStatusDB } from '@sofie-automation/corelib/dist/dataModel/PackageContainerStatus'
-import { MediaObject } from '@sofie-automation/shared-lib/dist/core/model/MediaObjects'
 import { MediaWorkFlow } from '@sofie-automation/shared-lib/dist/core/model/MediaWorkFlows'
 import { MediaWorkFlowStep } from '@sofie-automation/shared-lib/dist/core/model/MediaWorkFlowSteps'
 import { Meteor } from 'meteor/meteor'
 import { Bucket } from '../../lib/collections/Buckets'
 import { ICoreSystem, SYSTEM_ID } from '../../lib/collections/CoreSystem'
 import { Evaluation } from '../../lib/collections/Evaluations'
-import { ExpectedPackageDB } from '../../lib/collections/ExpectedPackages'
+import { ExpectedPackageDB } from '@sofie-automation/corelib/dist/dataModel/ExpectedPackages'
 import {
 	createSyncMongoCollection,
 	createSyncReadOnlyMongoCollection,
 	wrapMongoCollection,
 } from '../../lib/collections/lib'
-import { PeripheralDevice } from '../../lib/collections/PeripheralDevices'
+import { PeripheralDevice } from '@sofie-automation/corelib/dist/dataModel/PeripheralDevice'
 import { RundownLayoutBase } from '../../lib/collections/RundownLayouts'
-import { ShowStyleBase } from '../../lib/collections/ShowStyleBases'
-import { ShowStyleVariant } from '../../lib/collections/ShowStyleVariants'
+import { DBShowStyleBase } from '@sofie-automation/corelib/dist/dataModel/ShowStyleBase'
+import { DBShowStyleVariant } from '@sofie-automation/corelib/dist/dataModel/ShowStyleVariant'
 import { SnapshotItem } from '../../lib/collections/Snapshots'
-import { Studio } from '../../lib/collections/Studios'
+import { DBStudio } from '@sofie-automation/corelib/dist/dataModel/Studio'
 import { TranslationsBundle } from '../../lib/collections/TranslationsBundles'
 import { DBTriggeredActions } from '../../lib/collections/TriggeredActions'
 import { UserActionsLogItem } from '../../lib/collections/UserActionsLog'
@@ -66,16 +64,10 @@ export const ExternalMessageQueue = createSyncReadOnlyMongoCollection<ExternalMe
 	CollectionName.ExternalMessageQueue
 )
 
-export const MediaObjects = createSyncReadOnlyMongoCollection<MediaObject>(CollectionName.MediaObjects)
-
 export const MediaWorkFlows = createSyncReadOnlyMongoCollection<MediaWorkFlow>(CollectionName.MediaWorkFlows)
 
 export const MediaWorkFlowSteps = createSyncReadOnlyMongoCollection<MediaWorkFlowStep>(
 	CollectionName.MediaWorkFlowSteps
-)
-
-export const PackageContainerPackageStatuses = createSyncReadOnlyMongoCollection<PackageContainerPackageStatusDB>(
-	CollectionName.PackageContainerPackageStatuses
 )
 
 export const PackageContainerStatuses = createSyncReadOnlyMongoCollection<PackageContainerStatusDB>(
@@ -86,13 +78,13 @@ export const PeripheralDevices = createSyncMongoCollection<PeripheralDevice>(Col
 
 export const RundownLayouts = createSyncMongoCollection<RundownLayoutBase>(CollectionName.RundownLayouts)
 
-export const ShowStyleBases = createSyncMongoCollection<ShowStyleBase>(CollectionName.ShowStyleBases)
+export const ShowStyleBases = createSyncMongoCollection<DBShowStyleBase>(CollectionName.ShowStyleBases)
 
-export const ShowStyleVariants = createSyncMongoCollection<ShowStyleVariant>(CollectionName.ShowStyleVariants)
+export const ShowStyleVariants = createSyncMongoCollection<DBShowStyleVariant>(CollectionName.ShowStyleVariants)
 
 export const Snapshots = createSyncMongoCollection<SnapshotItem>(CollectionName.Snapshots)
 
-export const Studios = createSyncMongoCollection<Studio>(CollectionName.Studios)
+export const Studios = createSyncMongoCollection<DBStudio>(CollectionName.Studios)
 
 export const TranslationsBundles = createSyncReadOnlyMongoCollection<TranslationsBundle>(
 	CollectionName.TranslationsBundles

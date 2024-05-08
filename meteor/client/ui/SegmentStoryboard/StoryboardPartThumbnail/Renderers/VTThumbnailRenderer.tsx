@@ -5,13 +5,13 @@ import { VTFloatingInspector } from '../../../FloatingInspectors/VTFloatingInspe
 import { getNoticeLevelForPieceStatus } from '../../../../../lib/notifications/notifications'
 import { RundownUtils } from '../../../../lib/rundown'
 import { IProps } from './ThumbnailRendererFactory'
-import { getPreviewUrlForPieceUi, getThumbnailUrlForPieceUi } from '../../../../lib/ui/clipPreview'
 import { RundownTimingConsumer } from '../../../RundownView/RundownTiming/RundownTimingConsumer'
 import { unprotectString } from '../../../../../lib/lib'
 import { FreezeFrameIcon } from '../../../../lib/ui/icons/freezeFrame'
 import { PieceStatusIcon } from '../../../../lib/ui/PieceStatusIcon'
 import { PieceStatusCode } from '@sofie-automation/corelib/dist/dataModel/Piece'
 import { FREEZE_FRAME_FLASH } from '../../../SegmentContainer/withResolvedSegment'
+import { LoopingPieceIcon } from '../../../../lib/ui/icons/looping'
 
 export function VTThumbnailRenderer({
 	partId,
@@ -25,22 +25,20 @@ export function VTThumbnailRenderer({
 	studio,
 	layer,
 	height,
-}: IProps): JSX.Element {
-	const mediaPreviewUrl = studio.settings.mediaPreviewsUrl
-
-	const status = pieceInstance.instance.piece.status
+}: Readonly<IProps>): JSX.Element {
+	const status = pieceInstance.contentStatus?.status
 
 	const vtContent = pieceInstance.instance.piece.content as VTContent
 
-	const previewUrl: string | undefined = getPreviewUrlForPieceUi(pieceInstance, studio, mediaPreviewUrl)
-	const thumbnailUrl: string | undefined = getThumbnailUrlForPieceUi(pieceInstance, studio, mediaPreviewUrl)
+	const previewUrl: string | undefined = pieceInstance.contentStatus?.previewUrl
+	const thumbnailUrl: string | undefined = pieceInstance.contentStatus?.thumbnailUrl
 
-	const noticeLevel = status !== null && status !== undefined ? getNoticeLevelForPieceStatus(status) : null
+	const noticeLevel = getNoticeLevelForPieceStatus(status)
 
 	return (
 		<>
 			<VTFloatingInspector
-				status={status || PieceStatusCode.UNKNOWN}
+				status={status ?? PieceStatusCode.UNKNOWN}
 				showMiniInspector={hovering}
 				timePosition={hoverScrubTimePosition}
 				content={vtContent}
@@ -53,14 +51,10 @@ export function VTThumbnailRenderer({
 				}}
 				typeClass={layer && RundownUtils.getSourceLayerClassName(layer.type)}
 				itemElement={null}
-				contentMetaData={pieceInstance.contentMetaData || null}
-				noticeMessages={pieceInstance.messages || null}
+				noticeMessages={pieceInstance.contentStatus?.messages ?? null}
 				noticeLevel={noticeLevel}
-				mediaPreviewUrl={mediaPreviewUrl}
-				contentPackageInfos={pieceInstance.contentPackageInfos}
-				pieceId={pieceInstance.instance.piece._id}
-				expectedPackages={pieceInstance.instance.piece.expectedPackages}
 				studio={studio}
+				previewUrl={pieceInstance.contentStatus?.previewUrl}
 			/>
 			<RundownTimingConsumer
 				filter={(timingContext) => ({
@@ -72,6 +66,7 @@ export function VTThumbnailRenderer({
 			>
 				{(timingContext) => {
 					if (!timingContext.partPlayed || !timingContext.partDisplayDurations) return null
+					if (pieceInstance.instance.piece.content?.loop) return null
 
 					const partPlayed = timingContext.partPlayed[unprotectString(partId)] ?? 0
 					const contentEnd =
@@ -111,6 +106,11 @@ export function VTThumbnailRenderer({
 					) : null
 				}}
 			</RundownTimingConsumer>
+			{pieceInstance.instance.piece.content?.loop && (
+				<div className="segment-storyboard__thumbnail__countdown">
+					<LoopingPieceIcon className="segment-storyboard__thumbnail__countdown-icon" playing={hovering} />
+				</div>
+			)}
 			<div className="segment-storyboard__thumbnail__label">
 				{noticeLevel !== null && <PieceStatusIcon noticeLevel={noticeLevel} />}
 				{pieceInstance.instance.piece.name}

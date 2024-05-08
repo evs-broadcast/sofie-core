@@ -1,7 +1,7 @@
 import * as React from 'react'
-import { ExpectedPackageWorkStatus } from '../../../../lib/collections/ExpectedPackageWorkStatuses'
+import { ExpectedPackageWorkStatus } from '@sofie-automation/corelib/dist/dataModel/ExpectedPackageWorkStatuses'
 import { assertNever, unprotectString } from '../../../../lib/lib'
-import { ExpectedPackageDB } from '../../../../lib/collections/ExpectedPackages'
+import { ExpectedPackageDB } from '@sofie-automation/corelib/dist/dataModel/ExpectedPackages'
 import Tooltip from 'rc-tooltip'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faChevronDown, faChevronRight } from '@fortawesome/free-solid-svg-icons'
@@ -155,7 +155,9 @@ export const PackageStatus: React.FC<{
 	)
 }
 
-function PackageStatusIcon(props: { progress: number | undefined; label: string; isWorking: boolean }): JSX.Element {
+function PackageStatusIcon(
+	props: Readonly<{ progress: number | undefined; label: string; isWorking: boolean }>
+): JSX.Element {
 	const svgCircleSector = (x: number, y: number, radius: number, v: number, color: string) => {
 		if (v >= 1) {
 			return <circle cx={x} cy={y} r={radius} fill={color}></circle>

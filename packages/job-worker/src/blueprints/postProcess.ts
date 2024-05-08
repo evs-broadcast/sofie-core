@@ -27,7 +27,6 @@ import { JobContext, ProcessedShowStyleCompound } from '../jobs'
 import {
 	EmptyPieceTimelineObjectsBlob,
 	Piece,
-	PieceStatusCode,
 	serializePieceTimelineObjectsBlob,
 } from '@sofie-automation/corelib/dist/dataModel/Piece'
 import { AdLibPiece } from '@sofie-automation/corelib/dist/dataModel/AdLibPiece'
@@ -36,7 +35,7 @@ import { RundownBaselineAdLibAction } from '@sofie-automation/corelib/dist/dataM
 import { ArrayElement, getHash, literal, omit } from '@sofie-automation/corelib/dist/lib'
 import { BucketAdLibAction } from '@sofie-automation/corelib/dist/dataModel/BucketAdLibAction'
 import { RundownImportVersions } from '@sofie-automation/corelib/dist/dataModel/Rundown'
-import { BucketAdLib } from '@sofie-automation/corelib/dist/dataModel/BucketAdLibPiece'
+import { BucketAdLib, BucketAdLibIngestInfo } from '@sofie-automation/corelib/dist/dataModel/BucketAdLibPiece'
 import {
 	interpollateTranslation,
 	wrapTranslatableMessageFromBlueprints,
@@ -100,15 +99,13 @@ export function postProcessPieces(
 		const piece: Piece = {
 			pieceType: IBlueprintPieceType.Normal,
 
-			...(orgPiece as Omit<IBlueprintPiece, 'continuesRefId'>),
+			...orgPiece,
 			content: omit(orgPiece.content, 'timelineObjects'),
 
 			_id: protectString(docId),
-			continuesRefId: protectString(orgPiece.continuesRefId),
 			startRundownId: rundownId,
 			startSegmentId: segmentId,
 			startPartId: partId,
-			status: PieceStatusCode.UNKNOWN,
 			invalid: setInvalid ?? false,
 			timelineObjectsString: EmptyPieceTimelineObjectsBlob,
 		}
@@ -145,7 +142,7 @@ export function postProcessPieces(
 	return processedPieces
 }
 
-function isNow(enable: TSR.TSRTimelineObj<any>['enable']): boolean {
+function isNow(enable: TimelineObjectCoreExt<any>['enable']): boolean {
 	if (Array.isArray(enable)) {
 		return !!enable.find((e) => e.start === 'now')
 	} else {
@@ -163,10 +160,10 @@ function isNow(enable: TSR.TSRTimelineObj<any>['enable']): boolean {
 export function postProcessTimelineObjects(
 	pieceId: PieceId,
 	blueprintId: BlueprintId,
-	timelineObjects: TSR.TSRTimeline,
+	timelineObjects: TimelineObjectCoreExt<TSR.TSRTimelineContent>[],
 	timelineUniqueIds: Set<string> = new Set<string>()
 ): TimelineObjRundown[] {
-	const postProcessedTimeline = timelineObjects.map((o: TimelineObjectCoreExt<any>, i) => {
+	const postProcessedTimeline = (timelineObjects as TimelineObjectCoreExt<any>[]).map((o, i) => {
 		const obj: TimelineObjRundown = {
 			...o,
 			id: o.id,
@@ -177,6 +174,11 @@ export function postProcessTimelineObjects(
 		if (isNow(obj.enable))
 			throw new Error(
 				`Error in blueprint "${blueprintId}" timelineObjs cannot have a start of 'now'! ("${obj.id}")`
+			)
+
+		if (typeof obj.priority !== 'number')
+			throw new Error(
+				`Error in blueprint "${blueprintId}" timelineObjs must have a numeric priority! ("${obj.id}")`
 			)
 
 		if (timelineUniqueIds.has(obj.id))
@@ -244,7 +246,6 @@ export function postProcessAdLibPieces(
 			_id: protectString(docId),
 			rundownId: rundownId,
 			partId: partId,
-			status: PieceStatusCode.UNKNOWN,
 			timelineObjectsString: EmptyPieceTimelineObjectsBlob,
 		}
 
@@ -360,7 +361,7 @@ export function postProcessAdLibActions(
  */
 export function postProcessStudioBaselineObjects(
 	blueprintId: BlueprintId | undefined,
-	objs: TSR.TSRTimeline
+	objs: TimelineObjectCoreExt<TSR.TSRTimelineContent>[]
 ): TimelineObjRundown[] {
 	return postProcessTimelineObjects(protectString('studio'), blueprintId ?? protectString(''), objs)
 }
@@ -372,7 +373,7 @@ export function postProcessStudioBaselineObjects(
  */
 export function postProcessRundownBaselineItems(
 	blueprintId: BlueprintId,
-	baselineItems: TSR.TSRTimeline
+	baselineItems: TimelineObjectCoreExt<TSR.TSRTimelineContent>[]
 ): TimelineObjGeneric[] {
 	return postProcessTimelineObjects(protectString('baseline'), blueprintId, baselineItems)
 }
@@ -392,25 +393,28 @@ export function postProcessBucketAdLib(
 	context: JobContext,
 	showStyleCompound: ReadonlyDeep<ProcessedShowStyleCompound>,
 	itemOrig: IBlueprintAdLibPiece,
-	externalId: string,
+	ingestInfo: BucketAdLibIngestInfo,
 	blueprintId: BlueprintId,
 	bucketId: BucketId,
 	rank: number | undefined,
 	importVersions: RundownImportVersions
 ): BucketAdLib {
 	const id: PieceId = protectString(
-		getHash(`${showStyleCompound.showStyleVariantId}_${context.studioId}_${bucketId}_bucket_adlib_${externalId}`)
+		getHash(
+			`${showStyleCompound.showStyleVariantId}_${context.studioId}_${bucketId}_bucket_adlib_${ingestInfo.payload.externalId}`
+		)
 	)
 	const piece: BucketAdLib = {
 		...itemOrig,
 		content: omit(itemOrig.content, 'timelineObjects'),
 		_id: id,
-		externalId,
+		externalId: ingestInfo.payload.externalId,
 		studioId: context.studioId,
 		showStyleBaseId: showStyleCompound._id,
 		showStyleVariantId: showStyleCompound.showStyleVariantId,
 		bucketId,
 		importVersions,
+		ingestInfo,
 		_rank: rank || itemOrig._rank,
 		timelineObjectsString: EmptyPieceTimelineObjectsBlob,
 	}
@@ -438,24 +442,27 @@ export function postProcessBucketAction(
 	context: JobContext,
 	showStyleCompound: ReadonlyDeep<ProcessedShowStyleCompound>,
 	itemOrig: IBlueprintActionManifest,
-	externalId: string,
+	ingestInfo: BucketAdLibIngestInfo,
 	blueprintId: BlueprintId,
 	bucketId: BucketId,
 	rank: number | undefined,
 	importVersions: RundownImportVersions
 ): BucketAdLibAction {
 	const id: AdLibActionId = protectString(
-		getHash(`${showStyleCompound.showStyleVariantId}_${context.studioId}_${bucketId}_bucket_adlib_${externalId}`)
+		getHash(
+			`${showStyleCompound.showStyleVariantId}_${context.studioId}_${bucketId}_bucket_adlib_${ingestInfo.payload.externalId}`
+		)
 	)
 	const action: BucketAdLibAction = {
 		...omit(itemOrig, 'partId'),
 		_id: id,
-		externalId,
+		externalId: ingestInfo.payload.externalId,
 		studioId: context.studioId,
 		showStyleBaseId: showStyleCompound._id,
 		showStyleVariantId: itemOrig.allVariants ? null : showStyleCompound.showStyleVariantId,
 		bucketId,
 		importVersions,
+		ingestInfo,
 		...processAdLibActionITranslatableMessages(itemOrig, blueprintId, rank),
 	}
 

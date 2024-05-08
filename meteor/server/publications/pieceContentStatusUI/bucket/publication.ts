@@ -7,9 +7,9 @@ import {
 	PackageContainerPackageId,
 	StudioId,
 } from '@sofie-automation/corelib/dist/dataModel/Ids'
-import { IncludeAllMongoFieldSpecifier } from '@sofie-automation/corelib/dist/mongo'
+import { MongoFieldSpecifierOnesStrict } from '@sofie-automation/corelib/dist/mongo'
 import { ReadonlyDeep } from 'type-fest'
-import { CustomCollectionName, PubSub } from '../../../../lib/api/pubsub'
+import { CustomCollectionName, MeteorPubSub } from '../../../../lib/api/pubsub'
 import { UIBucketContentStatus } from '../../../../lib/api/rundownNotifications'
 import { Buckets, MediaObjects, PackageContainerPackageStatuses, PackageInfos, Studios } from '../../../collections'
 import { literal, protectString } from '../../../../lib/lib'
@@ -22,7 +22,7 @@ import {
 import { logger } from '../../../logging'
 import { resolveCredentials } from '../../../security/lib/credentials'
 import { NoSecurityReadAccess } from '../../../security/noSecurity'
-import { BucketContentCache } from './bucketContentCache'
+import { BucketContentCache, createReactiveContentCache } from './bucketContentCache'
 import { LiveQueryHandle } from '../../../lib/lib'
 import { StudioReadAccess } from '../../../security/studio'
 import { Bucket } from '../../../../lib/collections/Buckets'
@@ -30,6 +30,9 @@ import {
 	addItemsWithDependenciesChangesToChangedSet,
 	fetchStudio,
 	IContentStatusesUpdatePropsBase,
+	mediaObjectFieldSpecifier,
+	packageContainerPackageStatusesFieldSpecifier,
+	packageInfoFieldSpecifier,
 	PieceDependencies,
 	studioFieldSpecifier,
 } from '../common'
@@ -61,7 +64,7 @@ interface UIBucketContentStatusesUpdateProps extends IContentStatusesUpdateProps
 }
 
 type BucketFields = '_id' | 'studioId'
-const bucketFieldSpecifier = literal<IncludeAllMongoFieldSpecifier<BucketFields>>({
+const bucketFieldSpecifier = literal<MongoFieldSpecifierOnesStrict<Pick<Bucket, BucketFields>>>({
 	_id: 1,
 	studioId: 1,
 })
@@ -95,33 +98,23 @@ async function setupUIBucketContentStatusesPublicationObservers(
 	})) as Pick<Bucket, BucketFields> | undefined
 	if (!bucket || bucket.studioId !== args.studioId) throw new Error(`Bucket "${args.bucketId}" not found!`)
 
-	const bucketContents = new BucketContentObserver(args.bucketId, (cache) => {
-		// Push update
-		triggerUpdate({ newCache: cache })
-
-		const innerQueries = [
-			cache.BucketAdLibs.find({}).observeChanges({
-				added: (id) => triggerUpdate(trackAdlibChange(protectString(id))),
-				changed: (id) => triggerUpdate(trackAdlibChange(protectString(id))),
-				removed: (id) => triggerUpdate(trackAdlibChange(protectString(id))),
-			}),
-			cache.BucketAdLibActions.find({}).observeChanges({
-				added: (id) => triggerUpdate(trackActionChange(protectString(id))),
-				changed: (id) => triggerUpdate(trackActionChange(protectString(id))),
-				removed: (id) => triggerUpdate(trackActionChange(protectString(id))),
-			}),
-		]
-
-		return () => {
-			for (const query of innerQueries) {
-				query.stop()
-			}
-		}
-	})
+	const contentCache = createReactiveContentCache()
+	triggerUpdate({ newCache: contentCache })
 
 	// Set up observers:
 	return [
-		bucketContents,
+		new BucketContentObserver(args.bucketId, contentCache),
+
+		contentCache.BucketAdLibs.find({}).observeChanges({
+			added: (id) => triggerUpdate(trackAdlibChange(protectString(id))),
+			changed: (id) => triggerUpdate(trackAdlibChange(protectString(id))),
+			removed: (id) => triggerUpdate(trackAdlibChange(protectString(id))),
+		}),
+		contentCache.BucketAdLibActions.find({}).observeChanges({
+			added: (id) => triggerUpdate(trackActionChange(protectString(id))),
+			changed: (id) => triggerUpdate(trackActionChange(protectString(id))),
+			removed: (id) => triggerUpdate(trackActionChange(protectString(id))),
+		}),
 
 		Studios.observeChanges(
 			{ _id: bucket.studioId },
@@ -140,7 +133,8 @@ async function setupUIBucketContentStatusesPublicationObservers(
 				added: (obj) => triggerUpdate(trackMediaObjectChange(obj.mediaId)),
 				changed: (obj) => triggerUpdate(trackMediaObjectChange(obj.mediaId)),
 				removed: (obj) => triggerUpdate(trackMediaObjectChange(obj.mediaId)),
-			}
+			},
+			{ projection: mediaObjectFieldSpecifier }
 		),
 		PackageInfos.observe(
 			{
@@ -153,7 +147,8 @@ async function setupUIBucketContentStatusesPublicationObservers(
 				added: (obj) => triggerUpdate(trackPackageInfoChange(obj.packageId)),
 				changed: (obj) => triggerUpdate(trackPackageInfoChange(obj.packageId)),
 				removed: (obj) => triggerUpdate(trackPackageInfoChange(obj.packageId)),
-			}
+			},
+			{ projection: packageInfoFieldSpecifier }
 		),
 		PackageContainerPackageStatuses.observeChanges(
 			{ studioId: bucket.studioId },
@@ -161,7 +156,8 @@ async function setupUIBucketContentStatusesPublicationObservers(
 				added: (id) => triggerUpdate(trackPackageContainerPackageStatusChange(id)),
 				changed: (id) => triggerUpdate(trackPackageContainerPackageStatusChange(id)),
 				removed: (id) => triggerUpdate(trackPackageContainerPackageStatusChange(id)),
-			}
+			},
+			{ projection: packageContainerPackageStatusesFieldSpecifier }
 		),
 	]
 }
@@ -248,7 +244,7 @@ async function manipulateUIBucketContentStatusesPublicationData(
 }
 
 meteorCustomPublish(
-	PubSub.uiBucketContentStatuses,
+	MeteorPubSub.uiBucketContentStatuses,
 	CustomCollectionName.UIBucketContentStatuses,
 	async function (pub, studioId: StudioId, bucketId: BucketId) {
 		check(studioId, String)
@@ -269,7 +265,7 @@ meteorCustomPublish(
 				UIBucketContentStatusesState,
 				UIBucketContentStatusesUpdateProps
 			>(
-				`pub_${PubSub.uiBucketContentStatuses}_${studioId}_${bucketId}`,
+				`pub_${MeteorPubSub.uiBucketContentStatuses}_${studioId}_${bucketId}`,
 				{ studioId, bucketId },
 				setupUIBucketContentStatusesPublicationObservers,
 				manipulateUIBucketContentStatusesPublicationData,

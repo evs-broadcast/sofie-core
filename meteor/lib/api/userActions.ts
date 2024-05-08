@@ -3,11 +3,11 @@ import { MethodContext } from './methods'
 import { EvaluationBase } from '../collections/Evaluations'
 import { Bucket } from '../collections/Buckets'
 import { IngestAdlib, ActionUserData } from '@sofie-automation/blueprints-integration'
-import { BucketAdLib } from '../collections/BucketAdlibs'
-import { AdLibActionCommon } from '../collections/AdLibActions'
-import { BucketAdLibAction } from '../collections/BucketAdlibActions'
+import { BucketAdLib } from '@sofie-automation/corelib/dist/dataModel/BucketAdLibPiece'
+import { AdLibActionCommon } from '@sofie-automation/corelib/dist/dataModel/AdlibAction'
+import { BucketAdLibAction } from '@sofie-automation/corelib/dist/dataModel/BucketAdLibAction'
 import { getHash, Time } from '../lib'
-import { ExecuteActionResult } from '@sofie-automation/corelib/dist/worker/studio'
+import { ExecuteActionResult, QueueNextSegmentResult } from '@sofie-automation/corelib/dist/worker/studio'
 import {
 	AdLibActionId,
 	BucketId,
@@ -44,8 +44,14 @@ export interface NewUserActionAPI extends MethodContext {
 		userEvent: string,
 		eventTime: Time,
 		rundownPlaylistId: RundownPlaylistId,
+		segmentId: SegmentId
+	): Promise<ClientAPI.ClientResponse<PartId>>
+	queueNextSegment(
+		userEvent: string,
+		eventTime: Time,
+		rundownPlaylistId: RundownPlaylistId,
 		segmentId: SegmentId | null
-	): Promise<ClientAPI.ClientResponse<void>>
+	): Promise<ClientAPI.ClientResponse<QueueNextSegmentResult>>
 	moveNext(
 		userEvent: string,
 		eventTime: Time,
@@ -315,12 +321,19 @@ export interface NewUserActionAPI extends MethodContext {
 		subDeviceId: string,
 		disable: boolean
 	): Promise<ClientAPI.ClientResponse<void>>
+	activateScratchpadMode(
+		userEvent: string,
+		eventTime: number,
+		playlistId: RundownPlaylistId,
+		rundownId: RundownId
+	): Promise<ClientAPI.ClientResponse<void>>
 }
 
 export enum UserActionAPIMethods {
 	'take' = 'userAction.take',
 	'setNext' = 'userAction.setNext',
 	'setNextSegment' = 'userAction.setNextSegment',
+	'queueNextSegment' = 'userAction.queueNextSegment',
 	'moveNext' = 'userAction.moveNext',
 
 	'prepareForBroadcast' = 'userAction.prepareForBroadcast',
@@ -392,6 +405,8 @@ export enum UserActionAPIMethods {
 	'switchRouteSet' = 'userAction.switchRouteSet',
 
 	'disablePeripheralSubDevice' = 'userAction.system.disablePeripheralSubDevice',
+
+	'activateScratchpadMode' = 'userAction.activateScratchpadMode',
 }
 
 export interface ReloadRundownPlaylistResponse {

@@ -1,11 +1,10 @@
 import Tooltip from 'rc-tooltip'
 import * as React from 'react'
-import { PubSub } from '../../lib/api/pubsub'
+import { MeteorPubSub } from '../../lib/api/pubsub'
 import { GENESIS_SYSTEM_VERSION } from '../../lib/collections/CoreSystem'
-import { RundownPlaylist } from '../../lib/collections/RundownPlaylists'
-import { Rundown } from '../../lib/collections/Rundowns'
+import { DBRundownPlaylist } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
 import { getAllowConfigure, getHelpMode } from '../lib/localStorage'
-import { extendMandadory, unprotectString } from '../../lib/lib'
+import { literal, unprotectString } from '../../lib/lib'
 import { useSubscription, useTracker } from '../lib/ReactMeteorData/react-meteor-data'
 import { Spinner } from '../lib/Spinner'
 import { GettingStarted } from './RundownList/GettingStarted'
@@ -16,20 +15,11 @@ import RundownPlaylistDragLayer from './RundownList/RundownPlaylistDragLayer'
 import { RundownPlaylistUi } from './RundownList/RundownPlaylistUi'
 import { RundownLayoutsAPI } from '../../lib/api/rundownLayouts'
 import { PlaylistTiming } from '@sofie-automation/corelib/dist/playout/rundownTiming'
-import { UIStudios } from './Collections'
-import {
-	getCoreSystem,
-	RundownLayouts,
-	RundownPlaylists,
-	Rundowns,
-	ShowStyleBases,
-	ShowStyleVariants,
-} from '../collections'
+import { getCoreSystem, RundownLayouts, RundownPlaylists, Rundowns } from '../collections'
 import { RundownPlaylistCollectionUtil } from '../../lib/collections/rundownPlaylistUtil'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ShowStyleBase } from '../../lib/collections/ShowStyleBases'
-import { ShowStyleVariant } from '../../lib/collections/ShowStyleVariants'
+import { CorelibPubSub } from '@sofie-automation/corelib/dist/pubsub'
 
 export enum ToolTipStep {
 	TOOLTIP_START_HERE = 'TOOLTIP_START_HERE',
@@ -53,14 +43,16 @@ export function RundownList(): JSX.Element {
 
 	const showStyleBaseIds = useTracker(
 		() =>
-			Rundowns.find({ playlistId: { $in: playlistIds } }, { projection: { _id: 1 } }).map((doc) => doc.showStyleBaseId),
+			Rundowns.find({ playlistId: { $in: playlistIds } }, { projection: { _id: 1, showStyleBaseId: 1 } }).map(
+				(doc) => doc.showStyleBaseId
+			),
 		[playlistIds],
 		[]
 	)
 
 	const showStyleVariantIds = useTracker(
 		() =>
-			Rundowns.find({ playlistId: { $in: playlistIds } }, { projection: { _id: 1 } }).map(
+			Rundowns.find({ playlistId: { $in: playlistIds } }, { projection: { _id: 1, showStyleVariantId: 1 } }).map(
 				(doc) => doc.showStyleVariantId
 			),
 		[playlistIds],
@@ -68,19 +60,14 @@ export function RundownList(): JSX.Element {
 	)
 
 	const baseSubsReady = [
-		useSubscription(PubSub.rundownPlaylists, {}),
-		useSubscription(PubSub.uiStudio, null),
-		useSubscription(PubSub.rundownLayouts, {}),
+		useSubscription(CorelibPubSub.rundownPlaylists, null, null),
+		useSubscription(MeteorPubSub.uiStudio, null),
+		useSubscription(MeteorPubSub.rundownLayouts, null),
 
-		useSubscription(PubSub.rundowns, playlistIds, null),
+		useSubscription(CorelibPubSub.rundownsInPlaylists, playlistIds),
 
-		useSubscription(PubSub.showStyleBases, {
-			_id: { $in: showStyleBaseIds },
-		}),
-
-		useSubscription(PubSub.showStyleVariants, {
-			_id: { $in: showStyleVariantIds },
-		}),
+		useSubscription(CorelibPubSub.showStyleBases, showStyleBaseIds),
+		useSubscription(CorelibPubSub.showStyleVariants, null, showStyleVariantIds),
 	].reduce((prev, current) => prev && current, true)
 
 	const [subsReady, setSubsReady] = useState(false)
@@ -90,7 +77,6 @@ export function RundownList(): JSX.Element {
 	}, [baseSubsReady])
 
 	const coreSystem = useTracker(() => getCoreSystem(), [])
-	const studios = useTracker(() => UIStudios.find().fetch(), [], [])
 	const rundownLayouts = useTracker(
 		() =>
 			RundownLayouts.find({
@@ -101,48 +87,18 @@ export function RundownList(): JSX.Element {
 	)
 	const rundownPlaylists = useTracker(
 		() =>
-			RundownPlaylists.find({}, { sort: { created: -1 } }).map((playlist: RundownPlaylist) => {
+			RundownPlaylists.find({}, { sort: { created: -1 } }).map((playlist: DBRundownPlaylist) => {
 				const rundowns = RundownPlaylistCollectionUtil.getRundownsOrdered(playlist)
 
-				const airStatuses: string[] = []
-				const statuses: string[] = []
-				const unsyncedRundowns: Rundown[] = []
-				const showStyles: RundownPlaylistUi['showStyles'] = []
+				const unsyncedRundowns = rundowns.filter((rundown) => !!rundown.orphaned)
 
-				for (const rundown of rundowns) {
-					airStatuses.push(String(rundown.airStatus))
-					statuses.push(String(rundown.status))
-
-					if (rundown.orphaned) {
-						unsyncedRundowns.push(rundown)
-					}
-
-					const showStyleBase = ShowStyleBases.findOne(rundown.showStyleBaseId, {
-						projection: { _id: 1, name: 1 },
-					}) as Pick<ShowStyleBase, '_id' | 'name'>
-					if (showStyleBase) {
-						const showStyleVariant = ShowStyleVariants.findOne(rundown.showStyleVariantId, {
-							projection: { _id: 1, name: 1 },
-						}) as Pick<ShowStyleVariant, '_id' | 'name'>
-
-						showStyles.push({
-							id: showStyleBase._id,
-							baseName: showStyleBase.name || undefined,
-							variantName: (showStyleVariant && showStyleVariant.name) ?? undefined,
-						})
-					}
-				}
-
-				return extendMandadory<RundownPlaylist, RundownPlaylistUi>(playlist, {
+				return literal<RundownPlaylistUi>({
+					...playlist,
 					rundowns,
 					unsyncedRundowns,
-					showStyles,
-					rundownAirStatus: airStatuses.join(', '),
-					rundownStatus: statuses.join(', '),
-					studioName: studios.find((s) => s._id === playlist.studioId)?.name || '',
 				})
 			}),
-		[studios],
+		[],
 		[]
 	)
 
@@ -190,9 +146,9 @@ export function RundownList(): JSX.Element {
 					<h1>{t('Rundowns')}</h1>
 				</header>
 				{subsReady ? (
-					<section className="mod mvl rundown-list">
+					<section className="mod mvl rundown-list" role="treegrid">
 						<header className="rundown-list__header">
-							<span className="rundown-list-item__name">
+							<span className="rundown-list-item__name" role="columnheader">
 								<Tooltip
 									overlay={t('Click on a rundown to control your studio')}
 									visible={getHelpMode()}
@@ -202,20 +158,20 @@ export function RundownList(): JSX.Element {
 								</Tooltip>
 							</span>
 							{/* <span className="rundown-list-item__problems">{t('Problems')}</span> */}
-							<span>{t('Show Style')}</span>
-							<span>{t('On Air Start Time')}</span>
-							<span>{t('Duration')}</span>
+							<span role="columnheader">{t('Show Style')}</span>
+							<span role="columnheader">{t('On Air Start Time')}</span>
+							<span role="columnheader">{t('Duration')}</span>
 							{rundownPlaylists.some(
 								(p) =>
 									!!PlaylistTiming.getExpectedEnd(p.timing) ||
 									p.rundowns.some((r) => PlaylistTiming.getExpectedEnd(r.timing))
-							) && <span>{t('Expected End Time')}</span>}
-							<span>{t('Last updated')}</span>
+							) && <span role="columnheader">{t('Expected End Time')}</span>}
+							<span role="columnheader">{t('Last updated')}</span>
 							{rundownLayouts.some(
 								(l) =>
 									(RundownLayoutsAPI.isLayoutForShelf(l) && l.exposeAsStandalone) ||
 									(RundownLayoutsAPI.isLayoutForRundownView(l) && l.exposeAsSelectableLayout)
-							) && <span>{t('View Layout')}</span>}
+							) && <span role="columnheader">{t('View Layout')}</span>}
 							<span>&nbsp;</span>
 						</header>
 						{renderRundownPlaylists()}

@@ -7,12 +7,14 @@ import { MeteorCall } from '../../../../lib/api/methods'
 import { getHelpMode } from '../../../lib/localStorage'
 import { useTranslation } from 'react-i18next'
 import { StudioId } from '@sofie-automation/corelib/dist/dataModel/Ids'
+import { LabelActual } from '../../../lib/Components/LabelAndOverrides'
+import { logger } from '../../../../lib/logging'
 
 interface IStudioBaselineStatusProps {
 	studioId: StudioId
 }
 
-export function StudioBaselineStatus({ studioId }: IStudioBaselineStatusProps): JSX.Element {
+export function StudioBaselineStatus({ studioId }: Readonly<IStudioBaselineStatusProps>): JSX.Element {
 	const { t } = useTranslation()
 
 	const [needsUpdate, setNeedsUpdate] = useState(false)
@@ -24,7 +26,7 @@ export function StudioBaselineStatus({ studioId }: IStudioBaselineStatusProps): 
 					setNeedsUpdate(!!result)
 				})
 				.catch((err) => {
-					console.error('Failed to update studio baseline status', err)
+					logger.error('playout.shouldUpdateStudioBaseline', err)
 					setNeedsUpdate(false)
 				})
 		}
@@ -45,37 +47,37 @@ export function StudioBaselineStatus({ studioId }: IStudioBaselineStatusProps): 
 				setNeedsUpdate(!!result)
 			})
 			.catch((err) => {
-				console.error('Failed to update studio baseline', err)
+				logger.error('playout.updateStudioBaseline', err)
 				setNeedsUpdate(false)
 			})
 	}, [studioId])
 
 	return (
-		<div>
-			<p className="mhn">
-				{t('Studio Baseline needs update: ')}&nbsp;
-				{needsUpdate ? (
-					<Tooltip
-						overlay={t('Baseline needs reload, this studio may not work until reloaded')}
-						visible={getHelpMode()}
-						placement="right"
-					>
-						<span>{t('Yes')}</span>
-					</Tooltip>
-				) : (
-					t('No')
-				)}
+		<div className="field">
+			<LabelActual label={t('Studio Baseline needs update: ')}></LabelActual>
+			<div className="mhn">
+				<p className="mhn mvn">
+					{needsUpdate ? (
+						<Tooltip
+							overlay={t('Baseline needs reload, this studio may not work until reloaded')}
+							visible={getHelpMode()}
+							placement="right"
+						>
+							<span>{t('Yes')}</span>
+						</Tooltip>
+					) : (
+						t('No')
+					)}
+				</p>
+				<button className="btn btn-primary mts" onClick={reloadBaseline}>
+					{t('Reload Baseline')}
+				</button>
 				{needsUpdate ? (
 					<span className="error-notice inline">
 						{t('Reload Baseline')} <FontAwesomeIcon icon={faExclamationTriangle} />
 					</span>
 				) : null}
-			</p>
-			<p className="mhn">
-				<button className="btn btn-primary" onClick={reloadBaseline}>
-					{t('Reload Baseline')}
-				</button>
-			</p>
+			</div>
 		</div>
 	)
 }

@@ -48,6 +48,8 @@ function userActionToLabel(userAction: UserAction, t: i18next.TFunction) {
 			return t('Setting Next')
 		case UserAction.SET_NEXT_SEGMENT:
 			return t('Setting Next Segment')
+		case UserAction.QUEUE_NEXT_SEGMENT:
+			return t('Queueing next Segment')
 		case UserAction.TAKE_PIECE:
 			return t('Taking Piece')
 		case UserAction.UNSYNC_RUNDOWN:
@@ -110,6 +112,8 @@ function userActionToLabel(userAction: UserAction, t: i18next.TFunction) {
 			return t('Resetting Playlist to default order')
 		case UserAction.PERIPHERAL_DEVICE_REFRESH_DEBUG_STATES:
 			return t('Refreshing debug states')
+		case UserAction.ACTIVATE_SCRATCHPAD:
+			return t('Activate Scratchpad')
 		default:
 			assertNever(userAction)
 	}
@@ -225,7 +229,7 @@ export function doUserAction<Result>(
 				doDefault = callback(err)
 			} else {
 				// If no callback has been defined, we should at least trace the error to console
-				console.error(err)
+				logger.error('doUserAction, no callback', err)
 			}
 			if (doDefault !== false) {
 				NotificationCenter.push(
@@ -247,7 +251,7 @@ export function doUserAction<Result>(
 export function eventContextForLog(e: any): [string, Time] {
 	const timeStamp = getEventTimestamp(e)
 	if (!e) return ['', timeStamp]
-	let str: string = ''
+	let str = ''
 	if (_.isString(e)) {
 		return [e, timeStamp]
 	} else if (e.currentTarget && e.currentTarget.localName && !e.key && !e.code) {
@@ -263,8 +267,10 @@ export function eventContextForLog(e: any): [string, Time] {
 		str = e.type
 	}
 	if (!str) {
-		logger.error('Unknown event', e)
-		console.error(e)
+		logger.error(
+			'Could not create context in eventContextForLog, because provided event had no identifiable type',
+			e
+		)
 		str = 'N/A'
 	}
 

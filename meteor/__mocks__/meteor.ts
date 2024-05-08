@@ -1,9 +1,9 @@
-import { stringifyError } from '@sofie-automation/corelib/dist/lib'
+import { stringifyError } from '@sofie-automation/shared-lib/dist/lib/stringifyError'
 import * as _ from 'underscore'
 import { Fiber } from './Fibers'
 import { MongoMock } from './mongo'
 
-let controllableDefer: boolean = false
+let controllableDefer = false
 
 export function useControllableDefer(): void {
 	controllableDefer = true
@@ -96,12 +96,12 @@ export class MeteorMock {
 }
 
 export namespace MeteorMock {
-	export const isTest: boolean = true
+	export const isTest = true
 
-	export const isCordova: boolean = false
+	export const isCordova = false
 
-	export const isProduction: boolean = false
-	export const release: string = ''
+	export const isProduction = false
+	export const release = ''
 
 	export const settings: any = {}
 
@@ -122,6 +122,9 @@ export namespace MeteorMock {
 			userId: mockUser ? mockUser._id : undefined,
 			connection: {
 				clientAddress: '1.1.1.1',
+			},
+			unblock: () => {
+				// noop
 			},
 		}
 	}
@@ -244,7 +247,7 @@ export namespace MeteorMock {
 			const fiber = Fiber.current
 			if (!fiber) throw new Error(500, `It appears that wrapAsync isn't running in a fiber`)
 
-			const callback = (err, value) => {
+			const callback = (err: any, value: any) => {
 				if (err) {
 					fiber.throwInto(err)
 				} else {

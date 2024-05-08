@@ -5,8 +5,8 @@ import {
 	PeripheralDeviceCategory,
 	PERIPHERAL_SUBTYPE_PROCESS,
 	PeripheralDeviceSubType,
-} from '../../lib/collections/PeripheralDevices'
-import { Studio, DBStudio } from '../../lib/collections/Studios'
+} from '@sofie-automation/corelib/dist/dataModel/PeripheralDevice'
+import { DBStudio } from '@sofie-automation/corelib/dist/dataModel/Studio'
 import {
 	PieceLifespan,
 	IOutputLayer,
@@ -33,9 +33,9 @@ import {
 	IBlueprintPieceType,
 	IBlueprintActionManifest,
 } from '@sofie-automation/blueprints-integration'
-import { ShowStyleBase, DBShowStyleBase } from '../../lib/collections/ShowStyleBases'
-import { ShowStyleVariant, DBShowStyleVariant } from '../../lib/collections/ShowStyleVariants'
-import { Blueprint } from '../../lib/collections/Blueprints'
+import { DBShowStyleBase } from '@sofie-automation/corelib/dist/dataModel/ShowStyleBase'
+import { DBShowStyleVariant } from '@sofie-automation/corelib/dist/dataModel/ShowStyleVariant'
+import { Blueprint } from '@sofie-automation/corelib/dist/dataModel/Blueprint'
 import { ICoreSystem, SYSTEM_ID, stripVersion } from '../../lib/collections/CoreSystem'
 import { internalUploadBlueprint } from '../../server/api/blueprints/api'
 import {
@@ -48,13 +48,13 @@ import {
 	Complete,
 	normalizeArray,
 } from '../../lib/lib'
-import { DBRundown } from '../../lib/collections/Rundowns'
-import { DBSegment } from '../../lib/collections/Segments'
-import { DBPart } from '../../lib/collections/Parts'
-import { EmptyPieceTimelineObjectsBlob, Piece, PieceStatusCode } from '../../lib/collections/Pieces'
-import { DBRundownPlaylist } from '../../lib/collections/RundownPlaylists'
-import { RundownBaselineAdLibItem } from '../../lib/collections/RundownBaselineAdLibPieces'
-import { AdLibPiece } from '../../lib/collections/AdLibPieces'
+import { DBRundown } from '@sofie-automation/corelib/dist/dataModel/Rundown'
+import { DBSegment } from '@sofie-automation/corelib/dist/dataModel/Segment'
+import { DBPart } from '@sofie-automation/corelib/dist/dataModel/Part'
+import { EmptyPieceTimelineObjectsBlob, Piece } from '@sofie-automation/corelib/dist/dataModel/Piece'
+import { DBRundownPlaylist } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
+import { RundownBaselineAdLibItem } from '@sofie-automation/corelib/dist/dataModel/RundownBaselineAdLibPiece'
+import { AdLibPiece } from '@sofie-automation/corelib/dist/dataModel/AdLibPiece'
 import { restartRandomId } from '../random'
 import { MongoMock } from '../mongo'
 import { defaultRundownPlaylist, defaultStudio } from '../defaultCollectionObjects'
@@ -113,12 +113,12 @@ function getBlueprintDependencyVersions(): { TSR_VERSION: string; INTEGRATION_VE
 	}
 }
 
-let dbI: number = 0
+let dbI = 0
 export async function setupMockPeripheralDevice(
 	category: PeripheralDeviceCategory,
 	type: PeripheralDeviceType,
 	subType: PeripheralDeviceSubType,
-	studio?: Pick<Studio, '_id'>,
+	studio?: Pick<DBStudio, '_id'>,
 	doc?: Partial<PeripheralDevice>
 ): Promise<PeripheralDevice> {
 	doc = doc || {}
@@ -179,7 +179,7 @@ export async function setupMockCore(doc?: Partial<ICoreSystem>): Promise<ICoreSy
 }
 export async function setupMockTriggeredActions(
 	showStyleBaseId: ShowStyleBaseId | null = null,
-	num: number = 3,
+	num = 3,
 	doc?: Partial<DBTriggeredActions>
 ): Promise<DBTriggeredActions[]> {
 	doc = doc || {}
@@ -220,7 +220,7 @@ export async function setupMockTriggeredActions(
 	}
 	return mocks
 }
-export async function setupMockStudio(doc?: Partial<DBStudio>): Promise<Studio> {
+export async function setupMockStudio(doc?: Partial<DBStudio>): Promise<DBStudio> {
 	doc = doc || {}
 
 	const studio: DBStudio = {
@@ -234,8 +234,8 @@ export async function setupMockStudio(doc?: Partial<DBStudio>): Promise<Studio> 
 }
 export async function setupMockShowStyleBase(
 	blueprintId: BlueprintId,
-	doc?: Partial<ShowStyleBase>
-): Promise<ShowStyleBase> {
+	doc?: Partial<DBShowStyleBase>
+): Promise<DBShowStyleBase> {
 	doc = doc || {}
 
 	const defaultShowStyleBase: DBShowStyleBase = {
@@ -293,6 +293,7 @@ export async function setupMockShowStyleBase(
 		// hotkeyLegend?: Array<HotkeyDefinition>
 		_rundownVersionHash: '',
 		lastBlueprintConfig: undefined,
+		lastBlueprintFixUpHash: undefined,
 	}
 	const showStyleBase = _.extend(defaultShowStyleBase, doc)
 	await ShowStyleBases.insertAsync(showStyleBase)
@@ -300,8 +301,8 @@ export async function setupMockShowStyleBase(
 }
 export async function setupMockShowStyleVariant(
 	showStyleBaseId: ShowStyleBaseId,
-	doc?: Partial<ShowStyleVariant>
-): Promise<ShowStyleVariant> {
+	doc?: Partial<DBShowStyleVariant>
+): Promise<DBShowStyleVariant> {
 	doc = doc || {}
 
 	const defaultShowStyleVariant: DBShowStyleVariant = {
@@ -434,7 +435,7 @@ export async function setupMockShowStyleBlueprint(
 						name: ingestRundown.name,
 						// expectedStart?:
 						// expectedDuration?: number;
-						metaData: ingestRundown.payload,
+						privateData: ingestRundown.payload,
 						timing: {
 							type: 'none' as any,
 						},
@@ -454,7 +455,7 @@ export async function setupMockShowStyleBlueprint(
 				getSegment: (_context: unknown, ingestSegment: IngestSegment): BlueprintResultSegment => {
 					const segment: IBlueprintSegment = {
 						name: ingestSegment.name ? ingestSegment.name : ingestSegment.externalId,
-						metaData: ingestSegment.payload,
+						privateData: ingestSegment.payload,
 						isHidden: ingestSegment.payload?.hidden,
 					}
 					const parts: BlueprintResultPart[] = []
@@ -463,7 +464,7 @@ export async function setupMockShowStyleBlueprint(
 						const part: IBlueprintPart = {
 							externalId: ingestPart.externalId,
 							title: ingestPart.name,
-							metaData: ingestPart.payload,
+							privateData: ingestPart.payload,
 							// autoNext?: boolean;
 							// autoNextOverlap?: number;
 							// prerollDuration?: number;
@@ -516,10 +517,10 @@ export interface DefaultEnvironment {
 	showStyleVariantId: ShowStyleVariantId
 	studioBlueprint: Blueprint
 	showStyleBlueprint: Blueprint
-	showStyleBase: ShowStyleBase
+	showStyleBase: DBShowStyleBase
 	triggeredActions: DBTriggeredActions[]
-	showStyleVariant: ShowStyleVariant
-	studio: Studio
+	showStyleVariant: DBShowStyleVariant
+	studio: DBStudio
 	core: ICoreSystem
 	systemTriggeredActions: DBTriggeredActions[]
 
@@ -673,7 +674,6 @@ export async function setupDefaultRundown(
 		startSegmentId: part00.segmentId,
 		startPartId: part00._id,
 		name: 'Piece 000',
-		status: PieceStatusCode.OK,
 		enable: {
 			start: 0,
 		},
@@ -694,7 +694,6 @@ export async function setupDefaultRundown(
 		startSegmentId: part00.segmentId,
 		startPartId: part00._id,
 		name: 'Piece 001',
-		status: PieceStatusCode.OK,
 		enable: {
 			start: 0,
 		},
@@ -716,7 +715,6 @@ export async function setupDefaultRundown(
 		externalId: 'MOCK_ADLIB_000',
 		partId: part00._id,
 		rundownId: segment0.rundownId,
-		status: PieceStatusCode.UNKNOWN,
 		name: 'AdLib 0',
 		sourceLayerId: sourceLayerIds[1],
 		outputLayerId: outputLayerIds[0],
@@ -744,7 +742,6 @@ export async function setupDefaultRundown(
 		startSegmentId: part01.segmentId,
 		startPartId: part01._id,
 		name: 'Piece 010',
-		status: PieceStatusCode.OK,
 		enable: {
 			start: 0,
 		},
@@ -817,7 +814,6 @@ export async function setupDefaultRundown(
 		externalId: 'MOCK_GLOBAL_ADLIB_0',
 		lifespan: PieceLifespan.OutOnRundownEnd,
 		rundownId: segment0.rundownId,
-		status: PieceStatusCode.UNKNOWN,
 		name: 'Global AdLib 0',
 		sourceLayerId: sourceLayerIds[0],
 		outputLayerId: outputLayerIds[0],
@@ -831,7 +827,6 @@ export async function setupDefaultRundown(
 		externalId: 'MOCK_GLOBAL_ADLIB_1',
 		lifespan: PieceLifespan.OutOnRundownEnd,
 		rundownId: segment0.rundownId,
-		status: PieceStatusCode.UNKNOWN,
 		name: 'Global AdLib 1',
 		sourceLayerId: sourceLayerIds[1],
 		outputLayerId: outputLayerIds[0],
@@ -891,7 +886,7 @@ export async function setupMockWorker(doc?: Partial<WorkerStatus>): Promise<{
 // const showStyleBlueprint
 // const showStyleVariant
 
-export function convertToUIShowStyleBase(showStyleBase: ShowStyleBase): UIShowStyleBase {
+export function convertToUIShowStyleBase(showStyleBase: DBShowStyleBase): UIShowStyleBase {
 	return literal<Complete<UIShowStyleBase>>({
 		_id: showStyleBase._id,
 		name: showStyleBase.name,

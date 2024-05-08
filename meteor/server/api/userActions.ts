@@ -19,9 +19,9 @@ import { SystemWriteAccess } from '../security/system'
 import { triggerWriteAccessBecauseNoCheckNecessary } from '../security/lib/securityVerify'
 import { Bucket } from '../../lib/collections/Buckets'
 import { BucketsAPI } from './buckets'
-import { BucketAdLib } from '../../lib/collections/BucketAdlibs'
-import { AdLibActionCommon } from '../../lib/collections/AdLibActions'
-import { BucketAdLibAction } from '../../lib/collections/BucketAdlibActions'
+import { BucketAdLib } from '@sofie-automation/corelib/dist/dataModel/BucketAdLibPiece'
+import { AdLibActionCommon } from '@sofie-automation/corelib/dist/dataModel/AdlibAction'
+import { BucketAdLibAction } from '@sofie-automation/corelib/dist/dataModel/BucketAdLibAction'
 import { VerifiedRundownPlaylistContentAccess } from './lib'
 import { PackageManagerAPI } from './packageManager'
 import { ServerPeripheralDeviceAPI } from './peripheralDevice'
@@ -140,7 +140,7 @@ class ServerUserActionAPI
 		userEvent: string,
 		eventTime: Time,
 		rundownPlaylistId: RundownPlaylistId,
-		nextSegmentId: SegmentId | null
+		nextSegmentId: SegmentId
 	) {
 		return ServerClientAPI.runUserActionInLogForPlaylistOnWorker(
 			this,
@@ -149,12 +149,34 @@ class ServerUserActionAPI
 			rundownPlaylistId,
 			() => {
 				check(rundownPlaylistId, String)
-				check(nextSegmentId, Match.OneOf(String, null))
+				check(nextSegmentId, String)
 			},
 			StudioJobs.SetNextSegment,
 			{
 				playlistId: rundownPlaylistId,
 				nextSegmentId,
+			}
+		)
+	}
+	async queueNextSegment(
+		userEvent: string,
+		eventTime: Time,
+		rundownPlaylistId: RundownPlaylistId,
+		queuedSegmentId: SegmentId | null
+	) {
+		return ServerClientAPI.runUserActionInLogForPlaylistOnWorker(
+			this,
+			userEvent,
+			eventTime,
+			rundownPlaylistId,
+			() => {
+				check(rundownPlaylistId, String)
+				check(queuedSegmentId, Match.OneOf(String, null))
+			},
+			StudioJobs.QueueNextSegment,
+			{
+				playlistId: rundownPlaylistId,
+				queuedSegmentId,
 			}
 		)
 	}
@@ -392,7 +414,7 @@ class ServerUserActionAPI
 				actionDocId,
 				actionId,
 				userData,
-				triggerMode: triggerMode || undefined,
+				triggerMode: triggerMode ?? undefined,
 			}
 		)
 	}
@@ -1170,6 +1192,29 @@ class ServerUserActionAPI
 
 				const access = await PeripheralDeviceContentWriteAccess.peripheralDevice(this, peripheralDeviceId)
 				return ServerPeripheralDeviceAPI.disableSubDevice(access, subDeviceId, disable)
+			}
+		)
+	}
+
+	async activateScratchpadMode(
+		userEvent: string,
+		eventTime: number,
+		playlistId: RundownPlaylistId,
+		rundownId: RundownId
+	): Promise<ClientAPI.ClientResponse<void>> {
+		return ServerClientAPI.runUserActionInLogForPlaylistOnWorker(
+			this,
+			userEvent,
+			eventTime,
+			playlistId,
+			() => {
+				check(playlistId, String)
+				check(rundownId, String)
+			},
+			StudioJobs.ActivateScratchpad,
+			{
+				playlistId: playlistId,
+				rundownId: rundownId,
 			}
 		)
 	}

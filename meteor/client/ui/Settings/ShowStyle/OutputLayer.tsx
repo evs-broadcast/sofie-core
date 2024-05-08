@@ -6,7 +6,7 @@ import { IOutputLayer } from '@sofie-automation/blueprints-integration'
 import { getRandomString, literal } from '@sofie-automation/corelib/dist/lib'
 import Tooltip from 'rc-tooltip'
 import { useTranslation } from 'react-i18next'
-import { ShowStyleBase } from '../../../../lib/collections/ShowStyleBases'
+import { DBShowStyleBase } from '@sofie-automation/corelib/dist/dataModel/ShowStyleBase'
 import { getHelpMode } from '../../../lib/localStorage'
 import { doModalDialog } from '../../../lib/ModalDialog'
 import { findHighestRank } from '../StudioSettings'
@@ -20,7 +20,7 @@ import {
 } from '../util/OverrideOpHelper'
 import { TextInputControl } from '../../../lib/Components/TextInput'
 import { IntInputControl } from '../../../lib/Components/IntInput'
-import { useToggleExpandHelper } from '../util/ToggleExpandedHelper'
+import { useToggleExpandHelper } from '../../util/useToggleExpandHelper'
 import {
 	LabelActual,
 	LabelAndOverrides,
@@ -30,10 +30,10 @@ import {
 import { ShowStyleBases } from '../../../collections'
 
 interface IOutputSettingsProps {
-	showStyleBase: ShowStyleBase
+	showStyleBase: DBShowStyleBase
 }
 
-export function OutputLayerSettings({ showStyleBase }: IOutputSettingsProps): JSX.Element {
+export function OutputLayerSettings({ showStyleBase }: Readonly<IOutputSettingsProps>): JSX.Element {
 	const { t } = useTranslation()
 
 	const { toggleExpanded, isExpanded } = useToggleExpandHelper()
@@ -146,7 +146,7 @@ interface DeletedEntryProps {
 	item: IOutputLayer
 	doUndelete: (itemId: string) => void
 }
-function OutputLayerDeletedEntry({ item, doUndelete }: DeletedEntryProps) {
+function OutputLayerDeletedEntry({ item, doUndelete }: Readonly<DeletedEntryProps>) {
 	const doUndeleteItem = useCallback(() => doUndelete(item._id), [doUndelete, item._id])
 
 	return (
@@ -177,7 +177,7 @@ interface EntryProps {
 	toggleExpanded: (itemId: string, forceState?: boolean) => void
 	overrideHelper: OverrideOpHelper
 }
-function OutputLayerEntry({ item, isExpanded, toggleExpanded, overrideHelper }: EntryProps) {
+function OutputLayerEntry({ item, isExpanded, toggleExpanded, overrideHelper }: Readonly<EntryProps>) {
 	const { t } = useTranslation()
 
 	const toggleEditItem = useCallback(() => toggleExpanded(item.id), [toggleExpanded, item.id])

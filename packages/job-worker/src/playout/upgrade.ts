@@ -1,4 +1,4 @@
-import { BlueprintMapping, BlueprintMappings, TSR } from '@sofie-automation/blueprints-integration'
+import { BlueprintMapping, BlueprintMappings, JSONBlobParse, TSR } from '@sofie-automation/blueprints-integration'
 import {
 	MappingsExt,
 	StudioIngestDevice,
@@ -9,7 +9,10 @@ import { Complete, clone, literal } from '@sofie-automation/corelib/dist/lib'
 import { protectString } from '@sofie-automation/corelib/dist/protectedString'
 import { applyAndValidateOverrides } from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
 import { wrapTranslatableMessageFromBlueprints } from '@sofie-automation/corelib/dist/TranslatableMessage'
-import { BlueprintValidateConfigForStudioResult } from '@sofie-automation/corelib/dist/worker/studio'
+import {
+	BlueprintFixUpConfigForStudioResult,
+	BlueprintValidateConfigForStudioResult,
+} from '@sofie-automation/corelib/dist/worker/studio'
 import { compileCoreConfigValues } from '../blueprints/config'
 import { CommonContext } from '../blueprints/context'
 import { JobContext } from '../jobs'
@@ -19,6 +22,7 @@ import {
 	PeripheralDeviceCategory,
 	PERIPHERAL_SUBTYPE_PROCESS,
 } from '@sofie-automation/corelib/dist/dataModel/PeripheralDevice'
+import { FixUpBlueprintConfigContext } from '@sofie-automation/corelib/dist/fixUpBlueprintConfig/context'
 
 /**
  * Run the Blueprint applyConfig for the studio
@@ -27,7 +31,7 @@ export async function handleBlueprintUpgradeForStudio(context: JobContext, _data
 	const blueprint = context.studioBlueprint
 	if (typeof blueprint.blueprint.applyConfig !== 'function')
 		throw new Error('Blueprint does not support this config flow')
-	if (!blueprint.blueprintDoc || !blueprint.blueprintDoc.blueprintHash) throw new Error('Blueprint is not valid')
+	if (!blueprint.blueprintDoc?.blueprintHash) throw new Error('Blueprint is not valid')
 	if (!context.studio.blueprintConfigPresetId) throw new Error('Studio is missing config preset')
 
 	const blueprintContext = new CommonContext({
@@ -84,24 +88,20 @@ export async function handleBlueprintUpgradeForStudio(context: JobContext, _data
 		])
 	)
 
-	await context.directCollections.Studios.update(
-		context.studioId,
-		{
-			$set: {
-				'mappingsWithOverrides.defaults': translateMappings(result.mappings),
-				'peripheralDeviceSettings.playoutDevices.defaults': playoutDevices,
-				'peripheralDeviceSettings.ingestDevices.defaults': ingestDevices,
-				'peripheralDeviceSettings.inputDevices.defaults': inputDevices,
-				lastBlueprintConfig: {
-					blueprintHash: blueprint.blueprintDoc.blueprintHash,
-					blueprintId: blueprint.blueprintId,
-					blueprintConfigPresetId: context.studio.blueprintConfigPresetId,
-					config: rawBlueprintConfig,
-				},
+	await context.directCollections.Studios.update(context.studioId, {
+		$set: {
+			'mappingsWithOverrides.defaults': translateMappings(result.mappings),
+			'peripheralDeviceSettings.playoutDevices.defaults': playoutDevices,
+			'peripheralDeviceSettings.ingestDevices.defaults': ingestDevices,
+			'peripheralDeviceSettings.inputDevices.defaults': inputDevices,
+			lastBlueprintConfig: {
+				blueprintHash: blueprint.blueprintDoc.blueprintHash,
+				blueprintId: blueprint.blueprintId,
+				blueprintConfigPresetId: context.studio.blueprintConfigPresetId,
+				config: rawBlueprintConfig,
 			},
 		},
-		null // Single operation
-	)
+	})
 }
 
 function translateMappings(rawMappings: BlueprintMappings): MappingsExt {
@@ -127,7 +127,7 @@ export async function handleBlueprintValidateConfigForStudio(
 	const blueprint = context.studioBlueprint
 	if (typeof blueprint.blueprint.validateConfig !== 'function')
 		throw new Error('Blueprint does not support this config flow')
-	if (!blueprint.blueprintDoc || !blueprint.blueprintDoc.blueprintHash) throw new Error('Blueprint is not valid')
+	if (!blueprint.blueprintDoc?.blueprintHash) throw new Error('Blueprint is not valid')
 	if (!context.studio.blueprintConfigPresetId) throw new Error('Studio is missing config preset')
 
 	const blueprintContext = new CommonContext({
@@ -136,7 +136,7 @@ export async function handleBlueprintValidateConfigForStudio(
 	})
 	const rawBlueprintConfig = applyAndValidateOverrides(context.studio.blueprintConfigWithOverrides).obj
 
-	// TODO - why is this clone necessary?
+	// This clone seems excessive, but without it a DataCloneError is generated when posting the result to the parent
 	const messages = clone(blueprint.blueprint.validateConfig(blueprintContext, rawBlueprintConfig))
 
 	return {
@@ -145,4 +145,81 @@ export async function handleBlueprintValidateConfigForStudio(
 			message: wrapTranslatableMessageFromBlueprints(msg.message, [blueprint.blueprintId]),
 		})),
 	}
+}
+
+export async function handleBlueprintFixUpConfigForStudio(
+	context: JobContext,
+	_data: unknown
+): Promise<BlueprintFixUpConfigForStudioResult> {
+	const blueprint = context.studioBlueprint
+	if (typeof blueprint.blueprint.validateConfig !== 'function')
+		throw new Error('Blueprint does not support this config flow')
+	if (!blueprint.blueprintDoc?.blueprintHash) throw new Error('Blueprint is not valid')
+	if (!context.studio.blueprintConfigPresetId) throw new Error('Studio is missing config preset')
+
+	if (typeof blueprint.blueprint.fixUpConfig !== 'function') {
+		if (context.studio.lastBlueprintFixUpHash) {
+			// Cleanup property to avoid getting stuck
+			await context.directCollections.Studios.update(context.studioId, {
+				$unset: {
+					lastBlueprintFixUpHash: 1,
+				},
+			})
+		}
+		throw new Error('Blueprint does not support this config flow')
+	}
+
+	const commonContext = new CommonContext({
+		name: 'fixupConfig',
+		identifier: `studio:${context.studioId},blueprint:${blueprint.blueprintId}`,
+	})
+	const blueprintContext = new FixUpBlueprintConfigContext(
+		commonContext,
+		JSONBlobParse(blueprint.blueprint.studioConfigSchema),
+		context.studio.blueprintConfigWithOverrides
+	)
+
+	blueprint.blueprint.fixUpConfig(blueprintContext)
+
+	// Save the 'fixed' config
+	await context.directCollections.Studios.update(context.studioId, {
+		$set: {
+			lastBlueprintFixUpHash: blueprint.blueprintDoc.blueprintHash,
+			blueprintConfigWithOverrides: blueprintContext.configObject,
+		},
+	})
+
+	return {
+		messages: blueprintContext.messages.map((msg) => ({
+			message: wrapTranslatableMessageFromBlueprints(msg.message, [blueprint.blueprintId]),
+			path: msg.path,
+		})),
+	}
+}
+
+export async function handleBlueprintIgnoreFixUpConfigForStudio(context: JobContext, _data: unknown): Promise<void> {
+	const blueprint = context.studioBlueprint
+	if (typeof blueprint.blueprint.validateConfig !== 'function')
+		throw new Error('Blueprint does not support this config flow')
+	if (!blueprint.blueprintDoc?.blueprintHash) throw new Error('Blueprint is not valid')
+	if (!context.studio.blueprintConfigPresetId) throw new Error('Studio is missing config preset')
+
+	if (typeof blueprint.blueprint.fixUpConfig !== 'function') {
+		if (context.studio.lastBlueprintFixUpHash) {
+			// Cleanup property to avoid getting stuck
+			await context.directCollections.Studios.update(context.studioId, {
+				$unset: {
+					lastBlueprintFixUpHash: 1,
+				},
+			})
+		}
+		throw new Error('Blueprint does not support this config flow')
+	}
+
+	// Save the 'fixed' config
+	await context.directCollections.Studios.update(context.studioId, {
+		$set: {
+			lastBlueprintFixUpHash: blueprint.blueprintDoc.blueprintHash,
+		},
+	})
 }

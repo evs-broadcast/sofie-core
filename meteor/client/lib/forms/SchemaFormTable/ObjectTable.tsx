@@ -8,7 +8,7 @@ import {
 	OverrideOpHelperForItemContents,
 	getAllCurrentAndDeletedItemsFromOverrides,
 } from '../../../ui/Settings/util/OverrideOpHelper'
-import { useToggleExpandHelper } from '../../../ui/Settings/util/ToggleExpandedHelper'
+import { useToggleExpandHelper } from '../../../ui/util/useToggleExpandHelper'
 import { doModalDialog } from '../../ModalDialog'
 import {
 	getSchemaSummaryFieldsForObject,
@@ -16,7 +16,11 @@ import {
 	translateStringIfHasNamespaces,
 } from '../schemaFormUtil'
 import { JSONSchema } from '@sofie-automation/shared-lib/dist/lib/JSONSchemaTypes'
-import { getSchemaDefaultValues, SchemaFormUIField } from '@sofie-automation/shared-lib/dist/lib/JSONSchemaUtil'
+import {
+	getSchemaDefaultValues,
+	getSchemaUIField,
+	SchemaFormUIField,
+} from '@sofie-automation/shared-lib/dist/lib/JSONSchemaUtil'
 import { SomeObjectOverrideOp } from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
 import { SchemaFormTableEditRow } from './TableEditRow'
 import { SchemaTableSummaryRow } from '../SchemaTableSummaryRow'
@@ -51,11 +55,12 @@ export const SchemaFormObjectTable = ({
 	attr,
 	item,
 	overrideHelper,
-}: SchemaFormObjectTableProps): JSX.Element => {
+}: Readonly<SchemaFormObjectTableProps>): JSX.Element => {
 	const { t } = useTranslation()
 
 	const wrappedRows = useMemo(() => {
-		const rawRows = (attr ? objectPathGet(item.defaults, attr) : item.defaults) || {}
+		const itemValue = item.defaults ?? item.computed // If this is sourced from an override, there are no defaults so we need to use the computed instead
+		const rawRows = (attr ? objectPathGet(itemValue, attr) : itemValue) || {}
 
 		const prefix = joinObjectPathFragments(item.id, attr) + '.'
 
@@ -79,7 +84,7 @@ export const SchemaFormObjectTable = ({
 		)
 
 		return wrappedRows
-	}, [attr, item.computed])
+	}, [attr, item])
 
 	const rowSchema = schema.patternProperties?.['']
 
@@ -129,8 +134,8 @@ export const SchemaFormObjectTable = ({
 		[t, tableOverrideHelper]
 	)
 
-	const title = schema[SchemaFormUIField.Title]
-	const description = schema[SchemaFormUIField.Description]
+	const title = getSchemaUIField(schema, SchemaFormUIField.Title)
+	const description = getSchemaUIField(schema, SchemaFormUIField.Description)
 	const titleElement = title && (
 		<SchemaFormSectionHeader title={title} description={description} translationNamespaces={translationNamespaces} />
 	)
@@ -192,6 +197,7 @@ export const SchemaFormObjectTable = ({
 											sofieEnumDefinitons={sofieEnumDefinitons}
 											rowId={rowItem.id}
 											columns={columns}
+											requiredColumns={rowSchema?.required}
 											rowItem={rowItem}
 											editItem={toggleExpanded}
 											overrideHelper={tableOverrideHelper}

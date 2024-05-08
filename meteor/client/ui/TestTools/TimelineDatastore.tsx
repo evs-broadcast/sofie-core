@@ -2,20 +2,20 @@ import * as React from 'react'
 import { useSubscription, useTracker } from '../../lib/ReactMeteorData/react-meteor-data'
 import { StudioSelect } from './StudioSelect'
 import { Mongo } from 'meteor/mongo'
-import { TimelineDatastoreEntry } from '../../../lib/collections/TimelineDatastore'
-import { PubSub } from '../../../lib/api/pubsub'
+import { DBTimelineDatastoreEntry } from '@sofie-automation/corelib/dist/dataModel/TimelineDatastore'
 import { protectString, unprotectString } from '@sofie-automation/corelib/dist/protectedString'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
 import { StudioId } from '@sofie-automation/corelib/dist/dataModel/Ids'
+import { CorelibPubSub } from '@sofie-automation/corelib/dist/pubsub'
 
-const TimelineDatastore = new Mongo.Collection<TimelineDatastoreEntry>('timelineDatastore')
+const TimelineDatastore = new Mongo.Collection<DBTimelineDatastoreEntry>('timelineDatastore')
 
 interface TimelineDatastoreViewRouteParams {
 	studioId: string
 }
 
-const TimelineDatastoreView: React.FC = function TimelineDatastoreView() {
+function TimelineDatastoreView(): JSX.Element {
 	const { t } = useTranslation()
 	const { studioId } = useParams<TimelineDatastoreViewRouteParams>()
 
@@ -38,8 +38,8 @@ const TimelineDatastoreView: React.FC = function TimelineDatastoreView() {
 interface IDatastoreControlsProps {
 	studioId: StudioId
 }
-function ComponentDatastoreControls({ studioId }: IDatastoreControlsProps) {
-	useSubscription(PubSub.timelineDatastore, studioId)
+function ComponentDatastoreControls({ studioId }: Readonly<IDatastoreControlsProps>) {
+	useSubscription(CorelibPubSub.timelineDatastore, studioId)
 
 	const datastore = useTracker(() => TimelineDatastore.find().fetch(), [studioId])
 
@@ -71,7 +71,7 @@ function ComponentDatastoreControls({ studioId }: IDatastoreControlsProps) {
 	)
 }
 
-const TimelineDatastoreStudioSelect: React.FC = function TimelineDatastoreStudioSelect() {
+function TimelineDatastoreStudioSelect(): JSX.Element {
 	return <StudioSelect path="timelinedatastore" title="Timeline Datastore" />
 }
 

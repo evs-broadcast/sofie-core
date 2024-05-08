@@ -3,7 +3,6 @@ import { RundownId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import { logger } from '../../logging'
 import {
 	ContentCache,
-	createReactiveContentCache,
 	partFieldSpecifier,
 	partInstanceFieldSpecifier,
 	rundownFieldSpecifier,
@@ -11,27 +10,16 @@ import {
 } from './reactiveContentCache'
 import { PartInstances, Parts, Rundowns, Segments } from '../../collections'
 
-const REACTIVITY_DEBOUNCE = 20
-
-type ChangedHandler = (cache: ContentCache) => () => void
-
 export class RundownContentObserver {
 	#observers: Meteor.LiveQueryHandle[] = []
 	#cache: ContentCache
-	#cancelCache: () => void
-	#cleanup: () => void
 
-	constructor(rundownIds: RundownId[], onChanged: ChangedHandler) {
+	constructor(rundownIds: RundownId[], cache: ContentCache) {
 		logger.silly(`Creating RundownContentObserver for rundowns "${rundownIds.join(',')}"`)
-		const { cache, cancel: cancelCache } = createReactiveContentCache(() => {
-			this.#cleanup = onChanged(cache)
-		}, REACTIVITY_DEBOUNCE)
-
 		this.#cache = cache
-		this.#cancelCache = cancelCache
 
 		this.#observers = [
-			Rundowns.observe(
+			Rundowns.observeChanges(
 				{
 					_id: {
 						$in: rundownIds,
@@ -42,7 +30,7 @@ export class RundownContentObserver {
 					projection: rundownFieldSpecifier,
 				}
 			),
-			Segments.observe(
+			Segments.observeChanges(
 				{
 					rundownId: {
 						$in: rundownIds,
@@ -53,7 +41,7 @@ export class RundownContentObserver {
 					projection: segmentFieldSpecifier,
 				}
 			),
-			Parts.observe(
+			Parts.observeChanges(
 				{
 					rundownId: {
 						$in: rundownIds,
@@ -64,7 +52,7 @@ export class RundownContentObserver {
 					projection: partFieldSpecifier,
 				}
 			),
-			PartInstances.observe(
+			PartInstances.observeChanges(
 				{ rundownId: { $in: rundownIds }, reset: { $ne: true }, orphaned: 'deleted' },
 				cache.DeletedPartInstances.link(),
 				{ fields: partInstanceFieldSpecifier }
@@ -77,8 +65,6 @@ export class RundownContentObserver {
 	}
 
 	public dispose = (): void => {
-		this.#cancelCache()
 		this.#observers.forEach((observer) => observer.stop())
-		this.#cleanup()
 	}
 }

@@ -1,38 +1,62 @@
-import React, { useState } from 'react'
-import { RundownPlaylist } from '../../lib/collections/RundownPlaylists'
+import React, { useMemo, useState } from 'react'
+import { Meteor } from 'meteor/meteor'
+import { DBRundownPlaylist } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
 import { TFunction, useTranslation } from 'react-i18next'
-import { EditAttribute } from '../lib/EditAttribute'
 import { EvaluationBase } from '../../lib/collections/Evaluations'
 import { doUserAction, UserAction } from '../../lib/clientUserAction'
 import { MeteorCall } from '../../lib/api/methods'
 import { SnapshotId } from '@sofie-automation/corelib/dist/dataModel/Ids'
-import { DropdownInputOption } from '../lib/Components/DropdownInput'
 import { ClientAPI } from '../../lib/api/client'
 import { hashSingleUseToken } from '../../lib/api/userActions'
+import { DropdownInputControl, DropdownInputOption, getDropdownInputOptions } from '../lib/Components/DropdownInput'
+import { MultiLineTextInputControl } from '../lib/Components/MultiLineTextInput'
+import { TextInputControl } from '../lib/Components/TextInput'
+import { Spinner } from '../lib/Spinner'
+import { NotificationCenter, Notification, NoticeLevel } from '../../lib/notifications/notifications'
+import { useTracker } from '../lib/ReactMeteorData/ReactMeteorData'
+import { CoreSystem } from '../collections'
 
-interface IProps {
-	playlist: RundownPlaylist
-}
+type ProblemType = 'nothing' | 'minor' | 'major'
 
 const DEFAULT_STATE = {
-	q0: 'nothing',
-	q1: '',
-	q2: '',
-}
+	problems: 'nothing' as ProblemType,
+	description: [],
+	userName: '' as const,
+} as const
 
-export function AfterBroadcastForm(props: IProps): JSX.Element {
+export function AfterBroadcastForm({ playlist }: Readonly<{ playlist: DBRundownPlaylist }>): JSX.Element {
 	const { t } = useTranslation()
-	const shouldDeactivateRundown = !props.playlist.loop
-	const [obj, setObj] = useState(DEFAULT_STATE)
+	const shouldDeactivateRundown = !playlist.loop
+	const [problems, setProblems] = useState<ProblemType>(DEFAULT_STATE.problems)
+	const [description, setDescription] = useState<string[]>(DEFAULT_STATE.description.slice())
+	const [userName, setUserName] = useState<string>(DEFAULT_STATE.userName)
+	const [busy, setBusy] = useState(false)
 
-	function saveForm(e: React.MouseEvent<HTMLElement>) {
-		const answers = obj
+	function resetForm() {
+		setProblems(DEFAULT_STATE.problems)
+		setDescription(DEFAULT_STATE.description.slice())
+		setUserName(DEFAULT_STATE.userName)
+		setBusy(false)
+	}
+
+	function saveForm(e: React.FormEvent<HTMLElement>) {
+		e.preventDefault()
+		setBusy(true)
+
+		const answers = {
+			q0: problems,
+			q1: description.join('\n'),
+			q2: userName,
+		}
+
+		e.persist()
 
 		const saveEvaluation = (snapshotId?: SnapshotId) => {
 			const evaluation: EvaluationBase = {
-				studioId: props.playlist.studioId,
-				playlistId: props.playlist._id,
+				studioId: playlist.studioId,
+				playlistId: playlist._id,
 				answers: answers,
+				snapshots: [],
 			}
 			if (snapshotId && evaluation.snapshots) evaluation.snapshots.push(snapshotId)
 
@@ -40,13 +64,11 @@ export function AfterBroadcastForm(props: IProps): JSX.Element {
 
 			if (shouldDeactivateRundown) {
 				doUserAction(t, e, UserAction.DEACTIVATE_RUNDOWN_PLAYLIST, (e, ts) =>
-					MeteorCall.userAction.deactivate(e, ts, props.playlist._id)
+					MeteorCall.userAction.deactivate(e, ts, playlist._id)
 				)
 			}
 
-			setObj({
-				...DEFAULT_STATE,
-			})
+			resetForm()
 		}
 
 		if (answers.q0 !== 'nothing' || answers.q1.trim() !== '') {
@@ -54,14 +76,14 @@ export function AfterBroadcastForm(props: IProps): JSX.Element {
 				t,
 				e,
 				UserAction.CREATE_SNAPSHOT_FOR_DEBUG,
-				(e, ts) =>
+				async (e, ts) =>
 					MeteorCall.system.generateSingleUseToken().then((tokenResult) => {
 						if (ClientAPI.isClientResponseError(tokenResult) || !tokenResult.result) throw tokenResult
 						return MeteorCall.userAction.storeRundownSnapshot(
 							e,
 							ts,
 							hashSingleUseToken(tokenResult.result),
-							props.playlist._id,
+							playlist._id,
 							'Evaluation form',
 							false
 						)
@@ -69,8 +91,21 @@ export function AfterBroadcastForm(props: IProps): JSX.Element {
 				(err, snapshotId) => {
 					if (!err && snapshotId) {
 						saveEvaluation(snapshotId)
-					} else {
-						saveEvaluation()
+						return false
+					}
+					saveEvaluation()
+					if (err instanceof Meteor.Error && err.error === 503) {
+						NotificationCenter.push(
+							new Notification(
+								undefined,
+								NoticeLevel.CRITICAL,
+								t(
+									'Could not create a snapshot for the evaluation, because the previous one was created just moments ago. If you want another snapshot, try again in a couple of seconds.'
+								),
+								'userAction'
+							)
+						)
+						return false
 					}
 				}
 			)
@@ -79,65 +114,86 @@ export function AfterBroadcastForm(props: IProps): JSX.Element {
 		}
 	}
 
-	function onUpdateValue(edit: any, newValue: any) {
-		const attr = edit.props.attribute
-
-		if (attr) {
-			setObj({
-				...obj,
-				[attr]: newValue,
-			})
-		}
-	}
+	const problemOptions = useMemo(() => getDropdownInputOptions<ProblemType>(getQuestionOptions(t)), [])
 
 	return (
 		<div className="afterbroadcastform-container" role="complementary" aria-labelledby="evaluation-header">
 			<div className="afterbroadcastform">
-				<h2 id="evaluation-header">{t('Evaluation')}</h2>
+				<form className="form" onSubmit={saveForm}>
+					<EvaluationInfoBubble />
 
-				<p>
-					<em>{t('Please take a minute to fill in this form.')}</em>
-				</p>
-				<p>
-					<b>{t('Be aware that while filling out the form keyboard and streamdeck commands will not be executed!')}</b>
-				</p>
+					<h2 id="evaluation-header">{t('How did the show go?')}</h2>
 
-				<div className="form">
-					<div className="question">
-						<p>{t('Did you have any problems with the broadcast?')}</p>
-						<div className="input q0">
-							<EditAttribute
-								obj={obj}
-								updateFunction={onUpdateValue}
-								attribute="q0"
-								type="dropdown"
-								options={getQuestionOptions(t)}
+					<p>{t('Keyboard shortcuts and Stream Deck buttons will not work while filling out the form!')}</p>
+
+					<div className="question q0">
+						<label>
+							<span>{t('Did you have any problems with the broadcast?')}</span>
+							<DropdownInputControl
+								value={problems}
+								options={problemOptions}
+								handleUpdate={setProblems}
+								disabled={busy}
 							/>
-						</div>
+						</label>
 					</div>
 					<div className="question q1">
-						<p>
-							{t(
-								'Please explain the problems you experienced (what happened and when, what should have happened, what could have triggered the problems, etcetera...)'
-							)}
-						</p>
-						<div className="input">
-							<EditAttribute obj={obj} updateFunction={onUpdateValue} attribute="q1" type="multiline" />
-						</div>
+						<label>
+							<span>{t('Please explain the problems you experienced')}</span>
+							<span className="secondary">
+								{t(
+									'(what happened and when, what should have happened, what could have triggered the problems, etcetera...)'
+								)}
+							</span>
+							<MultiLineTextInputControl value={description} handleUpdate={setDescription} disabled={busy} />
+						</label>
 					</div>
 					<div className="question q2">
-						<p>{t('Your name')}</p>
-						<div className="input">
-							<EditAttribute obj={obj} updateFunction={onUpdateValue} attribute="q2" type="text" />
-						</div>
+						<label>
+							<span>{t('Your name')}</span>
+							<TextInputControl value={userName} handleUpdate={setUserName} disabled={busy} />
+						</label>
 					</div>
 
-					<button className="btn btn-primary" onClick={saveForm}>
-						{!shouldDeactivateRundown ? t('Save message') : t('Save message and Deactivate Rundown')}
-					</button>
-				</div>
+					<div>
+						<button type="submit" className="btn btn-primary" disabled={busy}>
+							{!shouldDeactivateRundown ? t('Send message') : t('Send message and Deactivate Rundown')}
+						</button>
+						{busy ? <Spinner className="afterbroadcastform-spinner" size="small" /> : null}
+					</div>
+				</form>
 			</div>
 		</div>
+	)
+}
+
+const EvaluationInfoBubble = React.memo(function EvaluationInfoBubble() {
+	const coreSystem = useTracker(() => CoreSystem.findOne(), [])
+
+	const message = coreSystem?.evaluations?.enabled ? coreSystem.evaluations : undefined
+	if (!message) return null
+
+	return (
+		<div className="afterbroadcastform-bubble-container">
+			<div className="afterbroadcastform-bubble">
+				<h5>{message.heading ?? ''}</h5>
+				<p>{message.message ?? ''}</p>
+			</div>
+			<EvaluationBubbleStem />
+		</div>
+	)
+})
+
+function EvaluationBubbleStem() {
+	return (
+		<svg width="101" height="40" viewBox="0 0 101 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+			<path
+				fillRule="evenodd"
+				clipRule="evenodd"
+				d="M0 0.400223H101C101 0.400223 97.5 0.400146 84 0.400146C70.5 0.400146 56.5 5.99992 42.5 21.4999C28.5 36.9999 21.1095 39.4985 16.5 39.4985C15.9438 39.4985 16.2207 38.9292 17.1378 37.928C30.1502 23.7223 23.3237 0.400195 4.05909 0.400218L0 0.400223Z"
+				fill="white"
+			/>
+		</svg>
 	)
 }
 

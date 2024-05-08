@@ -23,7 +23,14 @@ function stripObjectProperties(
 	objs: Array<TimelineObjRundown & OnGenerateTimelineObj<TSR.TSRTimelineContent>>,
 	keepContent?: boolean
 ): any[] {
-	const keys = _.compact([keepContent ? undefined : 'content', 'enable', 'objectType', 'keyframes', 'metaData'])
+	const keys = _.compact([
+		keepContent ? undefined : 'content',
+		'enable',
+		'objectType',
+		'keyframes',
+		'metaData',
+		'priority',
+	])
 	return objs.map((o) => _.omit(o, ...keys))
 }
 
@@ -60,7 +67,6 @@ describe('findLookaheadObjectsForPart', () => {
 			name: '',
 			enable: { start: 0 },
 			invalid: false,
-			status: 0,
 			lifespan: PieceLifespan.WithinPart,
 			pieceType: IBlueprintPieceType.Normal,
 			sourceLayerId: '',
@@ -92,6 +98,7 @@ describe('findLookaheadObjectsForPart', () => {
 								enable: { start: 0 },
 								layer: layer1,
 								content: { deviceType: TSR.DeviceType.ABSTRACT },
+								priority: 0,
 							},
 						]),
 					},
@@ -130,6 +137,7 @@ describe('findLookaheadObjectsForPart', () => {
 								enable: { start: 0 },
 								layer: layer0,
 								content: { deviceType: TSR.DeviceType.ABSTRACT },
+								priority: 0,
 							},
 						]),
 					},
@@ -231,6 +239,7 @@ describe('findLookaheadObjectsForPart', () => {
 										content: { kf2: true } as any,
 									},
 								],
+								priority: 0,
 							},
 						]),
 					},
@@ -351,6 +360,7 @@ describe('findLookaheadObjectsForPart', () => {
 								enable: { start: 0 },
 								layer: layer0,
 								content: { deviceType: TSR.DeviceType.ABSTRACT },
+								priority: 0,
 							},
 						]),
 					},
@@ -370,6 +380,7 @@ describe('findLookaheadObjectsForPart', () => {
 								enable: { start: 0 },
 								layer: layer0,
 								content: { deviceType: TSR.DeviceType.ABSTRACT },
+								priority: 0,
 							},
 						]),
 					},
@@ -507,6 +518,7 @@ describe('findLookaheadObjectsForPart', () => {
 										content: { kf2: true } as any,
 									},
 								],
+								priority: 0,
 							},
 						]),
 					},
@@ -533,6 +545,7 @@ describe('findLookaheadObjectsForPart', () => {
 										content: { kf0: true } as any,
 									},
 								],
+								priority: 0,
 							},
 						]),
 					},
@@ -702,6 +715,7 @@ describe('findLookaheadObjectsForPart', () => {
 											content: { kf2: true } as any,
 										},
 									],
+									priority: 0,
 								},
 							]),
 						},
@@ -728,6 +742,7 @@ describe('findLookaheadObjectsForPart', () => {
 											content: { kf0: true } as any,
 										},
 									],
+									priority: 0,
 								},
 							]),
 						},
@@ -748,6 +763,7 @@ describe('findLookaheadObjectsForPart', () => {
 									enable: { start: 0 },
 									layer: layer0,
 									content: { deviceType: TSR.DeviceType.ABSTRACT },
+									priority: 0,
 								},
 							]),
 						},

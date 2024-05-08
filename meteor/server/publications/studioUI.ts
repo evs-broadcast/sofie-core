@@ -1,11 +1,11 @@
 import { StudioId } from '@sofie-automation/corelib/dist/dataModel/Ids'
-import { IncludeAllMongoFieldSpecifier } from '@sofie-automation/corelib/dist/mongo'
+import { MongoFieldSpecifierOnesStrict } from '@sofie-automation/corelib/dist/mongo'
 import { applyAndValidateOverrides } from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
 import { Meteor } from 'meteor/meteor'
 import { ReadonlyDeep } from 'type-fest'
-import { CustomCollectionName, PubSub } from '../../lib/api/pubsub'
+import { CustomCollectionName, MeteorPubSub } from '../../lib/api/pubsub'
 import { UIStudio } from '../../lib/api/studios'
-import { DBStudio } from '../../lib/collections/Studios'
+import { DBStudio } from '@sofie-automation/corelib/dist/dataModel/Studio'
 import { Complete, literal } from '../../lib/lib'
 import {
 	CustomPublishCollection,
@@ -40,32 +40,17 @@ function convertDocument(studio: Pick<DBStudio, StudioFields>): UIStudio {
 
 		routeSets: studio.routeSets,
 		routeSetExclusivityGroups: studio.routeSetExclusivityGroups,
-		packageContainers: studio.packageContainers,
-		previewContainerIds: studio.previewContainerIds,
-		thumbnailContainerIds: studio.thumbnailContainerIds,
 	})
 }
 
-type StudioFields =
-	| '_id'
-	| 'name'
-	| 'mappingsWithOverrides'
-	| 'settings'
-	| 'routeSets'
-	| 'routeSetExclusivityGroups'
-	| 'packageContainers'
-	| 'previewContainerIds'
-	| 'thumbnailContainerIds'
-const fieldSpecifier = literal<IncludeAllMongoFieldSpecifier<StudioFields>>({
+type StudioFields = '_id' | 'name' | 'mappingsWithOverrides' | 'settings' | 'routeSets' | 'routeSetExclusivityGroups'
+const fieldSpecifier = literal<MongoFieldSpecifierOnesStrict<Pick<DBStudio, StudioFields>>>({
 	_id: 1,
 	name: 1,
 	mappingsWithOverrides: 1,
 	settings: 1,
 	routeSets: 1,
 	routeSetExclusivityGroups: 1,
-	packageContainers: 1,
-	previewContainerIds: 1,
-	thumbnailContainerIds: 1,
 })
 
 async function setupUIStudioPublicationObservers(
@@ -134,20 +119,24 @@ async function manipulateUIStudioPublicationData(
 	}
 }
 
-meteorCustomPublish(PubSub.uiStudio, CustomCollectionName.UIStudio, async function (pub, studioId: StudioId | null) {
-	check(studioId, Match.Maybe(String))
+meteorCustomPublish(
+	MeteorPubSub.uiStudio,
+	CustomCollectionName.UIStudio,
+	async function (pub, studioId: StudioId | null) {
+		check(studioId, Match.Maybe(String))
 
-	const cred = await resolveCredentials({ userId: this.userId, token: undefined })
+		const cred = await resolveCredentials({ userId: this.userId, token: undefined })
 
-	if (!cred || NoSecurityReadAccess.any() || (studioId && (await StudioReadAccess.studio(studioId, cred)))) {
-		await setUpCollectionOptimizedObserver<UIStudio, UIStudioArgs, UIStudioState, UIStudioUpdateProps>(
-			`pub_${PubSub.uiStudio}_${studioId}`,
-			{ studioId },
-			setupUIStudioPublicationObservers,
-			manipulateUIStudioPublicationData,
-			pub
-		)
-	} else {
-		logger.warn(`Pub.${CustomCollectionName.UIStudio}: Not allowed: "${studioId}"`)
+		if (!cred || NoSecurityReadAccess.any() || (studioId && (await StudioReadAccess.studio(studioId, cred)))) {
+			await setUpCollectionOptimizedObserver<UIStudio, UIStudioArgs, UIStudioState, UIStudioUpdateProps>(
+				`pub_${MeteorPubSub.uiStudio}_${studioId}`,
+				{ studioId },
+				setupUIStudioPublicationObservers,
+				manipulateUIStudioPublicationData,
+				pub
+			)
+		} else {
+			logger.warn(`Pub.${CustomCollectionName.UIStudio}: Not allowed: "${studioId}"`)
+		}
 	}
-})
+)

@@ -9,12 +9,14 @@ import { QueueJobFunc, JobContextImpl } from '../context'
 import { AnyLockEvent, LocksManager } from '../locks'
 import { FastTrackTimelineFunc, LogLineWithSourceFunc } from '../../main'
 import { interceptLogging, logger } from '../../logging'
-import { stringifyError } from '@sofie-automation/corelib/dist/lib'
+import { stringifyError } from '@sofie-automation/shared-lib/dist/lib/stringifyError'
 import { setupInfluxDb } from '../../influx'
 import { getStudioQueueName } from '@sofie-automation/corelib/dist/worker/studio'
 import { WorkerJobResult } from '../parent-base'
 import { endTrace, sendTrace, startTrace } from '@sofie-automation/corelib/dist/influxdb'
 import { getPrometheusMetricsString, setupPrometheusMetrics } from '@sofie-automation/corelib/dist/prometheus'
+import { UserError } from '@sofie-automation/corelib/dist/error'
+import { interpollateTranslation } from '@sofie-automation/corelib/dist/TranslatableMessage'
 
 interface StaticData {
 	readonly mongoClient: MongoClient
@@ -123,7 +125,16 @@ export class StudioWorkerChild {
 						error: null,
 					}
 				} catch (e) {
-					logger.error(`Studio job "${jobName}" errored: ${stringifyError(e)}`)
+					if (UserError.isUserError(e)) {
+						logger.info(
+							`Studio job "${jobName}" failed: ${interpollateTranslation(
+								e.message.key,
+								e.message.args
+							)} ${stringifyError(e.rawError)}`
+						)
+					} else {
+						logger.error(`Studio job "${jobName}" errored: ${stringifyError(e)}`)
+					}
 
 					return {
 						result: null,

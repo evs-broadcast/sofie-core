@@ -3,15 +3,15 @@ import _ from 'underscore'
 import { Meteor } from 'meteor/meteor'
 import { useTracker } from '../../lib/ReactMeteorData/react-meteor-data'
 import { useTranslation } from 'react-i18next'
-import { Rundown } from '../../../lib/collections/Rundowns'
-import { RundownPlaylist } from '../../../lib/collections/RundownPlaylists'
-import { DBSegment, Segment } from '../../../lib/collections/Segments'
-import { DBPart } from '../../../lib/collections/Parts'
+import { Rundown } from '@sofie-automation/corelib/dist/dataModel/Rundown'
+import { DBRundownPlaylist } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
+import { DBSegment } from '@sofie-automation/corelib/dist/dataModel/Segment'
+import { DBPart } from '@sofie-automation/corelib/dist/dataModel/Part'
 import { IAdLibListItem } from './AdLibListItem'
 import ClassNames from 'classnames'
 
 import { Spinner } from '../../lib/Spinner'
-import { OutputLayers, SourceLayers } from '../../../lib/collections/ShowStyleBases'
+import { OutputLayers, SourceLayers } from '@sofie-automation/corelib/dist/dataModel/ShowStyleBase'
 import {
 	ISourceLayer,
 	PieceLifespan,
@@ -25,16 +25,16 @@ import {
 	RundownLayoutFilterBase,
 	DashboardLayoutFilter,
 } from '../../../lib/collections/RundownLayouts'
-import { RundownBaselineAdLibItem } from '../../../lib/collections/RundownBaselineAdLibPieces'
+import { RundownBaselineAdLibItem } from '@sofie-automation/corelib/dist/dataModel/RundownBaselineAdLibPiece'
 import { literal, unprotectString, protectString } from '../../../lib/lib'
 import { memoizedIsolatedAutorun } from '../../../lib/memoizedIsolatedAutorun'
 import { findPartInstanceOrWrapToTemporary, PartInstance } from '../../../lib/collections/PartInstances'
 import { MeteorCall } from '../../../lib/api/methods'
 import { PieceUi } from '../SegmentTimeline/SegmentTimelineContainer'
-import { AdLibAction } from '../../../lib/collections/AdLibActions'
+import { AdLibAction } from '@sofie-automation/corelib/dist/dataModel/AdlibAction'
 import { RundownUtils } from '../../lib/rundown'
 import { ShelfTabs } from './Shelf'
-import { RundownBaselineAdLibAction } from '../../../lib/collections/RundownBaselineAdLibActions'
+import { RundownBaselineAdLibAction } from '@sofie-automation/corelib/dist/dataModel/RundownBaselineAdLibAction'
 import { BucketAdLibActionUi, BucketAdLibUi } from './RundownViewBuckets'
 import RundownViewEventBus, {
 	RundownViewEvents,
@@ -45,7 +45,6 @@ import { i18nTranslator } from '../i18n'
 import { AdLibPieceUi, AdlibSegmentUi } from '../../lib/shelf'
 import { getShelfFollowsOnAir, getShowHiddenSourceLayers } from '../../lib/localStorage'
 import { sortAdlibs } from '../../../lib/Rundown'
-import { PieceStatusCode } from '@sofie-automation/corelib/dist/dataModel/Piece'
 import { AdLibPanelToolbar } from './AdLibPanelToolbar'
 import { AdLibListView } from './AdLibListView'
 import { UIShowStyleBase } from '../../../lib/api/showStyles'
@@ -64,7 +63,7 @@ import { RundownPlaylistCollectionUtil } from '../../../lib/collections/rundownP
 export interface IAdLibPanelProps {
 	// liveSegment: Segment | undefined
 	visible: boolean
-	playlist: RundownPlaylist
+	playlist: DBRundownPlaylist
 	studio: UIStudio
 	showStyleBase: UIShowStyleBase
 	studioMode: boolean
@@ -107,7 +106,6 @@ function actionToAdLibPieceUi(
 	return literal<AdLibPieceUi>({
 		_id: protectString(`${action._id}`),
 		name: translateMessage(action.display.label, i18nTranslator),
-		status: PieceStatusCode.UNKNOWN,
 		isAction: true,
 		expectedDuration: 0,
 		externalId: unprotectString(action._id),
@@ -130,10 +128,53 @@ function actionToAdLibPieceUi(
 }
 
 interface IFetchAndFilterProps {
-	playlist: Pick<RundownPlaylist, '_id' | 'currentPartInfo' | 'nextPartInfo' | 'previousPartInfo' | 'rundownIdsInOrder'>
+	playlist: Pick<
+		DBRundownPlaylist,
+		'_id' | 'currentPartInfo' | 'nextPartInfo' | 'previousPartInfo' | 'rundownIdsInOrder'
+	>
 	showStyleBase: Pick<UIShowStyleBase, '_id' | 'sourceLayers' | 'outputLayers'>
 	filter?: RundownLayoutFilterBase
 	includeGlobalAdLibs?: boolean
+}
+
+export function useFetchAndFilter(
+	playlist: DBRundownPlaylist,
+	showStyleBase: UIShowStyleBase,
+	filter: RundownLayoutFilterBase | undefined,
+	includeGlobalAdLibs: boolean | undefined
+): AdLibFetchAndFilterProps {
+	return useTracker(
+		() =>
+			fetchAndFilter({
+				playlist: playlist as Pick<
+					DBRundownPlaylist,
+					'_id' | 'studioId' | 'currentPartInfo' | 'nextPartInfo' | 'previousPartInfo' | 'rundownIdsInOrder'
+				>,
+				showStyleBase: showStyleBase as Pick<UIShowStyleBase, '_id' | 'sourceLayers' | 'outputLayers'>,
+				filter,
+				includeGlobalAdLibs,
+			}),
+		[
+			playlist._id,
+			playlist.studioId,
+			playlist.currentPartInfo?.partInstanceId,
+			playlist.nextPartInfo?.partInstanceId,
+			playlist.previousPartInfo?.partInstanceId,
+			playlist.rundownIdsInOrder,
+			showStyleBase._id,
+			showStyleBase.sourceLayers,
+			showStyleBase.outputLayers,
+			filter,
+			includeGlobalAdLibs,
+		],
+		{
+			liveSegment: undefined,
+			rundownBaselineAdLibs: [],
+			sourceLayerLookup: {},
+			uiSegments: [] as AdlibSegmentUi[],
+			uiSegmentMap: new Map(),
+		}
+	)
 }
 
 export function fetchAndFilter(props: IFetchAndFilterProps): AdLibFetchAndFilterProps {
@@ -173,7 +214,7 @@ export function fetchAndFilter(props: IFetchAndFilterProps): AdLibFetchAndFilter
 		(
 			currentPartInstanceId: PartInstanceId | null,
 			nextPartInstanceId: PartInstanceId | null,
-			segments: Segment[],
+			segments: DBSegment[],
 			rundowns: Record<string, MinimalRundown>
 		) => {
 			const currentPartInstance =
@@ -415,7 +456,6 @@ export function fetchAndFilter(props: IFetchAndFilterProps): AdLibFetchAndFilter
 								literal<AdLibPieceUi>({
 									_id: protectString(`sticky_${layer._id}`),
 									name: t('Last {{layerName}}', { layerName: layer.abbreviation || layer.name }),
-									status: PieceStatusCode.UNKNOWN,
 									isSticky: true,
 									isGlobal: true,
 									expectedDuration: 0,
@@ -492,7 +532,6 @@ export function fetchAndFilter(props: IFetchAndFilterProps): AdLibFetchAndFilter
 							literal<AdLibPieceUi>({
 								_id: protectString(`clear_${layer._id}`),
 								name: t('Clear {{layerName}}', { layerName: layer.abbreviation || layer.name }),
-								status: PieceStatusCode.UNKNOWN,
 								isSticky: false,
 								isClearSourceLayer: true,
 								isGlobal: true,
@@ -533,7 +572,7 @@ export function AdLibPanel({
 	selectedPiece,
 	includeGlobalAdLibs,
 	onSelectPiece,
-}: IAdLibPanelProps): JSX.Element | null {
+}: Readonly<IAdLibPanelProps>): JSX.Element | null {
 	const { t } = useTranslation()
 	const studio = useTracker(() => UIStudios.findOne(playlist.studioId), [playlist.studioId], undefined)
 
@@ -541,37 +580,11 @@ export function AdLibPanel({
 	const [selectedSegment, setSelectedSegment] = useState<AdlibSegmentUi | undefined>(undefined)
 	const shelfFollowsOnAir = getShelfFollowsOnAir()
 
-	const { uiSegments, liveSegment, sourceLayerLookup, rundownBaselineAdLibs } = useTracker(
-		() =>
-			fetchAndFilter({
-				playlist: playlist as Pick<
-					RundownPlaylist,
-					'_id' | 'studioId' | 'currentPartInfo' | 'nextPartInfo' | 'previousPartInfo' | 'rundownIdsInOrder'
-				>,
-				showStyleBase: showStyleBase as Pick<UIShowStyleBase, '_id' | 'sourceLayers' | 'outputLayers'>,
-				filter,
-				includeGlobalAdLibs,
-			}),
-		[
-			playlist._id,
-			playlist.studioId,
-			playlist.currentPartInfo?.partInstanceId,
-			playlist.nextPartInfo?.partInstanceId,
-			playlist.previousPartInfo?.partInstanceId,
-			playlist.rundownIdsInOrder,
-			showStyleBase._id,
-			showStyleBase.sourceLayers,
-			showStyleBase.outputLayers,
-			filter,
-			includeGlobalAdLibs,
-		],
-		{
-			liveSegment: undefined,
-			rundownBaselineAdLibs: [],
-			sourceLayerLookup: {},
-			uiSegments: [] as AdlibSegmentUi[],
-			uiSegmentMap: new Map(),
-		}
+	const { uiSegments, liveSegment, sourceLayerLookup, rundownBaselineAdLibs } = useFetchAndFilter(
+		playlist,
+		showStyleBase,
+		filter,
+		includeGlobalAdLibs
 	)
 
 	useEffect(() => {

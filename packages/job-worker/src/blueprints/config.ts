@@ -6,7 +6,8 @@ import {
 	ShowStyleBlueprintManifest,
 	StudioBlueprintManifest,
 } from '@sofie-automation/blueprints-integration'
-import { getSofieHostUrl, objectPathGet, stringifyError } from '@sofie-automation/corelib/dist/lib'
+import { getSofieHostUrl, objectPathGet } from '@sofie-automation/corelib/dist/lib'
+import { stringifyError } from '@sofie-automation/shared-lib/dist/lib/stringifyError'
 import _ = require('underscore')
 import { logger } from '../logging'
 import { CommonContext } from './context'
@@ -14,18 +15,6 @@ import { DBStudio, IStudioSettings } from '@sofie-automation/corelib/dist/dataMo
 import { protectString } from '@sofie-automation/corelib/dist/protectedString'
 import { ProcessedShowStyleCompound, StudioCacheContext } from '../jobs'
 import { applyAndValidateOverrides } from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
-
-/**
- * This whole ConfigRef logic will need revisiting for a multi-studio context, to ensure that there are strict boundaries across who can give to access to what.
- * Especially relevant for multi-user.
- */
-// export namespace ConfigRef {
-export function getStudioConfigRef(studioId: StudioId, configKey: string): string {
-	return '${studio.' + studioId + '.' + configKey + '}'
-}
-export function getShowStyleConfigRef(showStyleVariantId: ShowStyleVariantId, configKey: string): string {
-	return '${showStyle.' + showStyleVariantId + '.' + configKey + '}'
-}
 
 /**
  * Parse a string containing BlueprintConfigRefs (`${studio.studio0.myConfigField}`) to replace the refs with the current values

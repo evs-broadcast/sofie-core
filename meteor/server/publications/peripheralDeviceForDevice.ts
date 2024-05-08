@@ -1,7 +1,6 @@
 import { Meteor } from 'meteor/meteor'
-import { CustomCollectionName, PubSub } from '../../lib/api/pubsub'
 import { PeripheralDeviceReadAccess } from '../security/peripheralDevice'
-import { PeripheralDevice, PeripheralDeviceCategory } from '../../lib/collections/PeripheralDevices'
+import { PeripheralDevice, PeripheralDeviceCategory } from '@sofie-automation/corelib/dist/dataModel/PeripheralDevice'
 import { PeripheralDeviceId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import { PeripheralDevices, Studios } from '../collections'
 import { TriggerUpdate, meteorCustomPublish, setUpOptimizedObserverArray } from '../lib/customPublication'
@@ -9,10 +8,19 @@ import { PeripheralDeviceForDevice } from '@sofie-automation/shared-lib/dist/cor
 import { ReadonlyDeep } from 'type-fest'
 import { ReactiveMongoObserverGroup } from './lib/observerGroup'
 import { Complete, assertNever, literal } from '@sofie-automation/corelib/dist/lib'
-import { IncludeAllMongoFieldSpecifier } from '@sofie-automation/corelib/dist/mongo'
-import { Studio, StudioIngestDevice, StudioInputDevice, StudioPlayoutDevice } from '../../lib/collections/Studios'
+import { MongoFieldSpecifierOnesStrict } from '@sofie-automation/corelib/dist/mongo'
+import {
+	DBStudio,
+	StudioIngestDevice,
+	StudioInputDevice,
+	StudioPlayoutDevice,
+} from '@sofie-automation/corelib/dist/dataModel/Studio'
 import { applyAndValidateOverrides } from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
 import { check } from 'meteor/check'
+import {
+	PeripheralDevicePubSub,
+	PeripheralDevicePubSubCollectionsNames,
+} from '@sofie-automation/shared-lib/dist/pubsub/peripheralDevice'
 
 interface PeripheralDeviceForDeviceArgs {
 	readonly deviceId: PeripheralDeviceId
@@ -26,13 +34,15 @@ interface PeripheralDeviceForDeviceUpdateProps {
 }
 
 type StudioFields = '_id' | 'peripheralDeviceSettings'
-const studioFieldsSpecifier = literal<IncludeAllMongoFieldSpecifier<StudioFields>>({
+const studioFieldsSpecifier = literal<MongoFieldSpecifierOnesStrict<Pick<DBStudio, StudioFields>>>({
 	_id: 1,
 	peripheralDeviceSettings: 1,
 })
 
 type PeripheralDeviceFields = '_id' | 'category' | 'studioId' | 'settings' | 'secretSettings'
-const peripheralDeviceFieldsSpecifier = literal<IncludeAllMongoFieldSpecifier<PeripheralDeviceFields>>({
+const peripheralDeviceFieldsSpecifier = literal<
+	MongoFieldSpecifierOnesStrict<Pick<PeripheralDevice, PeripheralDeviceFields>>
+>({
 	_id: 1,
 	category: 1,
 	studioId: 1,
@@ -42,7 +52,7 @@ const peripheralDeviceFieldsSpecifier = literal<IncludeAllMongoFieldSpecifier<Pe
 
 export function convertPeripheralDeviceForGateway(
 	peripheralDevice: Pick<PeripheralDevice, PeripheralDeviceFields>,
-	studio: Pick<Studio, StudioFields> | undefined
+	studio: Pick<DBStudio, StudioFields> | undefined
 ): PeripheralDeviceForDevice {
 	const playoutDevices: PeripheralDeviceForDevice['playoutDevices'] = {}
 	const ingestDevices: PeripheralDeviceForDevice['ingestDevices'] = {}
@@ -180,16 +190,16 @@ async function manipulatePeripheralDevicePublicationData(
 	const studio =
 		peripheralDevice.studioId &&
 		((await Studios.findOneAsync(peripheralDevice.studioId, { projection: studioFieldsSpecifier })) as
-			| Pick<Studio, StudioFields>
+			| Pick<DBStudio, StudioFields>
 			| undefined)
 
 	return [convertPeripheralDeviceForGateway(peripheralDevice, studio)]
 }
 
 meteorCustomPublish(
-	PubSub.peripheralDeviceForDevice,
-	CustomCollectionName.PeripheralDeviceForDevice,
-	async function (pub, deviceId: PeripheralDeviceId, token) {
+	PeripheralDevicePubSub.peripheralDeviceForDevice,
+	PeripheralDevicePubSubCollectionsNames.peripheralDeviceForDevice,
+	async function (pub, deviceId: PeripheralDeviceId, token: string | undefined) {
 		check(deviceId, String)
 
 		if (await PeripheralDeviceReadAccess.peripheralDeviceContent(deviceId, { userId: this.userId, token })) {
@@ -206,7 +216,7 @@ meteorCustomPublish(
 				PeripheralDeviceForDeviceState,
 				PeripheralDeviceForDeviceUpdateProps
 			>(
-				`${CustomCollectionName.PeripheralDeviceForDevice}_${deviceId}`,
+				`${PeripheralDevicePubSubCollectionsNames.peripheralDeviceForDevice}_${deviceId}`,
 				{ deviceId },
 				setupPeripheralDevicePublicationObservers,
 				manipulatePeripheralDevicePublicationData,

@@ -2,31 +2,25 @@ import * as React from 'react'
 import { PieceUi } from '../../../SegmentTimeline/SegmentTimelineContainer'
 import { IAdLibListItem } from '../../AdLibListItem'
 import { RundownUtils } from '../../../../lib/rundown'
-import { Piece } from '../../../../../lib/collections/Pieces'
+import { Piece } from '@sofie-automation/corelib/dist/dataModel/Piece'
 import InspectorTitle from './InspectorTitle'
-import { MediaObject } from '../../../../../lib/collections/MediaObjects'
 import { BucketAdLibUi } from '../../RundownViewBuckets'
 import { AdLibPieceUi } from '../../../../lib/shelf'
 import { UIShowStyleBase } from '../../../../../lib/api/showStyles'
 import { UIStudio } from '../../../../../lib/api/studios'
 import { unprotectString } from '@sofie-automation/corelib/dist/protectedString'
 
-export default function DefaultItemRenderer(props: {
-	piece: PieceUi | IAdLibListItem | BucketAdLibUi
-	showStyleBase: UIShowStyleBase
-	studio: UIStudio
-}): JSX.Element {
+export default function DefaultItemRenderer(
+	props: Readonly<{
+		piece: PieceUi | IAdLibListItem | BucketAdLibUi
+		showStyleBase: UIShowStyleBase
+		studio: UIStudio
+	}>
+): JSX.Element {
 	if (RundownUtils.isAdLibPiece(props.piece)) {
 		const piece = props.piece as IAdLibListItem
 
-		let packageName: string | null = null
-		if (piece.contentPackageInfos) {
-			packageName = piece.contentPackageInfos[0]?.packageName
-		} else {
-			// Fallback to media objects
-			const metadata = piece.contentMetaData as MediaObject
-			packageName = metadata && metadata.mediaId ? metadata.mediaId : null
-		}
+		const packageName = piece.contentStatus?.packageName ?? null
 
 		return (
 			<>
@@ -47,22 +41,15 @@ export default function DefaultItemRenderer(props: {
 					<dt>{piece.sourceLayerId}</dt>
 					<dd>outputLayerId</dd>
 					<dt>{piece.outputLayerId}</dt>
-					<dd>metaData</dd>
-					<dt>{JSON.stringify(piece.metaData || {})}</dt>
+					<dd>publicData</dd>
+					<dt>{JSON.stringify(piece.publicData || {})}</dt>
 				</dl>
 			</>
 		)
 	} else {
 		const piece = props.piece.instance.piece as Piece
 
-		let packageName: string | null = null
-		if (props.piece.contentPackageInfos) {
-			packageName = props.piece.contentPackageInfos[0]?.packageName
-		} else {
-			// Fallback to media objects
-			const metadata = props.piece.contentMetaData as MediaObject
-			packageName = metadata && metadata.mediaId ? metadata.mediaId : null
-		}
+		const packageName = props.piece.contentStatus?.packageName ?? null
 
 		return (
 			<>
@@ -79,8 +66,8 @@ export default function DefaultItemRenderer(props: {
 					<dt>{piece.sourceLayerId}</dt>
 					<dd>outputLayerId</dd>
 					<dt>{piece.outputLayerId}</dt>
-					<dd>metaData</dd>
-					<dt>{JSON.stringify(piece.metaData || {})}</dt>
+					<dd>publicData</dd>
+					<dt>{JSON.stringify(piece.publicData || {})}</dt>
 				</dl>
 			</>
 		)

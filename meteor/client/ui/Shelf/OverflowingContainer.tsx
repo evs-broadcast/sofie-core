@@ -16,8 +16,8 @@ interface IState {
 }
 
 export class OverflowingContainer extends React.Component<React.PropsWithChildren<IProps>, IState> {
-	_element: HTMLDivElement | null
-	_scrollFactor: number = 0
+	_element: HTMLDivElement | null = null
+	_scrollFactor = 0
 
 	constructor(props: IProps) {
 		super(props)

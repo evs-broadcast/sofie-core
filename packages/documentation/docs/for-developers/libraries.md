@@ -30,7 +30,7 @@ There are a number of libraries used in the Sofie ecosystem:
 * [**ATEM State**](https://github.com/nrkno/sofie-atem-state)  Used in TSR to tracks the state of ATEMs and generate commands to control them.
 * [**CasparCG&nbsp;Server Connection**](https://github.com/SuperFlyTV/casparcg-connection) developed by **[_SuperFly.tv_](https://github.com/SuperFlyTV)** Library to connect and interact with CasparCG&nbsp;Servers.
 * [**CasparCG State**](https://github.com/superflytv/casparcg-state) developed by **[_SuperFly.tv_](https://github.com/SuperFlyTV)** Used in TSR to tracks the state of CasparCG&nbsp;Servers and generate commands to control them.
-* [**Ember+ Connection**](https://github.com/nrkno/sofie-emberplus-connection) Library to communicate with _Ember+_ control protocol 
+* [**Ember+ Connection**](https://github.com/nrkno/sofie-emberplus-connection) Library to communicate with _Ember+_ control protocol
 * [**HyperDeck Connection**](https://github.com/nrkno/sofie-hyperdeck-connection) Library for connecting to Blackmagic Design's HyperDeck recorders.
 * [**MOS Connection**](https://github.com/nrkno/sofie-mos-connection/) A [_MOS protocol_](http://mosprotocol.com/) library for acting as a MOS device and connecting to an newsroom control system.
 * [**Quantel Gateway Client**](https://github.com/nrkno/sofie-quantel-gateway-client) An interface that talks to the Quantel-Gateway application.
@@ -44,18 +44,19 @@ There are a number of libraries used in the Sofie ecosystem:
 
 There are also a few typings-only libraries that define interfaces between applications:
 
-* [**Blueprints Integration**](https://www.npmjs.com/package/@sofie-automation/blueprints-integration) Defines the interface between [**Blueprints**](../user-guide/concepts-and-architecture#blueprints) and **Sofie&nbsp;Core**.
-* [**Timeline State Resolver types**](https://www.npmjs.com/package/timeline-state-resolver-types) Defines the interface between [**Blueprints**](../user-guide/concepts-and-architecture#blueprints) and the timeline that will be fed into **TSR** for playout.
+* [**Blueprints Integration**](https://www.npmjs.com/package/@sofie-automation/blueprints-integration) Defines the interface between [**Blueprints**](../user-guide/concepts-and-architecture.md#blueprints) and **Sofie&nbsp;Core**.
+* [**Timeline State Resolver types**](https://www.npmjs.com/package/timeline-state-resolver-types) Defines the interface between [**Blueprints**](../user-guide/concepts-and-architecture.md#blueprints) and the timeline that will be fed into **TSR** for playout.
 
 ## Other Sofie-related Repositories
 
 * [**CasparCG&nbsp;Server** \(NRK fork\)](https://github.com/nrkno/sofie-casparcg-server) Sofie-specific fork of CasparCG&nbsp;Server.
 * [**CasparCG Launcher**](https://github.com/nrkno/sofie-casparcg-launcher) Launcher, controller, and logger for CasparCG&nbsp;Server.
 * [**CasparCG Media Scanner** \(NRK fork\)](https://github.com/nrkno/sofie-casparcg-server) Sofie-specific fork of CasparCG&nbsp;Server 2.2 Media&nbsp;Scanner.
+* [**Sofie Chef**](https://github.com/nrkno/sofie-chef) A simple Chromium based renderer, used for kiosk mode rendering of web pages.
 * [**Media Manager**](https://github.com/nrkno/sofie-media-management) *(deprecated)* Handles media transfer and media file management for pulling new files and deleting expired files on playout devices.
 * [**Quantel Browser Plugin**](https://github.com/nrkno/sofie-quantel-browser-plugin) MOS-compatible Quantel video clip browser for use with Sofie.
 * [**Sisyfos Audio Controller**](https://github.com/nrkno/sofie-sisyfos-audio-controller) *developed by [_olzzon_](https://github.com/olzzon/)*
-* [**Quantel Gateway**](https://github.com/nrkno/sofie-quantel-gateway) CORBA to REST gateway for _Quantel/ISA_ playback. 
+* [**Quantel Gateway**](https://github.com/nrkno/sofie-quantel-gateway) CORBA to REST gateway for _Quantel/ISA_ playback.
 
 
 

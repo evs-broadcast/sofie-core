@@ -3,7 +3,8 @@ import { JobContext } from '../jobs'
 import { DBPartInstance } from '@sofie-automation/corelib/dist/dataModel/PartInstance'
 import { DBRundownPlaylist } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
 import { SegmentId } from '@sofie-automation/corelib/dist/dataModel/Ids'
-import { DBSegment } from '@sofie-automation/corelib/dist/dataModel/Segment'
+import { ReadonlyDeep } from 'type-fest'
+import { PlayoutSegmentModel } from './model/PlayoutSegmentModel'
 
 /**
  * This wraps a Part which has been selected to be next, to include some additional data about that choice
@@ -12,7 +13,7 @@ export interface SelectNextPartResult {
 	/**
 	 * The Part selected to be nexted
 	 */
-	part: DBPart
+	part: ReadonlyDeep<DBPart>
 
 	/**
 	 * The index of the Part in the provided list of all sorted Parts
@@ -20,14 +21,10 @@ export interface SelectNextPartResult {
 	index: number
 
 	/**
-	 * Whether this Part consumes the `nextSegmentId` property on the rundown.
-	 * If true, when this PartInstance is taken, the `nextSegmentId` property on the Playlist will be cleared
+	 * Whether this Part consumes the `queuedSegmentId` property on the rundown.
+	 * If true, when this PartInstance is taken, the `queuedSegmentId` property on the Playlist will be cleared
 	 */
-	consumesNextSegmentId: boolean
-}
-export interface PartsAndSegments {
-	segments: DBSegment[]
-	parts: DBPart[]
+	consumesQueuedSegmentId: boolean
 }
 
 /**
@@ -36,10 +33,11 @@ export interface PartsAndSegments {
 
 export function selectNextPart(
 	context: JobContext,
-	rundownPlaylist: Pick<DBRundownPlaylist, 'nextSegmentId' | 'loop'>,
-	previousPartInstance: DBPartInstance | null,
-	currentlySelectedPartInstance: DBPartInstance | null,
-	{ parts: parts0, segments }: PartsAndSegments,
+	rundownPlaylist: Pick<DBRundownPlaylist, 'queuedSegmentId' | 'loop'>,
+	previousPartInstance: ReadonlyDeep<DBPartInstance> | null,
+	currentlySelectedPartInstance: ReadonlyDeep<DBPartInstance> | null,
+	segments: readonly PlayoutSegmentModel[],
+	parts0: ReadonlyDeep<DBPart>[],
 	ignoreUnplayabale = true
 ): SelectNextPartResult | null {
 	const span = context.startSpan('selectNextPart')
@@ -57,14 +55,14 @@ export function selectNextPart(
 	 */
 	const findFirstPlayablePart = (
 		offset: number,
-		condition?: (part: DBPart) => boolean,
+		condition?: (part: ReadonlyDeep<DBPart>) => boolean,
 		length?: number
 	): SelectNextPartResult | undefined => {
 		// Filter to after and find the first playabale
 		for (let index = offset; index < (length || parts.length); index++) {
 			const part = parts[index]
 			if ((!ignoreUnplayabale || isPartPlayable(part)) && (!condition || condition(part))) {
-				return { part, index, consumesNextSegmentId: false }
+				return { part, index, consumesQueuedSegmentId: false }
 			}
 		}
 		return undefined
@@ -99,12 +97,12 @@ export function selectNextPart(
 				searchFromIndex = nextInSegmentIndex ?? segmentStartIndex
 			} else {
 				// If we didn't find the segment in the list of parts, then look for segments after this one.
-				const segmentIndex = segments.findIndex((s) => s._id === previousPartInstance.segmentId)
+				const segmentIndex = segments.findIndex((s) => s.segment._id === previousPartInstance.segmentId)
 				let followingSegmentStart: number | undefined
 				if (segmentIndex !== -1) {
 					// Find the first segment with parts that lies after this
 					for (let i = segmentIndex + 1; i < segments.length; i++) {
-						const segmentStart = segmentStarts.get(segments[i]._id)
+						const segmentStart = segmentStarts.get(segments[i].segment._id)
 						if (segmentStart !== undefined) {
 							followingSegmentStart = segmentStart
 							break
@@ -123,16 +121,19 @@ export function selectNextPart(
 	// Filter to after and find the first playabale
 	let nextPart = findFirstPlayablePart(searchFromIndex)
 
-	if (rundownPlaylist.nextSegmentId) {
+	if (rundownPlaylist.queuedSegmentId) {
 		// No previous part, or segment has changed
 		if (!previousPartInstance || (nextPart && previousPartInstance.segmentId !== nextPart.part.segmentId)) {
 			// Find first in segment
-			const newSegmentPart = findFirstPlayablePart(0, (part) => part.segmentId === rundownPlaylist.nextSegmentId)
+			const newSegmentPart = findFirstPlayablePart(
+				0,
+				(part) => part.segmentId === rundownPlaylist.queuedSegmentId
+			)
 			if (newSegmentPart) {
 				// If matched matched, otherwise leave on auto
 				nextPart = {
 					...newSegmentPart,
-					consumesNextSegmentId: true,
+					consumesQueuedSegmentId: true,
 				}
 			}
 		}

@@ -2,7 +2,7 @@ import React, { useRef } from 'react'
 import classNames from 'classnames'
 import { unprotectString } from '@sofie-automation/corelib/dist/protectedString'
 import { DragSourceMonitor, DropTargetMonitor, useDrag, useDrop } from 'react-dnd'
-import { ShowStyleVariant } from '../../../../lib/collections/ShowStyleVariants'
+import { DBShowStyleVariant } from '@sofie-automation/corelib/dist/dataModel/ShowStyleVariant'
 import { EditAttribute } from '../../../lib/EditAttribute'
 import { BlueprintConfigSchemaSettings } from '../BlueprintConfigSchema'
 import { ShowStyleDragDropTypes } from './DragDropTypesShowStyle'
@@ -58,8 +58,8 @@ export const VariantListItem = ({
 	onFinishEdit,
 	onDelete,
 	onSaveOverrides,
-}: {
-	showStyleVariant: ShowStyleVariant
+}: Readonly<{
+	showStyleVariant: DBShowStyleVariant
 	onDragVariant: (draggingId: ShowStyleVariantId, hoverId: ShowStyleVariantId) => void
 	onDragEnd: (draggedId: ShowStyleVariantId) => void
 	onDragCancel: () => void
@@ -71,13 +71,13 @@ export const VariantListItem = ({
 	layerMappings?: { [studioId: string]: MappingsExt }
 	sourceLayers?: SourceLayers
 
-	onDownload: (showStyleVariant: ShowStyleVariant) => void
-	onCopy: (showStyleVariantId: ShowStyleVariant) => void
+	onDownload: (showStyleVariant: DBShowStyleVariant) => void
+	onCopy: (showStyleVariantId: DBShowStyleVariant) => void
 	onEdit: (showStyleVariantId: ShowStyleVariantId) => void
 	onFinishEdit: (showStyleVariantId: ShowStyleVariantId) => void
-	onDelete: (showStyleVariant: ShowStyleVariant) => void
+	onDelete: (showStyleVariant: DBShowStyleVariant) => void
 	onSaveOverrides: (showStyleVariantId: ShowStyleVariantId, newOps: SomeObjectOverrideOp[]) => void
-}): JSX.Element => {
+}>): JSX.Element => {
 	const ref = useRef<HTMLTableRowElement>(null)
 	const [{ handlerId }, drop] = useDrop<DraggableVariant, DraggableDropResult, { handlerId: string | symbol | null }>({
 		accept: ShowStyleDragDropTypes.VARIANT,

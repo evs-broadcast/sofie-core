@@ -7,7 +7,7 @@ import { protectString } from '@sofie-automation/corelib/dist/protectedString'
 import { saveIntoDb } from '../../db/changes'
 import { ensureNextPartIsValid as ensureNextPartIsValidRaw } from '../updateNext'
 import { MockJobContext, setupDefaultJobEnvironment } from '../../__mocks__/context'
-import { runJobWithPlayoutCache } from '../../playout/lock'
+import { runJobWithPlayoutModel } from '../../playout/lock'
 
 jest.mock('../../playout/setNext')
 import { setNextPart } from '../../playout/setNext'
@@ -58,7 +58,6 @@ async function createMockRO(context: MockJobContext): Promise<RundownId> {
 	await saveIntoDb(
 		context,
 		context.directCollections.Segments,
-		null,
 		{
 			rundownId: rundownId,
 		},
@@ -291,7 +290,6 @@ async function createMockRO(context: MockJobContext): Promise<RundownId> {
 	await saveIntoDb(
 		context,
 		context.directCollections.PartInstances,
-		null,
 		{
 			rundownId: rundownId,
 		},
@@ -300,7 +298,6 @@ async function createMockRO(context: MockJobContext): Promise<RundownId> {
 	await saveIntoDb(
 		context,
 		context.directCollections.Parts,
-		null,
 		{
 			rundownId: rundownId,
 		},
@@ -331,7 +328,7 @@ describe('ensureNextPartIsValid', () => {
 							partInstanceId: nextPartInstanceId as any,
 							rundownId,
 							manuallySelected: nextPartManual || false,
-							consumesNextSegmentId: false,
+							consumesQueuedSegmentId: false,
 					  }
 					: null,
 				currentPartInfo: currentPartInstanceId
@@ -339,7 +336,7 @@ describe('ensureNextPartIsValid', () => {
 							partInstanceId: currentPartInstanceId as any,
 							rundownId,
 							manuallySelected: false,
-							consumesNextSegmentId: false,
+							consumesQueuedSegmentId: false,
 					  }
 					: null,
 				previousPartInfo: null,
@@ -347,8 +344,8 @@ describe('ensureNextPartIsValid', () => {
 		})
 	}
 	async function ensureNextPartIsValid() {
-		await runJobWithPlayoutCache(context, { playlistId: rundownPlaylistId }, null, async (cache) =>
-			ensureNextPartIsValidRaw(context, cache)
+		await runJobWithPlayoutModel(context, { playlistId: rundownPlaylistId }, null, async (playoutModel) =>
+			ensureNextPartIsValidRaw(context, playoutModel)
 		)
 	}
 
@@ -360,7 +357,7 @@ describe('ensureNextPartIsValid', () => {
 		expect(setNextPartMock).toHaveBeenCalledTimes(1)
 		expect(setNextPartMock).toHaveBeenCalledWith(
 			context,
-			expect.objectContaining({ PlaylistId: rundownPlaylistId }),
+			expect.objectContaining({ playlistId: rundownPlaylistId }),
 			expect.objectContaining({ part: expect.objectContaining({ _id: 'mock_part1' }) }),
 			false
 		)
@@ -373,7 +370,7 @@ describe('ensureNextPartIsValid', () => {
 		expect(setNextPartMock).toHaveBeenCalledTimes(1)
 		expect(setNextPartMock).toHaveBeenCalledWith(
 			context,
-			expect.objectContaining({ PlaylistId: rundownPlaylistId }),
+			expect.objectContaining({ playlistId: rundownPlaylistId }),
 			expect.objectContaining({ part: expect.objectContaining({ _id: 'mock_part4' }) }),
 			false
 		)
@@ -395,7 +392,7 @@ describe('ensureNextPartIsValid', () => {
 		expect(setNextPartMock).toHaveBeenCalledTimes(1)
 		expect(setNextPartMock).toHaveBeenCalledWith(
 			context,
-			expect.objectContaining({ PlaylistId: rundownPlaylistId }),
+			expect.objectContaining({ playlistId: rundownPlaylistId }),
 			expect.objectContaining({ part: expect.objectContaining({ _id: 'mock_part1' }) }),
 			false
 		)
@@ -422,7 +419,7 @@ describe('ensureNextPartIsValid', () => {
 		expect(setNextPartMock).toHaveBeenCalledTimes(1)
 		expect(setNextPartMock).toHaveBeenCalledWith(
 			context,
-			expect.objectContaining({ PlaylistId: rundownPlaylistId }),
+			expect.objectContaining({ playlistId: rundownPlaylistId }),
 			expect.objectContaining({ part: expect.objectContaining({ _id: 'mock_part4' }) }),
 			false
 		)
@@ -435,7 +432,7 @@ describe('ensureNextPartIsValid', () => {
 		expect(setNextPartMock).toHaveBeenCalledTimes(1)
 		expect(setNextPartMock).toHaveBeenCalledWith(
 			context,
-			expect.objectContaining({ PlaylistId: rundownPlaylistId }),
+			expect.objectContaining({ playlistId: rundownPlaylistId }),
 			expect.objectContaining({ part: expect.objectContaining({ _id: 'mock_part4' }) }),
 			false
 		)
@@ -448,7 +445,7 @@ describe('ensureNextPartIsValid', () => {
 		expect(setNextPartMock).toHaveBeenCalledTimes(1)
 		expect(setNextPartMock).toHaveBeenCalledWith(
 			context,
-			expect.objectContaining({ PlaylistId: rundownPlaylistId }),
+			expect.objectContaining({ playlistId: rundownPlaylistId }),
 			expect.objectContaining({ part: expect.objectContaining({ _id: 'mock_part9' }) }),
 			false
 		)
@@ -461,7 +458,7 @@ describe('ensureNextPartIsValid', () => {
 		expect(setNextPartMock).toHaveBeenCalledTimes(1)
 		expect(setNextPartMock).toHaveBeenCalledWith(
 			context,
-			expect.objectContaining({ PlaylistId: rundownPlaylistId }),
+			expect.objectContaining({ playlistId: rundownPlaylistId }),
 			expect.objectContaining({ part: expect.objectContaining({ _id: 'mock_part9' }) }),
 			false
 		)
@@ -498,7 +495,7 @@ describe('ensureNextPartIsValid', () => {
 		expect(setNextPartMock).toHaveBeenCalledTimes(1)
 		expect(setNextPartMock).toHaveBeenCalledWith(
 			context,
-			expect.objectContaining({ PlaylistId: rundownPlaylistId }),
+			expect.objectContaining({ playlistId: rundownPlaylistId }),
 			expect.objectContaining({ part: expect.objectContaining({ _id: 'mock_part1' }) }),
 			false
 		)
@@ -535,7 +532,7 @@ describe('ensureNextPartIsValid', () => {
 		expect(setNextPartMock).toHaveBeenCalledTimes(1)
 		expect(setNextPartMock).toHaveBeenCalledWith(
 			context,
-			expect.objectContaining({ PlaylistId: rundownPlaylistId }),
+			expect.objectContaining({ playlistId: rundownPlaylistId }),
 			expect.objectContaining({ part: expect.objectContaining({ _id: 'mock_part1' }) }),
 			false
 		)
@@ -609,7 +606,7 @@ describe('ensureNextPartIsValid', () => {
 			expect(setNextPartMock).toHaveBeenCalledTimes(1)
 			expect(setNextPartMock).toHaveBeenCalledWith(
 				expect.objectContaining({}),
-				expect.objectContaining({ PlaylistId: rundownPlaylistId }),
+				expect.objectContaining({ playlistId: rundownPlaylistId }),
 				expect.objectContaining({ part: expect.objectContaining({ _id: 'tmp_part_1' }) }),
 				false
 			)
@@ -627,7 +624,7 @@ describe('ensureNextPartIsValid', () => {
 			expect(setNextPartMock).toHaveBeenCalledTimes(1)
 			expect(setNextPartMock).toHaveBeenCalledWith(
 				expect.objectContaining({}),
-				expect.objectContaining({ PlaylistId: rundownPlaylistId }),
+				expect.objectContaining({ playlistId: rundownPlaylistId }),
 				null,
 				false
 			)

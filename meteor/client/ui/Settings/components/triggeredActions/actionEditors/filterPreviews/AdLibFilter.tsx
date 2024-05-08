@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { TFunction } from 'i18next'
 import { assertNever } from '../../../../../../../lib/lib'
 import { FilterEditor } from './FilterEditor'
-import { OutputLayers, SourceLayers } from '../../../../../../../lib/collections/ShowStyleBases'
+import { OutputLayers, SourceLayers } from '@sofie-automation/corelib/dist/dataModel/ShowStyleBase'
 import { EditAttributeType } from '../../../../../../lib/EditAttribute'
 import { useTracker } from '../../../../../../lib/ReactMeteorData/ReactMeteorData'
 import {
@@ -22,7 +22,7 @@ interface IProps {
 	outputLayers: OutputLayers | undefined
 	readonly?: boolean
 	opened: boolean
-	onChange: (index, newVal: IAdLibFilterLink, oldVal: IAdLibFilterLink) => void
+	onChange: (index: number, newVal: IAdLibFilterLink, oldVal: IAdLibFilterLink) => void
 	onFocus?: (index: number) => void
 	onInsertNext?: (index: number) => void
 	onRemove?: (index: number) => void
@@ -209,7 +209,7 @@ function fieldValueMutate(link: IAdLibFilterLink, newValue: any) {
 			return Boolean(newValue)
 		case 'label':
 		case 'tag':
-			return String(newValue).split(/\,\s*/)
+			return String(newValue).split(/,\s*/)
 		case 'limit':
 			return Number(newValue)
 		case 'pick':

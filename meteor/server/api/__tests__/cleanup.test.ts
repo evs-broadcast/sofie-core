@@ -189,7 +189,6 @@ async function setDefaultDatatoDB(env: DefaultEnvironment, now: number) {
 		startPartId: partId,
 		startRundownId: rundownId,
 		startSegmentId: segmentId,
-		status: '' as any,
 		timelineObjectsString: '' as any,
 	}
 	const pieceId = await Pieces.mutableCollection.insertAsync(piece)
@@ -222,6 +221,7 @@ async function setDefaultDatatoDB(env: DefaultEnvironment, now: number) {
 		actionId: '',
 		display: {} as any,
 		importVersions: {} as any,
+		ingestInfo: undefined,
 		showStyleVariantId,
 		userData: {} as any,
 		userDataManifest: {} as any,
@@ -233,6 +233,7 @@ async function setDefaultDatatoDB(env: DefaultEnvironment, now: number) {
 		studioId,
 		showStyleBaseId: env.showStyleBaseId,
 		importVersions: {} as any,
+		ingestInfo: undefined,
 		showStyleVariantId,
 		_rank: 0,
 		content: {} as any,

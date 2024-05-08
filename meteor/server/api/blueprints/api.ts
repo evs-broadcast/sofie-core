@@ -1,10 +1,10 @@
 import * as _ from 'underscore'
 import path from 'path'
-import { promises as fsp } from 'fs'
+import { ReadStream, createReadStream, promises as fsp } from 'fs'
 import { getCurrentTime, unprotectString, getRandomId } from '../../../lib/lib'
 import { logger } from '../../logging'
 import { Meteor } from 'meteor/meteor'
-import { Blueprint } from '../../../lib/collections/Blueprints'
+import { Blueprint } from '@sofie-automation/corelib/dist/dataModel/Blueprint'
 import {
 	BlueprintManifestType,
 	IShowStyleConfigPreset,
@@ -27,9 +27,9 @@ import { BlueprintId, OrganizationId, ShowStyleBaseId } from '@sofie-automation/
 import { Blueprints, CoreSystem, ShowStyleBases, ShowStyleVariants, Studios } from '../../collections'
 import { fetchBlueprintLight, BlueprintLight } from '../../serverOptimisations'
 import { getSystemStorePath } from '../../coreSystem'
-import { ShowStyleBase } from '../../../lib/collections/ShowStyleBases'
-import { ShowStyleVariant } from '../../../lib/collections/ShowStyleVariants'
-import { Studio } from '../../../lib/collections/Studios'
+import { DBShowStyleBase } from '@sofie-automation/corelib/dist/dataModel/ShowStyleBase'
+import { DBShowStyleVariant } from '@sofie-automation/corelib/dist/dataModel/ShowStyleVariant'
+import { DBStudio } from '@sofie-automation/corelib/dist/dataModel/Studio'
 
 export async function insertBlueprint(
 	methodContext: MethodContext,
@@ -65,6 +65,7 @@ export async function insertBlueprint(
 		TSRVersion: '',
 
 		blueprintHash: getRandomId(),
+		hasFixUpFunction: false,
 	})
 }
 export async function removeBlueprint(methodContext: MethodContext, blueprintId: BlueprintId): Promise<void> {
@@ -112,13 +113,13 @@ export async function uploadBlueprintAsset(_context: Credentials, fileId: string
 	await fsp.mkdir(path.join(storePath, parsedPath.dir), { recursive: true })
 	await fsp.writeFile(path.join(storePath, fileId), data)
 }
-export async function retrieveBlueprintAsset(_context: Credentials, fileId: string): Promise<Buffer> {
+export function retrieveBlueprintAsset(_context: Credentials, fileId: string): ReadStream {
 	check(fileId, String)
 
 	const storePath = getSystemStorePath()
 
 	// TODO: add access control here
-	return fsp.readFile(path.join(storePath, fileId))
+	return createReadStream(path.join(storePath, fileId))
 }
 /** Only to be called from internal functions */
 export async function internalUploadBlueprint(
@@ -163,6 +164,7 @@ async function innerUploadBlueprint(
 		disableVersionChecks: false,
 		blueprintType: undefined,
 		blueprintHash: getRandomId(),
+		hasFixUpFunction: false,
 	}
 
 	let blueprintManifest: SomeBlueprintManifest | undefined
@@ -217,9 +219,13 @@ async function innerUploadBlueprint(
 	if (blueprintManifest.blueprintType === BlueprintManifestType.SHOWSTYLE) {
 		newBlueprint.showStyleConfigSchema = blueprintManifest.showStyleConfigSchema
 		newBlueprint.showStyleConfigPresets = blueprintManifest.configPresets
+		newBlueprint.hasFixUpFunction = !!blueprintManifest.fixUpConfig
 	} else if (blueprintManifest.blueprintType === BlueprintManifestType.STUDIO) {
 		newBlueprint.studioConfigSchema = blueprintManifest.studioConfigSchema
 		newBlueprint.studioConfigPresets = blueprintManifest.configPresets
+		newBlueprint.hasFixUpFunction = !!blueprintManifest.fixUpConfig
+	} else {
+		newBlueprint.hasFixUpFunction = false
 	}
 
 	// Parse the versions, just to verify that the format is correct:
@@ -264,7 +270,7 @@ async function syncConfigPresetsToShowStyles(blueprint: Blueprint): Promise<void
 				blueprintConfigPresetId: 1,
 			},
 		}
-	)) as Pick<ShowStyleBase, '_id' | 'blueprintConfigPresetId'>[]
+	)) as Pick<DBShowStyleBase, '_id' | 'blueprintConfigPresetId'>[]
 
 	const configPresets = blueprint.showStyleConfigPresets || {}
 
@@ -299,7 +305,7 @@ async function syncConfigPresetsToShowStyles(blueprint: Blueprint): Promise<void
 				blueprintConfigPresetId: 1,
 			},
 		}
-	)) as Pick<ShowStyleVariant, '_id' | 'blueprintConfigPresetId' | 'showStyleBaseId'>[]
+	)) as Pick<DBShowStyleVariant, '_id' | 'blueprintConfigPresetId' | 'showStyleBaseId'>[]
 
 	await Promise.all(
 		variants.map(async (variant) => {
@@ -331,7 +337,7 @@ async function syncConfigPresetsToStudios(blueprint: Blueprint): Promise<void> {
 				blueprintConfigPresetId: 1,
 			},
 		}
-	)) as Pick<Studio, '_id' | 'blueprintConfigPresetId'>[]
+	)) as Pick<DBStudio, '_id' | 'blueprintConfigPresetId'>[]
 
 	const configPresets = blueprint.studioConfigPresets || {}
 

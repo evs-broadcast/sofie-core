@@ -23,21 +23,16 @@ $defs:
           type: string
       currentPart:
         description: The current Part - if empty, no part in the active playlist is live
-        $ref: '#/$defs/part'
+        $ref: '#/$defs/currentPart'
+      currentSegment:
+        description: The Segment of the current Part - if empty, no part in the active playlist is live
+        $ref: '#/$defs/currentSegment'
       nextPart:
         description: The next Part - if empty, no part will follow live part
         $ref: '#/$defs/part'
-      adLibs:
-        description: The available AdLibs for this playlist
-        type: array
-        items:
-          $ref: '#/$defs/adLib'
-      globalAdLibs:
-        description: The available Global AdLibs for this playlist
-        type: array
-        items:
-          $ref: '#/$defs/adLib'
-    required: [event, id, externalId, name, rundownIds, currentPart, nextPart, adLibs, globalAdLibs]
+      publicData:
+        description: Optional arbitrary data
+    required: [event, id, name, rundownIds, currentPart, currentSegment, nextPart]
     additionalProperties: false
     examples:
       - event: activePlaylist
@@ -46,73 +41,150 @@ $defs:
         name: 'Playlist 0'
         rundownIds: ['y9HauyWkcxQS3XaAOsW40BRLLsI_']
         currentPart:
-          $ref: '#/$defs/part/examples'
+          $ref: '#/$defs/currentPart/examples/0'
+        currentSegment:
+          $ref: '#/$defs/currentSegment/examples/0'
         nextPart:
-          $ref: '#/$defs/part/examples'
-        adLibs:
-          $ref: '#/$defs/adLib/examples'
-        globals:
-          $ref: '#/$defs/adLib/examples'
+          $ref: '#/$defs/part/examples/0'
+        publicData:
+          category: 'Evening News'
+  partBase:
+    type: object
+    properties:
+      id:
+        description: Unique id of the part
+        type: string
+      name:
+        description: User name of the part
+        type: string
+      segmentId:
+        description: Unique id of the segment this part belongs to
+        type: string
+      autoNext:
+        description: If this part will progress to the next automatically
+        type: boolean
+        default: false
+      pieces:
+        description: All pieces in this part
+        type: array
+        items:
+          $ref: '#/$defs/piece'
+      publicData:
+        description: Optional arbitrary data
+    required: [id, name, segmentId, pieces]
+    # additionalProperties: false
+    examples:
+      - id: 'H5CBGYjThrMSmaYvRaa5FVKJIzk_'
+        name: 'Intro'
+        segmentId: 'n1mOVd5_K5tt4sfk6HYfTuwumGQ_'
+        autoNext: false
+        pieces:
+          - $ref: '#/$defs/piece/examples/0'
+        publicData:
+          partType: 'intro'
   part:
     oneOf:
-      - type: object
-        properties:
-          id:
-            description: Unique id of the part
-            type: string
-          name:
-            description: User name of the part
-            type: string
-          autoNext:
-            description: Should this part progress to the next automatically
-            type: boolean
-            default: false
-        required: [id, name]
-        additionalProperties: false
+      - $ref: '#/$defs/partBase'
       - type: 'null'
     examples:
       - id: 'H5CBGYjThrMSmaYvRaa5FVKJIzk_'
         name: 'Intro'
+        segmentId: 'n1mOVd5_K5tt4sfk6HYfTuwumGQ_'
         autoNext: false
-  adLib:
+        pieces:
+          - $ref: '#/$defs/piece/examples/0'
+  currentPart:
+    oneOf:
+      - allOf:
+          - $ref: '#/$defs/partBase'
+          - type: object
+            properties:
+              timing:
+                description: Timing information about the current part
+                type: object
+                properties:
+                  startTime:
+                    description: Unix timestamp of when the part started (milliseconds)
+                    type: number
+                  expectedDurationMs:
+                    description: Expected duration of the part (milliseconds)
+                    type: number
+                  projectedEndTime:
+                    description: Unix timestamp of when the part is projected to end (milliseconds). A sum of `startTime` and `expectedDurationMs`.
+                    type: number
+                required: [startTime, expectedDurationMs, projectedEndTime]
+            required: [timing]
+      - type: 'null'
+    examples:
+      - id: 'H5CBGYjThrMSmaYvRaa5FVKJIzk_'
+        name: 'Intro'
+        segmentId: 'n1mOVd5_K5tt4sfk6HYfTuwumGQ_'
+        autoNext: false
+        timing:
+          startTime: 1600000060000
+          expectedDurationMs: 15000
+          projectedEndTime: 1600000075000
+        pieces:
+          - $ref: '#/$defs/piece/examples/0'
+        publicData:
+          partType: 'intro'
+  currentSegment:
     type: object
     properties:
       id:
-        description: Unique id of the AdLib
+        description: Unique id of the segment
         type: string
-      name:
-        description: The user defined AdLib name
-        type: string
-      sourceLayer:
-        description: The source layer name for this AdLib
-        type: string
-      outputLayer:
-        description: The output layer name for this AdLib
-        type: string
-      actionType:
-        description: The available action type names that can be used to modify the execution of the AdLib
-        type: array
-        items:
-          type: object
-          properties:
-            name:
-              description: The string to be passed to the ExecuteAdlib function
-              type: string
-            label:
-              description: The label for the AdLib type
-              type: string
-          required: [name, label]
-          additionalProperties: false
-      editableFields:
-        description: JSON schema definition of the properties that can be modified for the adLib
-        type: string
-    required: [id, name, sourceLayer, actionType]
+      timing:
+        description: Timing information about the current segment
+        type: object
+        properties:
+          expectedDurationMs:
+            description: Expected duration of the segment
+            type: number
+          budgetDurationMs:
+            description: Budget duration of the segment
+            type: number
+          projectedEndTime:
+            description: Unix timestamp of when the segment is projected to end (milliseconds). The time this segment started, offset by its budget duration, if the segment has a defined budget duration. Otherwise, the time the current part started, offset by the difference between expected durations of all parts in this segment and the as-played durations of the parts that already stopped.
+            type: number
+        required: [expectedDurationMs, projectedEndTime]
+    required: [id, timing]
     additionalProperties: false
     examples:
-      - id: 'C6K_yIMuGFUk8X_L9A9_jRT6aq4_'
-        name: Music video clip
-        sourceLayer: Video Clip
-        actionType:
-          - name: pvw
-            label: Preview
-        editableFields: '{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"Play Video Clip","type":"object","properties":{"type":"adlib_action_video_clip","label":{"type":"string"},"clipId":{"type":"string"},"vo":{"type":"boolean"},"target":{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"Object Id","description":"Id of an object sent to Sofie","type":"string"},"duration":{"type":"number","exclusiveMinimum":0},"takeType":{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"AdLib Action Take Type","type":"string","enum":["take_immediate","queue"]},"transition":{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"AdLib Action Transition Type","oneOf":[{"type":"object","properties":{"type":"cut"},"required":["type"],"additionalProperties":false},{"type":"object","properties":{"type":"mix","duration":{"type":"number","exclusiveMinimum":0,"description":"Duration in ms"}},"required":["type","duration"],"additionalProperties":false},{"type":"object","properties":{"type":"wipe","duration":{"type":"number","exclusiveMinimum":0,"description":"Duration in ms"},"patternId":{"type":"string","description":"Type of wipe to use"}},"required":["type","duration","patternId"],"additionalProperties":false},{"type":"object","properties":{"type":"macro","macroId":{"type":"string","description":"Macro template to recall"}},"required":["type","macroId"],"additionalProperties":false}]}},"required":["type","clipId","vo","target"],"additionalProperties":false}"'
+      - id: 'H5CBGYjThrMSmaYvRaa5FVKJIzk_'
+        timing:
+          expectedDurationMs: 15000
+          budgetDurationMs: 20000
+          projectedEndTime: 1600000075000
+  piece:
+    type: object
+    properties:
+      id:
+        description: Unique id of the Piece
+        type: string
+      name:
+        description: User-facing name of the Piece
+        type: string
+      sourceLayer:
+        description: The source layer name for this Piece
+        type: string
+      outputLayer:
+        description: The output layer name for this Piece
+        type: string
+      tags:
+        description: Tags attached to this Piece
+        type: array
+        items:
+          type: string
+      publicData:
+        description: Optional arbitrary data
+    required: [id, name, sourceLayer, outputLayer]
+    additionalProperties: false
+    examples:
+      - id: 'H5CBGYjThrMSmaYvRaa5FVKJIzk_'
+        name: 'Camera 1'
+        sourceLayer: 'Camera'
+        outputLayer: 'PGM'
+        tags: ['camera']
+        publicData:
+          switcherSource: 1

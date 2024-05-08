@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import classNames from 'classnames'
-import { Rundown } from '../../../lib/collections/Rundowns'
+import { Rundown } from '@sofie-automation/corelib/dist/dataModel/Rundown'
 import { getAllowConfigure, getAllowService, getAllowStudio } from '../../lib/localStorage'
 import { useTracker } from '../../lib/ReactMeteorData/ReactMeteorData'
 import { confirmDeleteRundown, confirmReSyncRundown, getShowStyleBaseLink } from './util'
@@ -10,10 +10,11 @@ import { getEmptyImage } from 'react-dnd-html5-backend'
 import { unprotectString } from '../../../lib/lib'
 import RundownListItemView from './RundownListItemView'
 import { RundownLayoutBase } from '../../../lib/collections/RundownLayouts'
-import { UIShowStyleBases } from '../Collections'
 import { RundownId, RundownPlaylistId } from '@sofie-automation/corelib/dist/dataModel/Ids'
-import { ShowStyleVariants } from '../../collections'
+import { ShowStyleBases, ShowStyleVariants } from '../../collections'
 import { useTranslation } from 'react-i18next'
+import { DBShowStyleBase } from '@sofie-automation/corelib/dist/dataModel/ShowStyleBase'
+import { DBShowStyleVariant } from '@sofie-automation/corelib/dist/dataModel/ShowStyleVariant'
 
 export const HTML_ID_PREFIX = 'rundown-'
 
@@ -24,7 +25,7 @@ export function RundownListItem({
 	rundownLayouts,
 	swapRundownOrder,
 	isOnlyRundownInPlaylist,
-}: {
+}: Readonly<{
 	isActive: boolean
 	rundown: Rundown
 	rundownViewUrl?: string
@@ -33,13 +34,21 @@ export function RundownListItem({
 	playlistId: RundownPlaylistId
 	isOnlyRundownInPlaylist?: boolean
 	action?: IRundownPlaylistUiAction
-}): JSX.Element | null {
+}>): JSX.Element | null {
 	const { t } = useTranslation()
 
-	// const studio = useTracker(() => UIStudios.findOne(rundown.studioId), [rundown.studioId])
-	const showStyleBase = useTracker(() => UIShowStyleBases.findOne(rundown.showStyleBaseId), [rundown.showStyleBaseId])
+	const showStyleBase = useTracker(
+		() =>
+			ShowStyleBases.findOne(rundown.showStyleBaseId, { projection: { name: 1 } }) as
+				| Pick<DBShowStyleBase, 'name'>
+				| undefined,
+		[rundown.showStyleBaseId]
+	)
 	const showStyleVariant = useTracker(
-		() => ShowStyleVariants.findOne(rundown.showStyleVariantId),
+		() =>
+			ShowStyleVariants.findOne(rundown.showStyleVariantId, { projection: { name: 1 } }) as
+				| Pick<DBShowStyleVariant, 'name'>
+				| undefined,
 		[rundown.showStyleVariantId]
 	)
 
@@ -89,7 +98,7 @@ export function RundownListItem({
 					showStyleVariant: showStyleVariant.name,
 					showStyleBase: showStyleBase.name,
 			  })
-			: showStyleBase?.name || ''
+			: showStyleBase?.name ?? ''
 
 	return (
 		<RundownListItemView

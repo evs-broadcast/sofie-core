@@ -13,21 +13,22 @@ import { Meteor } from 'meteor/meteor'
 import { ICoreSystem } from '../../lib/collections/CoreSystem'
 import { Evaluation } from '../../lib/collections/Evaluations'
 import { DBOrganization } from '../../lib/collections/Organization'
-import { PeripheralDevice } from '../../lib/collections/PeripheralDevices'
+import { PeripheralDevice } from '@sofie-automation/corelib/dist/dataModel/PeripheralDevice'
 import { RundownLayoutBase } from '../../lib/collections/RundownLayouts'
-import { ShowStyleBase } from '../../lib/collections/ShowStyleBases'
-import { ShowStyleVariant } from '../../lib/collections/ShowStyleVariants'
+import { DBShowStyleBase } from '@sofie-automation/corelib/dist/dataModel/ShowStyleBase'
+import { DBShowStyleVariant } from '@sofie-automation/corelib/dist/dataModel/ShowStyleVariant'
 import { SnapshotItem } from '../../lib/collections/Snapshots'
-import { Studio } from '../../lib/collections/Studios'
-import { TimelineComplete } from '../../lib/collections/Timeline'
-import { TimelineDatastoreEntry } from '../../lib/collections/TimelineDatastore'
+import { DBStudio } from '@sofie-automation/corelib/dist/dataModel/Studio'
+import { TimelineComplete } from '@sofie-automation/corelib/dist/dataModel/Timeline'
+import { DBTimelineDatastoreEntry } from '@sofie-automation/corelib/dist/dataModel/TimelineDatastore'
 import { TranslationsBundle } from '../../lib/collections/TranslationsBundles'
 import { DBTriggeredActions } from '../../lib/collections/TriggeredActions'
 import { UserActionsLogItem } from '../../lib/collections/UserActionsLog'
 import { DBUser } from '../../lib/collections/Users'
 import { WorkerStatus } from '../../lib/collections/Workers'
 import { registerIndex } from './indices'
-import { getCurrentTime, MeteorStartupAsync, stringifyError } from '../../lib/lib'
+import { getCurrentTime, MeteorStartupAsync } from '../../lib/lib'
+import { stringifyError } from '@sofie-automation/shared-lib/dist/lib/stringifyError'
 import {
 	createAsyncOnlyMongoCollection,
 	createAsyncOnlyReadOnlyMongoCollection,
@@ -63,7 +64,17 @@ export const CoreSystem = createAsyncOnlyMongoCollection<ICoreSystem>(Collection
 		const cred = await resolveCredentials({ userId: userId })
 		const access = await allowAccessToCoreSystem(cred)
 		if (!access.update) return logNotAllowed('CoreSystem', access.reason)
-		return allowOnlyFields(doc, fields, ['support', 'systemInfo', 'name', 'logLevel', 'apm', 'cron'])
+
+		return allowOnlyFields(doc, fields, [
+			'support',
+			'systemInfo',
+			'name',
+			'logLevel',
+			'apm',
+			'cron',
+			'logo',
+			'evaluations',
+		])
 	},
 })
 
@@ -151,7 +162,7 @@ registerIndex(RundownLayouts, {
 	showStyleBaseId: 1,
 })
 
-export const ShowStyleBases = createAsyncOnlyMongoCollection<ShowStyleBase>(CollectionName.ShowStyleBases, {
+export const ShowStyleBases = createAsyncOnlyMongoCollection<DBShowStyleBase>(CollectionName.ShowStyleBases, {
 	async update(userId, doc, fields) {
 		const access = await allowAccessToShowStyleBase({ userId: userId }, doc._id)
 		if (!access.update) return logNotAllowed('ShowStyleBase', access.reason)
@@ -162,7 +173,7 @@ registerIndex(ShowStyleBases, {
 	organizationId: 1,
 })
 
-export const ShowStyleVariants = createAsyncOnlyMongoCollection<ShowStyleVariant>(CollectionName.ShowStyleVariants, {
+export const ShowStyleVariants = createAsyncOnlyMongoCollection<DBShowStyleVariant>(CollectionName.ShowStyleVariants, {
 	async update(userId, doc, fields) {
 		const access = await allowAccessToShowStyleBase({ userId: userId }, doc.showStyleBaseId)
 		if (!access.update) return logNotAllowed('ShowStyleBase', access.reason)
@@ -187,7 +198,7 @@ registerIndex(Snapshots, {
 	created: 1,
 })
 
-export const Studios = createAsyncOnlyMongoCollection<Studio>(CollectionName.Studios, {
+export const Studios = createAsyncOnlyMongoCollection<DBStudio>(CollectionName.Studios, {
 	async update(userId, doc, fields, _modifier) {
 		const access = await allowAccessToStudio({ userId: userId }, doc._id)
 		if (!access.update) return logNotAllowed('Studio', access.reason)
@@ -204,7 +215,7 @@ export const Timeline = createAsyncOnlyReadOnlyMongoCollection<TimelineComplete>
 // 	_id: 1,
 // })
 
-export const TimelineDatastore = createAsyncOnlyReadOnlyMongoCollection<TimelineDatastoreEntry>(
+export const TimelineDatastore = createAsyncOnlyReadOnlyMongoCollection<DBTimelineDatastoreEntry>(
 	CollectionName.TimelineDatastore
 )
 registerIndex(TimelineDatastore, {

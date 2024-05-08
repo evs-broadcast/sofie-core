@@ -1,7 +1,7 @@
 import { BlueprintMapping, IBlueprintConfig, PackageContainer, TSR } from '@sofie-automation/blueprints-integration'
 import { ObjectWithOverrides } from '../settings/objectWithOverrides'
 import { StudioId, OrganizationId, BlueprintId, ShowStyleBaseId, MappingsHash, PeripheralDeviceId } from './Ids'
-import { LastBlueprintConfig } from './Blueprint'
+import { BlueprintHash, LastBlueprintConfig } from './Blueprint'
 import { MappingsExt, MappingExt } from '@sofie-automation/shared-lib/dist/core/model/Timeline'
 
 export { MappingsExt, MappingExt, MappingsHash }
@@ -36,13 +36,20 @@ export interface IStudioSettings {
 	 * A higher value adds delays in playout, but reduces the risk of missed frames. */
 	multiGatewayNowSafeLatency?: number
 
-	/** Preserve unsynced segment contents when the playing segment is removed, rather than removing all but the playing part */
-	preserveUnsyncedPlayingSegmentContents?: boolean
 	/** Allow resets while a rundown is on-air */
 	allowRundownResetOnAir?: boolean
 
 	/** Preserve unsynced segments psoition in the rundown, relative to the other segments */
 	preserveOrphanedSegmentPositionInRundown?: boolean
+
+	/**
+	 * The minimum amount of time, in milliseconds, that must pass after a take before another take may be performed.
+	 * Default: 1000
+	 */
+	minimumTakeSpan: number
+
+	/** Whether to allow scratchpad mode, before a Part is playing in a Playlist */
+	allowScratchpad?: boolean
 }
 
 export type StudioLight = Omit<DBStudio, 'mappingsWithOverrides' | 'blueprintConfigWithOverrides'>
@@ -97,6 +104,8 @@ export interface DBStudio {
 
 	/** Details on the last blueprint used to generate the defaults values for this */
 	lastBlueprintConfig: LastBlueprintConfig | undefined
+	/** Last BlueprintHash where the fixupConfig method was run */
+	lastBlueprintFixUpHash: BlueprintHash | undefined
 }
 
 export interface StudioPeripheralDeviceSettings {

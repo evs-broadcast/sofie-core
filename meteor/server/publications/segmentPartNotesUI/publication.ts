@@ -1,12 +1,12 @@
 import { RundownId, RundownPlaylistId, SegmentId } from '@sofie-automation/corelib/dist/dataModel/Ids'
-import { IncludeAllMongoFieldSpecifier } from '@sofie-automation/corelib/dist/mongo'
+import { MongoFieldSpecifierOnesStrict } from '@sofie-automation/corelib/dist/mongo'
 import { ReadonlyDeep } from 'type-fest'
-import { CustomCollectionName, PubSub } from '../../../lib/api/pubsub'
+import { CustomCollectionName, MeteorPubSub } from '../../../lib/api/pubsub'
 import { UISegmentPartNote } from '../../../lib/api/rundownNotifications'
-import { DBPartInstance } from '../../../lib/collections/PartInstances'
-import { DBPart } from '../../../lib/collections/Parts'
-import { Rundown } from '../../../lib/collections/Rundowns'
-import { DBSegment } from '../../../lib/collections/Segments'
+import { DBPartInstance } from '@sofie-automation/corelib/dist/dataModel/PartInstance'
+import { DBPart } from '@sofie-automation/corelib/dist/dataModel/Part'
+import { Rundown } from '@sofie-automation/corelib/dist/dataModel/Rundown'
+import { DBSegment } from '@sofie-automation/corelib/dist/dataModel/Segment'
 import { groupByToMap, literal, normalizeArrayToMap, protectString } from '../../../lib/lib'
 import {
 	CustomPublishCollection,
@@ -19,10 +19,17 @@ import { resolveCredentials } from '../../security/lib/credentials'
 import { NoSecurityReadAccess } from '../../security/noSecurity'
 import { RundownPlaylistReadAccess } from '../../security/rundownPlaylist'
 import { LiveQueryHandle } from '../../lib/lib'
-import { ContentCache, PartFields, PartInstanceFields, RundownFields, SegmentFields } from './reactiveContentCache'
+import {
+	ContentCache,
+	createReactiveContentCache,
+	PartFields,
+	PartInstanceFields,
+	RundownFields,
+	SegmentFields,
+} from './reactiveContentCache'
 import { RundownsObserver } from '../lib/rundownsObserver'
 import { RundownContentObserver } from './rundownContentObserver'
-import { RundownPlaylist } from '../../../lib/collections/RundownPlaylists'
+import { DBRundownPlaylist } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
 import { generateNotesForSegment } from './generateNotesForSegment'
 import { RundownPlaylists } from '../../collections'
 import { check, Match } from 'meteor/check'
@@ -43,7 +50,9 @@ interface UISegmentPartNotesUpdateProps {
 }
 
 type RundownPlaylistFields = '_id' | 'studioId'
-const rundownPlaylistFieldSpecifier = literal<IncludeAllMongoFieldSpecifier<RundownPlaylistFields>>({
+const rundownPlaylistFieldSpecifier = literal<
+	MongoFieldSpecifierOnesStrict<Pick<DBRundownPlaylist, RundownPlaylistFields>>
+>({
 	_id: 1,
 	studioId: 1,
 })
@@ -54,49 +63,49 @@ async function setupUISegmentPartNotesPublicationObservers(
 ): Promise<LiveQueryHandle[]> {
 	const playlist = (await RundownPlaylists.findOneAsync(args.playlistId, {
 		projection: rundownPlaylistFieldSpecifier,
-	})) as Pick<RundownPlaylist, RundownPlaylistFields> | undefined
+	})) as Pick<DBRundownPlaylist, RundownPlaylistFields> | undefined
 	if (!playlist) throw new Error(`RundownPlaylist "${args.playlistId}" not found!`)
 
 	const rundownsObserver = new RundownsObserver(playlist.studioId, playlist._id, (rundownIds) => {
 		logger.silly(`Creating new RundownContentObserver`)
-		const obs1 = new RundownContentObserver(rundownIds, (cache) => {
-			// Push update
-			triggerUpdate({ newCache: cache })
 
-			const innerQueries = [
-				cache.Segments.find({}).observeChanges({
-					added: (id) => triggerUpdate({ invalidateSegmentIds: [protectString(id)] }),
-					changed: (id) => triggerUpdate({ invalidateSegmentIds: [protectString(id)] }),
-					removed: (id) => triggerUpdate({ invalidateSegmentIds: [protectString(id)] }),
-				}),
-				cache.Parts.find({}).observe({
-					added: (doc) => triggerUpdate({ invalidateSegmentIds: [doc.segmentId] }),
-					changed: (doc, oldDoc) =>
-						triggerUpdate({ invalidateSegmentIds: [doc.segmentId, oldDoc.segmentId] }),
-					removed: (doc) => triggerUpdate({ invalidateSegmentIds: [doc.segmentId] }),
-				}),
-				cache.DeletedPartInstances.find({}).observe({
-					added: (doc) => triggerUpdate({ invalidateSegmentIds: [doc.segmentId] }),
-					changed: (doc, oldDoc) =>
-						triggerUpdate({ invalidateSegmentIds: [doc.segmentId, oldDoc.segmentId] }),
-					removed: (doc) => triggerUpdate({ invalidateSegmentIds: [doc.segmentId] }),
-				}),
-				cache.Rundowns.find({}).observeChanges({
-					added: (id) => triggerUpdate({ invalidateRundownIds: [protectString(id)] }),
-					changed: (id) => triggerUpdate({ invalidateRundownIds: [protectString(id)] }),
-					removed: (id) => triggerUpdate({ invalidateRundownIds: [protectString(id)] }),
-				}),
-			]
+		// TODO - can this be done cheaper?
+		const cache = createReactiveContentCache()
 
-			return () => {
-				for (const query of innerQueries) {
-					query.stop()
-				}
-			}
-		})
+		// Push update
+		triggerUpdate({ newCache: cache })
+
+		const obs1 = new RundownContentObserver(rundownIds, cache)
+
+		const innerQueries = [
+			cache.Segments.find({}).observeChanges({
+				added: (id) => triggerUpdate({ invalidateSegmentIds: [protectString(id)] }),
+				changed: (id) => triggerUpdate({ invalidateSegmentIds: [protectString(id)] }),
+				removed: (id) => triggerUpdate({ invalidateSegmentIds: [protectString(id)] }),
+			}),
+			cache.Parts.find({}).observe({
+				added: (doc) => triggerUpdate({ invalidateSegmentIds: [doc.segmentId] }),
+				changed: (doc, oldDoc) => triggerUpdate({ invalidateSegmentIds: [doc.segmentId, oldDoc.segmentId] }),
+				removed: (doc) => triggerUpdate({ invalidateSegmentIds: [doc.segmentId] }),
+			}),
+			cache.DeletedPartInstances.find({}).observe({
+				added: (doc) => triggerUpdate({ invalidateSegmentIds: [doc.segmentId] }),
+				changed: (doc, oldDoc) => triggerUpdate({ invalidateSegmentIds: [doc.segmentId, oldDoc.segmentId] }),
+				removed: (doc) => triggerUpdate({ invalidateSegmentIds: [doc.segmentId] }),
+			}),
+			cache.Rundowns.find({}).observeChanges({
+				added: (id) => triggerUpdate({ invalidateRundownIds: [protectString(id)] }),
+				changed: (id) => triggerUpdate({ invalidateRundownIds: [protectString(id)] }),
+				removed: (id) => triggerUpdate({ invalidateRundownIds: [protectString(id)] }),
+			}),
+		]
 
 		return () => {
 			obs1.dispose()
+
+			for (const query of innerQueries) {
+				query.stop()
+			}
 		}
 	})
 
@@ -201,7 +210,7 @@ function updateNotesForSegment(
 }
 
 meteorCustomPublish(
-	PubSub.uiSegmentPartNotes,
+	MeteorPubSub.uiSegmentPartNotes,
 	CustomCollectionName.UISegmentPartNotes,
 	async function (pub, playlistId: RundownPlaylistId | null) {
 		check(playlistId, Match.Maybe(String))
@@ -220,7 +229,7 @@ meteorCustomPublish(
 				UISegmentPartNotesState,
 				UISegmentPartNotesUpdateProps
 			>(
-				`pub_${PubSub.uiSegmentPartNotes}_${playlistId}`,
+				`pub_${MeteorPubSub.uiSegmentPartNotes}_${playlistId}`,
 				{ playlistId },
 				setupUISegmentPartNotesPublicationObservers,
 				manipulateUISegmentPartNotesPublicationData,
