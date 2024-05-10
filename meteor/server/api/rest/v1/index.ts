@@ -124,6 +124,7 @@ function sofieAPIRequest<API, Params, Body, Response>(
 				ctx.request.body as unknown as Body
 			)
 			if (ClientAPI.isClientResponseError(response)) throw response
+			ctx.type = 'application/json'
 			ctx.body = JSON.stringify({ status: response.success, result: response.result })
 			ctx.status = response.success
 		} catch (e) {

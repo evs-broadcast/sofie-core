@@ -96,7 +96,8 @@ class PlaylistsServerAPI implements PlaylistsRestAPI {
 		event: string,
 		rundownPlaylistId: RundownPlaylistId,
 		adLibId: AdLibActionId | RundownBaselineAdLibActionId | PieceId | BucketAdLibId,
-		triggerMode?: string | null
+		triggerMode?: string | null,
+		adLibOptions?: any
 	): Promise<ClientAPI.ClientResponse<object>> {
 		const baselineAdLibPiece = RundownBaselineAdLibPieces.findOneAsync(adLibId as PieceId, {
 			projection: { _id: 1 },
@@ -120,6 +121,15 @@ class PlaylistsServerAPI implements PlaylistsRestAPI {
 		const regularAdLibDoc = baselineAdLibDoc ?? segmentAdLibDoc ?? bucketAdLibDoc
 		if (regularAdLibDoc) {
 			// This is an AdLib Piece
+			if (adLibOptions) {
+				return ClientAPI.responseError(
+					UserError.from(
+						Error(`AdLib options can not be provided for AdLib pieces`),
+						UserErrorMessage.AdlibUnplayable
+					),
+					412
+				)
+			}
 			const pieceType = baselineAdLibDoc ? 'baseline' : segmentAdLibDoc ? 'normal' : 'bucket'
 			const rundownPlaylist = await RundownPlaylists.findOneAsync(rundownPlaylistId, {
 				projection: { currentPartInfo: 1 },
@@ -188,7 +198,7 @@ class PlaylistsServerAPI implements PlaylistsRestAPI {
 					412
 				)
 
-			return ServerClientAPI.runUserActionInLogForPlaylistOnWorker(
+			const result = await ServerClientAPI.runUserActionInLogForPlaylistOnWorker(
 				this.context.getMethodContext(connection),
 				event,
 				getCurrentTime(),
@@ -202,10 +212,26 @@ class PlaylistsServerAPI implements PlaylistsRestAPI {
 					playlistId: rundownPlaylistId,
 					actionDocId: adLibActionDoc._id,
 					actionId: adLibActionDoc.actionId,
-					userData: adLibActionDoc.userData,
+					userData: adLibOptions ?? adLibActionDoc.userData,
 					triggerMode: triggerMode ?? undefined,
 				}
 			)
+
+			if (ClientAPI.isClientResponseError(result)) {
+				throw new Meteor.Error(
+					500,
+					`AdLib Action execution failed`,
+					JSON.stringify([{ message: result.error.rawError.message }])
+				)
+			}
+
+			const validationErrors = result.result.validationErrors
+			if (validationErrors) {
+				const details = JSON.stringify(validationErrors, null, 2)
+				throw new Meteor.Error(409, `AdLib Action validation failed`, details)
+			}
+
+			return result
 		} else {
 			return ClientAPI.responseError(
 				UserError.from(new Error(`No adLib with Id ${adLibId}`), UserErrorMessage.AdlibNotFound),
@@ -576,7 +602,7 @@ export function registerRoutes(registerRoute: APIRegisterHook<PlaylistsRestAPI>)
 		}
 	)
 
-	registerRoute<{ playlistId: string }, { adLibId: string; actionType?: string }, object>(
+	registerRoute<{ playlistId: string }, { adLibId: string; actionType?: string; adLibOptions?: any }, object>(
 		'post',
 		'/playlists/:playlistId/execute-adlib',
 		new Map([
@@ -591,12 +617,24 @@ export function registerRoutes(registerRoute: APIRegisterHook<PlaylistsRestAPI>)
 			)
 			const actionTypeObj = body
 			const triggerMode = actionTypeObj ? (actionTypeObj as { actionType: string }).actionType : undefined
-			logger.info(`API POST: execute-adlib ${rundownPlaylistId} ${adLibId} - triggerMode: ${triggerMode}`)
+			const adLibOptions = actionTypeObj ? actionTypeObj.adLibOptions : undefined
+			logger.info(
+				`API POST: execute-adlib ${rundownPlaylistId} ${adLibId} - triggerMode: ${triggerMode} - options: ${
+					adLibOptions ? JSON.stringify(adLibOptions) : 'undefined'
+				}`
+			)
 
 			check(adLibId, String)
 			check(rundownPlaylistId, String)
 
-			return await serverAPI.executeAdLib(connection, event, rundownPlaylistId, adLibId, triggerMode)
+			return await serverAPI.executeAdLib(
+				connection,
+				event,
+				rundownPlaylistId,
+				adLibId,
+				triggerMode,
+				adLibOptions
+			)
 		}
 	)
 
