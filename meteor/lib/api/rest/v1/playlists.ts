@@ -28,7 +28,7 @@ export interface PlaylistsRestAPI {
 	getAllRundownPlaylists(
 		connection: Meteor.Connection,
 		event: string
-	): Promise<ClientAPI.ClientResponse<Array<{ id: string }>>>
+	): Promise<ClientAPI.ClientResponse<Array<{ id: string; externalId: string }>>>
 	/**
 	 * Activates a Playlist.
 	 *
