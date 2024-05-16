@@ -447,6 +447,7 @@ export function fetchAndFilter(props: IFetchAndFilterProps): AdLibFetchAndFilter
 								}
 							)
 								.fetch()
+								.filter((action) => !action.userDataManifest.template)
 								.map((action) => actionToAdLibPieceUi(action, sourceLayerLookup, outputLayerLookup)),
 						'globalAdLibActions',
 						currentRundownId
