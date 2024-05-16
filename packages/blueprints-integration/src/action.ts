@@ -94,6 +94,8 @@ export interface IBlueprintActionManifest {
 		editableFields?: any
 		/** Execute the action after userData is changed. If not present ActionExecuteAfterChanged.none is assumed. */
 		executeOnUserDataChanged?: ActionExecuteAfterChanged
+		/** Sets this to be a template action, requiring userData to be provided and validated */
+		template?: boolean
 		// Potential future properties:
 		// asloDisplayACtionButton: boolean
 	}

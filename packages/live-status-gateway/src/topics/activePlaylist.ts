@@ -48,6 +48,7 @@ interface ActivePlaylistStatus {
 	nextPart: PartStatus | null
 	adLibs: AdLibStatus[]
 	globalAdLibs: AdLibStatus[]
+	templateAdLibs: AdLibStatus[]
 }
 
 export class ActivePlaylistTopic
@@ -68,6 +69,7 @@ export class ActivePlaylistTopic
 	private _adLibActions: AdLibAction[] | undefined
 	private _abLibs: AdLibPiece[] | undefined
 	private _globalAdLibActions: RundownBaselineAdLibAction[] | undefined
+	private _templateAdLibActions: RundownBaselineAdLibAction[] | undefined
 	private _globalAdLibs: RundownBaselineAdLibItem[] | undefined
 
 	constructor(logger: Logger) {
@@ -84,6 +86,7 @@ export class ActivePlaylistTopic
 		const nextPart = this._nextPartInstance ? this._nextPartInstance.part : null
 		const adLibs: AdLibStatus[] = []
 		const globalAdLibs: AdLibStatus[] = []
+		const templateAdLibs: AdLibStatus[] = []
 
 		if (this._adLibActions) {
 			adLibs.push(
@@ -105,8 +108,8 @@ export class ActivePlaylistTopic
 					return literal<AdLibStatus>({
 						id: unprotectString(action._id),
 						name: action.display.label.key,
-						sourceLayer: sourceLayerName ? sourceLayerName : 'invalid',
-						outputLayer: outputLayerName ? outputLayerName : 'invalid',
+						sourceLayer: sourceLayerName ?? 'invalid',
+						outputLayer: outputLayerName ?? 'invalid',
 						actionType: triggerModes,
 						editableFields: action.userDataManifest.editableFields,
 					})
@@ -122,8 +125,8 @@ export class ActivePlaylistTopic
 					return literal<AdLibStatus>({
 						id: unprotectString(adLib._id),
 						name: adLib.name,
-						sourceLayer: sourceLayerName ? sourceLayerName : 'invalid',
-						outputLayer: outputLayerName ? outputLayerName : 'invalid',
+						sourceLayer: sourceLayerName ?? 'invalid',
+						outputLayer: outputLayerName ?? 'invalid',
 						actionType: [],
 					})
 				})
@@ -150,8 +153,8 @@ export class ActivePlaylistTopic
 					return literal<AdLibStatus>({
 						id: unprotectString(action._id),
 						name: action.display.label.key,
-						sourceLayer: sourceLayerName ? sourceLayerName : 'invalid',
-						outputLayer: outputLayerName ? outputLayerName : 'invalid',
+						sourceLayer: sourceLayerName ?? 'invalid',
+						outputLayer: outputLayerName ?? 'invalid',
 						actionType: triggerModes,
 						editableFields: action.userDataManifest.editableFields,
 					})
@@ -167,9 +170,38 @@ export class ActivePlaylistTopic
 					return literal<AdLibStatus>({
 						id: unprotectString(adLibs._id),
 						name: adLibs.name,
-						sourceLayer: sourceLayerName ? sourceLayerName : 'invalid',
-						outputLayer: outputLayerName ? outputLayerName : 'invalid',
+						sourceLayer: sourceLayerName ?? 'invalid',
+						outputLayer: outputLayerName ?? 'invalid',
 						actionType: [],
+					})
+				})
+			)
+		}
+
+		if (this._templateAdLibActions) {
+			templateAdLibs.push(
+				...this._templateAdLibActions.map((action) => {
+					const sourceLayerName = this._sourceLayersMap.get(
+						(action.display as IBlueprintActionManifestDisplayContent).sourceLayerId
+					)
+					const outputLayerName = this._outputLayersMap.get(
+						(action.display as IBlueprintActionManifestDisplayContent).outputLayerId
+					)
+					const triggerModes = action.triggerModes
+						? action.triggerModes.map((t) =>
+								literal<AdLibActionType>({
+									name: t.data,
+									label: t.display.label.key,
+								})
+						  )
+						: []
+					return literal<AdLibStatus>({
+						id: unprotectString(action._id),
+						name: action.display.label.key,
+						sourceLayer: sourceLayerName ?? 'invalid',
+						outputLayer: outputLayerName ?? 'invalid',
+						actionType: triggerModes,
+						editableFields: action.userDataManifest.editableFields,
 					})
 				})
 			)
@@ -201,6 +233,7 @@ export class ActivePlaylistTopic
 								: null,
 							adLibs,
 							globalAdLibs,
+							templateAdLibs,
 					  })
 					: literal<ActivePlaylistStatus>({
 							event: 'activePlaylist',
@@ -212,6 +245,7 @@ export class ActivePlaylistTopic
 							nextPart: null,
 							adLibs: [],
 							globalAdLibs: [],
+							templateAdLibs: [],
 					  })
 			)
 		})
@@ -289,7 +323,12 @@ export class ActivePlaylistTopic
 			case 'GlobalAdLibActionHandler': {
 				const globalAdLibActions = data ? (data as RundownBaselineAdLibAction[]) : []
 				this._logger.info(`${this._name} received globalAdLibActions update from ${source}`)
-				this._globalAdLibActions = globalAdLibActions
+				this._globalAdLibActions = []
+				this._templateAdLibActions = []
+				globalAdLibActions.forEach((action) => {
+					if (action.userDataManifest?.template) this._templateAdLibActions?.push(action)
+					else this._globalAdLibActions?.push(action)
+				})
 				break
 			}
 			default:
