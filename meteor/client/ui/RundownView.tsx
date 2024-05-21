@@ -334,6 +334,7 @@ interface IRundownHeaderProps {
 	studioMode: boolean
 	inActiveRundownView?: boolean
 	layout: RundownLayoutRundownHeader | undefined
+	showRundownHeader: boolean
 }
 
 interface IRundownHeaderState {
@@ -963,12 +964,6 @@ const RundownHeader = withTranslation()(
 
 		render(): JSX.Element {
 			const { t } = this.props
-			const params = queryStringParse(location.search, {
-				parseBooleans: true,
-			})
-
-			// If no params are passed, the default behavior is to display the header
-			const showRundownHeader = params.showRundownHeader ?? true
 
 			return (
 				<>
@@ -1023,7 +1018,7 @@ const RundownHeader = withTranslation()(
 					</Escape>
 					{
 						// Show or hide the header in the rundown view
-						showRundownHeader ? (
+						this.props.showRundownHeader ? (
 							<div
 								className={ClassNames('header rundown', {
 									active: !!this.props.playlist.activationId,
@@ -1120,6 +1115,7 @@ interface IProps {
 	playlistId: RundownPlaylistId
 	inActiveRundownView?: boolean
 	onlyShelf?: boolean
+	showRundownHeader?: boolean
 }
 
 export interface IContextMenuContext {
@@ -2825,7 +2821,8 @@ export const RundownView = translateWithTracker<IProps, IState, ITrackedProps>((
 			studio: UIStudio,
 			playlist: RundownPlaylist,
 			showStyleBase: UIShowStyleBase,
-			showStyleVariant: ShowStyleVariant
+			showStyleVariant: ShowStyleVariant,
+			showRundownHeader: boolean
 		) {
 			const { t } = this.props
 
@@ -2867,6 +2864,7 @@ export const RundownView = translateWithTracker<IProps, IState, ITrackedProps>((
 									layout={this.state.rundownHeaderLayout}
 									showStyleBase={showStyleBase}
 									showStyleVariant={showStyleVariant}
+									showRundownHeader={this.props.showRundownHeader ?? true}
 								/>
 							</ErrorBoundary>
 							<ErrorBoundary>
@@ -2895,6 +2893,7 @@ export const RundownView = translateWithTracker<IProps, IState, ITrackedProps>((
 									studioRouteSetExclusivityGroups={studio.routeSetExclusivityGroups}
 									onStudioRouteSetSwitch={this.onStudioRouteSetSwitch}
 									onSegmentViewMode={this.onSegmentViewModeChange}
+									showRundownHeader={showRundownHeader}
 								/>
 							</ErrorBoundary>
 							<ErrorBoundary>{this.renderSorensenContext()}</ErrorBoundary>
@@ -3170,7 +3169,8 @@ export const RundownView = translateWithTracker<IProps, IState, ITrackedProps>((
 					this.props.studio,
 					this.props.playlist,
 					this.props.showStyleBase,
-					this.props.showStyleVariant
+					this.props.showStyleVariant,
+					this.props.showRundownHeader ?? true
 				)
 			} else if (
 				this.props.playlist &&

@@ -10,7 +10,13 @@ import { StudioId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import { RundownPlaylists } from '../collections'
 import { useTranslation } from 'react-i18next'
 
-export function ActiveRundownView({ studioId }: { studioId: StudioId }): JSX.Element | null {
+export function ActiveRundownView({
+	studioId,
+	showRundownHeader,
+}: {
+	studioId: StudioId
+	showRundownHeader: boolean
+}): JSX.Element | null {
 	const { t } = useTranslation()
 
 	const { path } = useRouteMatch()
@@ -52,7 +58,7 @@ export function ActiveRundownView({ studioId }: { studioId: StudioId }): JSX.Ele
 			return (
 				<Switch>
 					<Route path={`${path}`} exact>
-						<RundownView playlistId={playlist._id} inActiveRundownView={true} />
+						<RundownView playlistId={playlist._id} inActiveRundownView={true} showRundownHeader={showRundownHeader} />
 					</Route>
 					<Route path={`${path}/shelf`} exact>
 						<RundownView playlistId={playlist._id} inActiveRundownView={true} onlyShelf={true} />
