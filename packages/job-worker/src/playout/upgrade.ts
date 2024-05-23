@@ -74,16 +74,16 @@ export async function handleBlueprintUpgradeForStudio(context: JobContext, _data
 	const mosGatewayId = mosGateways.length === 1 ? mosGateways[0].id : undefined
 
 	const ingestDevices = Object.fromEntries(
-		Object.entries<unknown>(result.ingestDevices ?? {}).map((dev) => [
-			dev[0],
-			literal<Complete<StudioIngestDevice>>({
-				peripheralDeviceId:
-					(dev[1] as any).type === 'default' // This is a temporary solution, types should be "spreadsheet" and "mos"
-						? spreadsheetGatewayId
-						: mosGatewayId,
-				options: dev[1],
-			}),
-		])
+		Object.entries<unknown>(result.ingestDevices ?? {}).map((dev) => {
+			const { ingestDeviceType, ...payload } = dev[1] as any
+			return [
+				dev[0],
+				literal<Complete<StudioIngestDevice>>({
+					peripheralDeviceId: ingestDeviceType === 'spreadsheet' ? spreadsheetGatewayId : mosGatewayId,
+					options: payload,
+				}),
+			]
+		})
 	)
 	const inputDevices = Object.fromEntries(
 		Object.entries<unknown>(result.inputDevices ?? {}).map((dev) => [
