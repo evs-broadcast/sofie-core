@@ -198,11 +198,23 @@ export const App: React.FC = function App() {
 		})
 	}, [])
 
+	// Regex to check if the current page is /rundown/:id
+	const regex = /\/activeRundown\/.*/g
+	const params = queryStringParse(location.search, {
+		parseBooleans: true,
+	})
+
+	// If no params are passed or not on the rundown page, the default behavior is to display the header
+	const showRundownHeader: boolean =
+		regex.test(location.pathname) && params.showRundownHeader !== undefined
+			? (params.showRundownHeader as boolean)
+			: true
+
 	return (
 		<UserContext.Provider value={user}>
 			<UserSubscriptionReadyContext.Provider value={subsReady}>
 				<Router getUserConfirmation={onNavigationUserConfirmation}>
-					<div className="container-fluid header-clear">
+					<div className={`container-fluid ${showRundownHeader ? 'header-clear' : 'header-clear-r'}`}>
 						{/* Header switch - render the usual header for all pages but the rundown view */}
 						{isAuthenticated && (
 							<ErrorBoundary>
@@ -299,7 +311,10 @@ export const App: React.FC = function App() {
 									path="/activeRundown/:studioId"
 									render={(props) => (
 										<RequireAuth>
-											<ActiveRundownView studioId={protectString(decodeURIComponent(props.match.params.studioId))} />
+											<ActiveRundownView
+												studioId={protectString(decodeURIComponent(props.match.params.studioId))}
+												showRundownHeader={showRundownHeader}
+											/>
 										</RequireAuth>
 									)}
 								/>

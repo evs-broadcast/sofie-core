@@ -43,13 +43,18 @@ a:visited {
 	right: 0;
 	z-index: 500;
 	user-select: none;
-	
+
 	// position: relative;
 	// z-index: 500;
 }
+
 .header-clear {
-	padding-top: 4rem;
 	padding-right: $statusbar-width;
+	padding-top: 4rem;
+
+	&-r {
+		padding-right: $statusbar-width;
+	}
 }
 
 #render-target {
