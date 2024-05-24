@@ -12,7 +12,6 @@ export default class LiveSpeakInputIcon extends React.Component<{ abbreviation?:
 				<text
 					x="5"
 					y="66.514"
-					textLength="116.5"
 					style={{
 						fill: '#ffffff',
 						fontFamily: 'open-sans',
@@ -25,7 +24,7 @@ export default class LiveSpeakInputIcon extends React.Component<{ abbreviation?:
 					xmlSpace="preserve"
 				>
 					<tspan
-						x="5"
+						x="15"
 						y="66.514"
 						style={{ fill: '#ffffff', fontFamily: 'Roboto', fontSize: '62px', fontWeight: 100 }}
 						className="label"
