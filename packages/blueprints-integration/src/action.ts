@@ -99,8 +99,8 @@ export interface IBlueprintActionManifest<TPrivateData = unknown, TPublicData = 
 	allVariants?: boolean
 
 	userDataManifest: {
-		/** List of editable fields in userData, to allow for customising */
-		editableFields?: JSONBlob<JSONSchema>
+		/** Schema for the executeAdLib adLibOptions property to allow for customising */
+		optionsSchema?: JSONBlob<JSONSchema>
 		// Potential future properties:
 		// /** Execute the action after userData is changed. If not present ActionExecuteAfterChanged.none is assumed. */
 		// executeOnUserDataChanged?: ActionExecuteAfterChanged

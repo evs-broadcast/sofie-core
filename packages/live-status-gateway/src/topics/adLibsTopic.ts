@@ -40,7 +40,7 @@ interface AdLibStatus {
 	actionType: AdLibActionType[]
 	tags?: string[]
 	publicData: unknown
-	editableFields?: any
+	optionsSchema?: any
 }
 
 export class AdLibsTopic
@@ -104,7 +104,7 @@ export class AdLibsTopic
 						actionType: triggerModes,
 						tags: action.display.tags,
 						publicData: action.publicData,
-						editableFields: action.userDataManifest.editableFields,
+						optionsSchema: action.userDataManifest.optionsSchema,
 					})
 				})
 			)
@@ -153,7 +153,7 @@ export class AdLibsTopic
 						actionType: triggerModes,
 						tags: action.display.tags,
 						publicData: action.publicData,
-						editableFields: action.userDataManifest.editableFields,
+						optionsSchema: action.userDataManifest.optionsSchema,
 					})
 				})
 			)

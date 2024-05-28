@@ -101,7 +101,7 @@ class PlaylistsServerAPI implements PlaylistsRestAPI {
 		rundownPlaylistId: RundownPlaylistId,
 		adLibId: AdLibActionId | RundownBaselineAdLibActionId | PieceId | BucketAdLibId,
 		triggerMode?: string | null,
-		adLibOptions?: any
+		adLibOptions?: { [key: string]: any }
 	): Promise<ClientAPI.ClientResponse<object>> {
 		const baselineAdLibPiece = RundownBaselineAdLibPieces.findOneAsync(adLibId as PieceId, {
 			projection: { _id: 1 },
@@ -216,8 +216,9 @@ class PlaylistsServerAPI implements PlaylistsRestAPI {
 					playlistId: rundownPlaylistId,
 					actionDocId: adLibActionDoc._id,
 					actionId: adLibActionDoc.actionId,
-					userData: adLibOptions ?? adLibActionDoc.userData,
+					userData: adLibActionDoc.userData,
 					triggerMode: triggerMode ?? undefined,
+					actionOptions: adLibOptions,
 				}
 			)
 
@@ -623,7 +624,7 @@ export function registerRoutes(registerRoute: APIRegisterHook<PlaylistsRestAPI>)
 			const triggerMode = actionTypeObj ? (actionTypeObj as { actionType: string }).actionType : undefined
 			const adLibOptions = actionTypeObj ? actionTypeObj.adLibOptions : undefined
 			logger.info(
-				`API POST: execute-adlib ${rundownPlaylistId} ${adLibId} - triggerMode: ${triggerMode} - options: ${
+				`API POST: execute-adlib ${rundownPlaylistId} ${adLibId} - actionType: ${triggerMode} - options: ${
 					adLibOptions ? JSON.stringify(adLibOptions) : 'undefined'
 				}`
 			)
