@@ -7,8 +7,6 @@ export function BaseRemoteInputIcon(props: React.PropsWithChildren<{ className: 
 			<text
 				x="5"
 				y="66.514"
-				textLength="116.5"
-				lengthAdjust="spacing"
 				style={{
 					fill: '#ffffff',
 					fontFamily: 'open-sans',
@@ -20,16 +18,7 @@ export function BaseRemoteInputIcon(props: React.PropsWithChildren<{ className: 
 				}}
 				xmlSpace="preserve"
 			>
-				<tspan
-					x="5"
-					y="66.514"
-					textLength="116.5"
-					lengthAdjust="spacing"
-					style={{ fill: '#ffffff', fontFamily: 'Roboto', fontSize: '62px', fontWeight: 100 }}
-					className="label"
-				>
-					{props.children}
-				</tspan>
+				{props.children}
 			</text>
 		</svg>
 	)
@@ -38,9 +27,16 @@ export function BaseRemoteInputIcon(props: React.PropsWithChildren<{ className: 
 export default function RemoteInputIcon(props: { inputIndex?: string; abbreviation?: string }): JSX.Element {
 	return (
 		<BaseRemoteInputIcon className="remote">
-			{props.abbreviation ? props.abbreviation : 'LIVE'}
-			<tspan style={{ fontFamily: 'Roboto', fontWeight: 'normal' }}>
-				{props.inputIndex !== undefined ? props.inputIndex : ''}
+			<tspan
+				x={props.inputIndex !== undefined ? '5' : '15'}
+				y="66.514"
+				style={{ fill: '#ffffff', fontFamily: 'Roboto', fontSize: '62px', fontWeight: 100 }}
+				className="label"
+			>
+				{props.abbreviation ? props.abbreviation : 'LIVE'}
+				<tspan style={{ fontFamily: 'Roboto', fontWeight: 'normal' }}>
+					{props.inputIndex !== undefined ? props.inputIndex : ''}
+				</tspan>
 			</tspan>
 		</BaseRemoteInputIcon>
 	)
