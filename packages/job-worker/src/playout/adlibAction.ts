@@ -210,7 +210,8 @@ export async function executeActionInner(
 			actionParameters.actionId,
 			actionParameters.userData,
 			actionParameters.triggerMode,
-			actionParameters.privateData
+			actionParameters.privateData,
+			actionParameters.publicData
 		)
 
 		if (result) {
