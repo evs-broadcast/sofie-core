@@ -1,6 +1,5 @@
 import * as React from 'react'
 
-// @todo: use dynamic data for camera number
 export default class CamInputIcon extends React.Component<{ inputIndex?: string; abbreviation?: string }> {
 	render(): JSX.Element {
 		return (
@@ -8,8 +7,8 @@ export default class CamInputIcon extends React.Component<{ inputIndex?: string;
 				<rect width="126.5" height="89" className="camera" />
 				<text
 					x="9.6414976"
-					textLength="106.5"
 					y="71.513954"
+					textLength={this.props.abbreviation && this.props.inputIndex === undefined ? 106.5 : undefined}
 					style={{
 						fill: '#ffffff',
 						fontFamily: 'open-sans',
@@ -22,14 +21,14 @@ export default class CamInputIcon extends React.Component<{ inputIndex?: string;
 					xmlSpace="preserve"
 				>
 					<tspan
-						x="9.6414976"
-						y="71.513954"
-						textLength="107.21"
+						x={this.props.abbreviation && this.props.inputIndex === undefined ? 9.6414976 : 29.6414976}
+						y="61.513954"
+						textLength={this.props.abbreviation && this.props.inputIndex === undefined ? 107.21 : undefined}
 						lengthAdjust="spacing"
-						style={{ fill: '#ffffff', fontFamily: 'Roboto', fontSize: '75px', fontWeight: 100 }}
+						style={{ fill: '#ffffff', fontFamily: 'Roboto', fontSize: '55px', fontWeight: 100, alignContent: 'center' }}
 						className="label"
 					>
-						{this.props.abbreviation ? this.props.abbreviation : 'C'}
+						{this.props.abbreviation && this.props.inputIndex === undefined ? this.props.abbreviation : 'C'}
 						<tspan style={{ fontFamily: 'Roboto', fontWeight: 'normal' }}>
 							{this.props.inputIndex !== undefined ? this.props.inputIndex : ''}
 						</tspan>

@@ -51,6 +51,7 @@ interface IProps {
 		state: boolean
 	) => void
 	onSegmentViewMode?: (e: React.MouseEvent<HTMLButtonElement>) => void
+	showRundownHeader: boolean
 }
 
 const ANIMATION_TEMPLATE = {
@@ -124,7 +125,7 @@ export function RundownRightHandControls(props: Readonly<IProps>): JSX.Element {
 	}
 
 	return (
-		<div className="status-bar">
+		<div className="status-bar" style={{ top: props.showRundownHeader ? undefined : 0 }}>
 			<VelocityReact.VelocityTransitionGroup
 				enter={{ animation: 'fadeIn', easing: 'ease-out', duration: 250 }}
 				leave={{ animation: 'fadeOut', easing: 'ease-in', duration: 500 }}

@@ -56,7 +56,9 @@ export async function handleBlueprintUpgradeForStudio(context: JobContext, _data
 		}
 	)) as Array<Pick<PeripheralDevice, '_id' | 'type' | 'category'>>
 	const playoutIds = peripheralDevices.filter((p) => p.type === PeripheralDeviceType.PLAYOUT).map((p) => p._id)
-	const ingestIds = peripheralDevices.filter((p) => p.category === PeripheralDeviceCategory.INGEST).map((p) => p._id)
+	const ingestPeripheralDevices = peripheralDevices
+		.filter((p) => p.category === PeripheralDeviceCategory.INGEST)
+		.map((p) => ({ id: p._id, type: p.type }))
 	const inputIds = peripheralDevices.filter((p) => p.type === PeripheralDeviceType.INPUT).map((p) => p._id)
 
 	// set the peripheralDeviceId if there is exactly one parent device in the studio
@@ -69,14 +71,23 @@ export async function handleBlueprintUpgradeForStudio(context: JobContext, _data
 			}),
 		])
 	)
+
+	const spreadsheetGateways = ingestPeripheralDevices.filter((device) => device.type === 'spreadsheet')
+	const spreadsheetGatewayId = spreadsheetGateways.length === 1 ? spreadsheetGateways[0].id : undefined
+	const mosGateways = ingestPeripheralDevices.filter((device) => device.type === 'mos')
+	const mosGatewayId = mosGateways.length === 1 ? mosGateways[0].id : undefined
+
 	const ingestDevices = Object.fromEntries(
-		Object.entries<unknown>(result.ingestDevices ?? {}).map((dev) => [
-			dev[0],
-			literal<Complete<StudioIngestDevice>>({
-				peripheralDeviceId: ingestIds.length === 1 ? ingestIds[0] : undefined,
-				options: dev[1],
-			}),
-		])
+		Object.entries<unknown>(result.ingestDevices ?? {}).map((dev) => {
+			const { ingestDeviceType, ...payload } = dev[1] as any
+			return [
+				dev[0],
+				literal<Complete<StudioIngestDevice>>({
+					peripheralDeviceId: ingestDeviceType === 'spreadsheet' ? spreadsheetGatewayId : mosGatewayId,
+					options: payload,
+				}),
+			]
+		})
 	)
 	const inputDevices = Object.fromEntries(
 		Object.entries<unknown>(result.inputDevices ?? {}).map((dev) => [

@@ -11,7 +11,13 @@ import { RundownPlaylists } from '../collections'
 import { useTranslation } from 'react-i18next'
 import { useSetDocumentClass } from './util/useSetDocumentClass'
 
-export function ActiveRundownView({ studioId }: Readonly<{ studioId: StudioId }>): JSX.Element | null {
+export function ActiveRundownView({
+	studioId,
+	showRundownHeader,
+}: Readonly<{
+	studioId: StudioId
+	showRundownHeader: boolean
+}>): JSX.Element | null {
 	const { t } = useTranslation()
 
 	const { path } = useRouteMatch()
@@ -39,23 +45,25 @@ export function ActiveRundownView({ studioId }: Readonly<{ studioId: StudioId }>
 				<Spinner />
 			</div>
 		)
-	} else if (playlist) {
-		return (
-			<Switch>
-				<Route path={`${path}`} exact>
-					<RundownView playlistId={playlist._id} inActiveRundownView={true} />
-				</Route>
-				<Route path={`${path}/shelf`} exact>
-					<RundownView playlistId={playlist._id} inActiveRundownView={true} onlyShelf={true} />
-				</Route>
-			</Switch>
-		)
-	} else if (studio) {
-		return <NotFoundMessage message={t('There is no rundown active in this studio.')} />
-	} else if (studioId) {
-		return <NotFoundMessage message={t("This studio doesn't exist.")} />
 	} else {
-		return <NotFoundMessage message={t('There are no active rundowns.')} />
+		if (playlist) {
+			return (
+				<Switch>
+					<Route path={`${path}`} exact>
+						<RundownView playlistId={playlist._id} inActiveRundownView={true} showRundownHeader={showRundownHeader} />
+					</Route>
+					<Route path={`${path}/shelf`} exact>
+						<RundownView playlistId={playlist._id} inActiveRundownView={true} onlyShelf={true} />
+					</Route>
+				</Switch>
+			)
+		} else if (studio) {
+			return <NotFoundMessage message={t('There is no rundown active in this studio.')} />
+		} else if (studioId) {
+			return <NotFoundMessage message={t("This studio doesn't exist.")} />
+		} else {
+			return <NotFoundMessage message={t('There are no active rundowns.')} />
+		}
 	}
 }
 

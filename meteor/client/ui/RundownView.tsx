@@ -346,6 +346,7 @@ interface IRundownHeaderProps {
 	studioMode: boolean
 	inActiveRundownView?: boolean
 	layout: RundownLayoutRundownHeader | undefined
+	showRundownHeader: boolean
 }
 
 interface IRundownHeaderState {
@@ -991,6 +992,7 @@ const RundownHeader = withTranslation()(
 
 		render(): JSX.Element {
 			const { t } = this.props
+
 			return (
 				<>
 					<Escape to="document">
@@ -1045,79 +1047,85 @@ const RundownHeader = withTranslation()(
 							)}
 						</ContextMenu>
 					</Escape>
-					<div
-						className={ClassNames('header rundown', {
-							active: !!this.props.playlist.activationId,
-							'not-active': !this.props.playlist.activationId,
-							rehearsal: this.props.playlist.rehearsal,
-						})}
-					>
-						<ContextMenuTrigger
-							id="rundown-context-menu"
-							attributes={{
-								className: 'flex-col col-timing horizontal-align-center',
-							}}
-							holdToDisplay={contextMenuHoldToDisplayTime()}
-						>
-							<WarningDisplay
-								studioMode={this.props.studioMode}
-								inActiveRundownView={this.props.inActiveRundownView}
-								playlist={this.props.playlist}
-								oneMinuteBeforeAction={this.resetAndActivateRundown}
-							/>
-							<div className="row flex-row first-row super-dark">
-								<div className="flex-col left horizontal-align-left">
-									<div className="badge mod">
-										<Tooltip
-											overlay={t('Add ?studio=1 to the URL to enter studio mode')}
-											visible={getHelpMode() && !getAllowStudio()}
-											placement="bottom"
-										>
-											<div className="media-elem mrs sofie-logo" />
-										</Tooltip>
-										<div className="bd mls">
-											<span className="logo-text"></span>
+					{
+						// Show or hide the header in the rundown view
+						this.props.showRundownHeader ? (
+							<div
+								className={ClassNames('header rundown', {
+									active: !!this.props.playlist.activationId,
+									'not-active': !this.props.playlist.activationId,
+									rehearsal: this.props.playlist.rehearsal,
+								})}
+							>
+								<ContextMenuTrigger
+									id="rundown-context-menu"
+									attributes={{
+										className: 'flex-col col-timing horizontal-align-center',
+									}}
+									holdToDisplay={contextMenuHoldToDisplayTime()}
+								>
+									<WarningDisplay
+										studioMode={this.props.studioMode}
+										inActiveRundownView={this.props.inActiveRundownView}
+										playlist={this.props.playlist}
+										oneMinuteBeforeAction={this.resetAndActivateRundown}
+									/>
+									<div className="row flex-row first-row super-dark">
+										<div className="flex-col left horizontal-align-left">
+											<div className="badge mod">
+												<Tooltip
+													overlay={t('Add ?studio=1 to the URL to enter studio mode')}
+													visible={getHelpMode() && !getAllowStudio()}
+													placement="bottom"
+												>
+													<div className="media-elem mrs sofie-logo" />
+												</Tooltip>
+												<div className="bd mls">
+													<span className="logo-text"></span>
+												</div>
+											</div>
+										</div>
+										{this.props.layout && RundownLayoutsAPI.isDashboardLayout(this.props.layout) ? (
+											<ShelfDashboardLayout
+												rundownLayout={this.props.layout}
+												playlist={this.props.playlist}
+												showStyleBase={this.props.showStyleBase}
+												showStyleVariant={this.props.showStyleVariant}
+												studio={this.props.studio}
+												studioMode={this.props.studioMode}
+												shouldQueue={this.state.shouldQueue}
+												onChangeQueueAdLib={this.changeQueueAdLib}
+												selectedPiece={this.state.selectedPiece}
+												onSelectPiece={this.selectPiece}
+											/>
+										) : (
+											<>
+												<TimingDisplay
+													rundownPlaylist={this.props.playlist}
+													currentRundown={this.props.currentRundown}
+													rundownCount={this.props.rundownIds.length}
+													layout={this.props.layout}
+												/>
+												<RundownSystemStatus
+													studioId={this.props.studio._id}
+													playlistId={this.props.playlist._id}
+													firstRundown={this.props.firstRundown}
+												/>
+											</>
+										)}
+										<div className="flex-col right horizontal-align-right">
+											<div className="links mod close">
+												<NavLink to="/rundowns" title={t('Exit')}>
+													<CoreIcon.NrkClose />
+												</NavLink>
+											</div>
 										</div>
 									</div>
-								</div>
-								{this.props.layout && RundownLayoutsAPI.isDashboardLayout(this.props.layout) ? (
-									<ShelfDashboardLayout
-										rundownLayout={this.props.layout}
-										playlist={this.props.playlist}
-										showStyleBase={this.props.showStyleBase}
-										showStyleVariant={this.props.showStyleVariant}
-										studio={this.props.studio}
-										studioMode={this.props.studioMode}
-										shouldQueue={this.state.shouldQueue}
-										onChangeQueueAdLib={this.changeQueueAdLib}
-										selectedPiece={this.state.selectedPiece}
-										onSelectPiece={this.selectPiece}
-									/>
-								) : (
-									<>
-										<TimingDisplay
-											rundownPlaylist={this.props.playlist}
-											currentRundown={this.props.currentRundown}
-											rundownCount={this.props.rundownIds.length}
-											layout={this.props.layout}
-										/>
-										<RundownSystemStatus
-											studioId={this.props.studio._id}
-											playlistId={this.props.playlist._id}
-											firstRundown={this.props.firstRundown}
-										/>
-									</>
-								)}
-								<div className="flex-col right horizontal-align-right">
-									<div className="links mod close">
-										<NavLink to="/rundowns" title={t('Exit')}>
-											<CoreIcon.NrkClose />
-										</NavLink>
-									</div>
-								</div>
+								</ContextMenuTrigger>
 							</div>
-						</ContextMenuTrigger>
-					</div>
+						) : null
+					}
+
 					<ModalDialog
 						title={t('Error')}
 						acceptText={t('OK')}
@@ -1137,6 +1145,7 @@ interface IProps {
 	playlistId: RundownPlaylistId
 	inActiveRundownView?: boolean
 	onlyShelf?: boolean
+	showRundownHeader?: boolean
 }
 
 export interface IContextMenuContext {
@@ -2925,7 +2934,8 @@ const RundownViewContent = translateWithTracker<IPropsWithReady, IState, ITracke
 			studio: UIStudio,
 			playlist: DBRundownPlaylist,
 			showStyleBase: UIShowStyleBase,
-			showStyleVariant: DBShowStyleVariant
+			showStyleVariant: DBShowStyleVariant,
+			showRundownHeader: boolean
 		) {
 			const { t } = this.props
 
@@ -2967,6 +2977,7 @@ const RundownViewContent = translateWithTracker<IPropsWithReady, IState, ITracke
 									layout={this.state.rundownHeaderLayout}
 									showStyleBase={showStyleBase}
 									showStyleVariant={showStyleVariant}
+									showRundownHeader={this.props.showRundownHeader ?? true}
 								/>
 							</ErrorBoundary>
 							<ErrorBoundary>
@@ -2996,6 +3007,7 @@ const RundownViewContent = translateWithTracker<IPropsWithReady, IState, ITracke
 									studioRouteSetExclusivityGroups={studio.routeSetExclusivityGroups}
 									onStudioRouteSetSwitch={this.onStudioRouteSetSwitch}
 									onSegmentViewMode={this.onSegmentViewModeChange}
+									showRundownHeader={showRundownHeader}
 								/>
 							</ErrorBoundary>
 							<ErrorBoundary>{this.renderSorensenContext()}</ErrorBoundary>
@@ -3276,7 +3288,8 @@ const RundownViewContent = translateWithTracker<IPropsWithReady, IState, ITracke
 					this.props.studio,
 					this.props.playlist,
 					this.props.showStyleBase,
-					this.props.showStyleVariant
+					this.props.showStyleVariant,
+					this.props.showRundownHeader ?? true
 				)
 			} else if (
 				this.props.playlist &&

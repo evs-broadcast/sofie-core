@@ -25,6 +25,7 @@ export interface AdLibsStatus {
 	rundownPlaylistId: string | null
 	adLibs: AdLibStatus[]
 	globalAdLibs: AdLibStatus[]
+	templateAdLibs: AdLibStatus[]
 }
 
 interface AdLibActionType {
@@ -59,6 +60,7 @@ export class AdLibsTopic
 	private _adLibActions: AdLibAction[] | undefined
 	private _abLibs: AdLibPiece[] | undefined
 	private _globalAdLibActions: RundownBaselineAdLibAction[] | undefined
+	private _templateAdLibActions: RundownBaselineAdLibAction[] | undefined
 	private _globalAdLibs: RundownBaselineAdLibItem[] | undefined
 	private throttledSendStatusToAll: () => void
 
@@ -78,6 +80,7 @@ export class AdLibsTopic
 	sendStatus(subscribers: Iterable<WebSocket>): void {
 		const adLibs: AdLibStatus[] = []
 		const globalAdLibs: AdLibStatus[] = []
+		const templateAdLibs: AdLibStatus[] = []
 
 		if (this._adLibActions) {
 			adLibs.push(
@@ -177,14 +180,46 @@ export class AdLibsTopic
 			)
 		}
 
+		if (this._templateAdLibActions) {
+			templateAdLibs.push(
+				...this._templateAdLibActions.map((action) => {
+					const sourceLayerName = this._sourceLayersMap.get(
+						(action.display as IBlueprintActionManifestDisplayContent).sourceLayerId
+					)
+					const outputLayerName = this._outputLayersMap.get(
+						(action.display as IBlueprintActionManifestDisplayContent).outputLayerId
+					)
+					const triggerModes = action.triggerModes
+						? action.triggerModes.map((t) =>
+								literal<AdLibActionType>({
+									name: t.data,
+									label: t.display.label.key,
+								})
+						  )
+						: []
+					return literal<AdLibStatus>({
+						id: unprotectString(action._id),
+						name: action.display.label.key,
+						sourceLayer: sourceLayerName ?? 'invalid',
+						outputLayer: outputLayerName ?? 'invalid',
+						actionType: triggerModes,
+						tags: action.display.tags,
+						publicData: action.publicData,
+						optionsSchema: action.userDataManifest.optionsSchema,
+					})
+				})
+			)
+		}
+
 		const adLibsStatus: AdLibsStatus = this._activePlaylist
 			? {
 					event: 'adLibs',
 					rundownPlaylistId: unprotectString(this._activePlaylist._id),
 					adLibs,
 					globalAdLibs,
+					templateAdLibs,
 			  }
-			: { event: 'adLibs', rundownPlaylistId: null, adLibs: [], globalAdLibs: [] }
+			: { event: 'adLibs', rundownPlaylistId: null, adLibs: [], globalAdLibs: [], templateAdLibs: [] }
 
 		for (const subscriber of subscribers) {
 			this.sendMessage(subscriber, adLibsStatus)
@@ -219,7 +254,12 @@ export class AdLibsTopic
 			case GlobalAdLibActionsHandler.name: {
 				const globalAdLibActions = data ? (data as RundownBaselineAdLibAction[]) : []
 				this.logUpdateReceived('globalAdLibActions', source)
-				this._globalAdLibActions = globalAdLibActions
+				this._globalAdLibActions = []
+				this._templateAdLibActions = []
+				globalAdLibActions.forEach((action) => {
+					if (action.userDataManifest?.template) this._templateAdLibActions?.push(action)
+					else this._globalAdLibActions?.push(action)
+				})
 				break
 			}
 			case AdLibsHandler.name: {
