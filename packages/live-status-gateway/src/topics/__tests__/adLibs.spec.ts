@@ -48,6 +48,22 @@ function makeTestGlobalAdLibActions(): RundownBaselineAdLibAction[] {
 			userDataManifest: {},
 			publicData: { c: 'd' },
 		},
+		{
+			_id: protectString('TEMPLATE_ACTION_0'),
+			actionId: 'TEMPLATE_ACTION_0',
+			rundownId: protectString('RUNDOWN_0'),
+			display: {
+				content: {},
+				label: { key: 'A Template Action' },
+				sourceLayerId: 'layer0',
+				outputLayerId: 'pgm',
+				tags: ['template_adlib_tag'],
+			},
+			externalId: 'NCS_TEMPLATE_ACTION_0',
+			userData: {},
+			userDataManifest: { template: true },
+			publicData: { e: 'f' },
+		},
 	]
 }
 
@@ -96,6 +112,17 @@ describe('ActivePlaylistTopic', () => {
 					sourceLayer: 'Layer 0',
 					tags: ['global_adlib_tag'],
 					publicData: { c: 'd' },
+				},
+			],
+			templateAdLibs: [
+				{
+					actionType: [],
+					id: 'TEMPLATE_ACTION_0',
+					name: 'A Template Action',
+					outputLayer: 'PGM',
+					sourceLayer: 'Layer 0',
+					tags: ['template_adlib_tag'],
+					publicData: { e: 'f' },
 				},
 			],
 		}
