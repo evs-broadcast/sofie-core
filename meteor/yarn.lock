@@ -1418,7 +1418,7 @@ __metadata:
   resolution: "@sofie-automation/shared-lib@portal:../packages/shared-lib::locator=automation-core%40workspace%3A."
   dependencies:
     "@mos-connection/model": ^4.1.0
-    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@9.1.0-PA-380-release-51.383"
+    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@9.1.0"
     tslib: ^2.6.2
     type-fest: ^3.13.1
   languageName: node
@@ -11748,12 +11748,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@9.1.0-PA-380-release-51.383":
-  version: 9.1.0-PA-380-release-51.383
-  resolution: "@evs/timeline-state-resolver-types@npm:9.1.0-PA-380-release-51.383::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver-types%2F-%2F%40evs%2Ftimeline-state-resolver-types-9.1.0-PA-380-release-51.383.tgz"
+"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@9.1.0":
+  version: 9.1.0
+  resolution: "@evs/timeline-state-resolver-types@npm:9.1.0::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver-types%2F-%2F%40evs%2Ftimeline-state-resolver-types-9.1.0.tgz"
   dependencies:
     tslib: ^2.5.1
-  checksum: d7125905ed9198fdc1ab549fe9f066bf47df50d780025830ca3f25c9c1b96703ffb37eae51a4163bbc251c73270c883d59ab5eb2d91c78586e32d459706d2949
+  checksum: 5e693971a52eb1e3b5327996122b069d13780c036365556a94f6928f4d1ade067030a2b4dd2f23538fea1f5b8933c976f099649325e488d8892081ecb718dd7b
   languageName: node
   linkType: hard
 
