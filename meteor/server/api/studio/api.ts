@@ -2,8 +2,9 @@ import { Meteor } from 'meteor/meteor'
 import { check } from '../../../lib/check'
 import { registerClassToMeteorMethods } from '../../methods'
 import { NewStudiosAPI, StudiosAPIMethods } from '../../../lib/api/studios'
-import { DBStudio } from '../../../lib/collections/Studios'
-import { literal, getRandomId, lazyIgnore, stringifyError } from '../../../lib/lib'
+import { DBStudio } from '@sofie-automation/corelib/dist/dataModel/Studio'
+import { literal, getRandomId, lazyIgnore } from '../../../lib/lib'
+import { stringifyError } from '@sofie-automation/shared-lib/dist/lib/stringifyError'
 import {
 	ExpectedPackages,
 	ExpectedPackageWorkStatuses,
@@ -23,6 +24,7 @@ import { Credentials } from '../../security/lib/credentials'
 import { wrapDefaultObject } from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
 import { OrganizationId, StudioId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import { logger } from '../../logging'
+import { DEFAULT_MINIMUM_TAKE_SPAN } from '@sofie-automation/shared-lib/dist/core/constants'
 
 async function insertStudio(context: MethodContext | Credentials, newId?: StudioId): Promise<StudioId> {
 	if (newId) check(newId, String)
@@ -44,6 +46,7 @@ export async function insertStudioInner(organizationId: OrganizationId | null, n
 			settings: {
 				frameRate: 25,
 				mediaPreviewsUrl: '',
+				minimumTakeSpan: DEFAULT_MINIMUM_TAKE_SPAN,
 			},
 			_rundownVersionHash: '',
 			routeSets: {},
@@ -57,6 +60,7 @@ export async function insertStudioInner(organizationId: OrganizationId | null, n
 				inputDevices: wrapDefaultObject({}),
 			},
 			lastBlueprintConfig: undefined,
+			lastBlueprintFixUpHash: undefined,
 		})
 	)
 }

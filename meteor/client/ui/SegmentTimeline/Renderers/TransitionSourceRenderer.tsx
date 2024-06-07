@@ -7,15 +7,13 @@ import { CustomLayerItemRenderer, ICustomLayerItemProps } from './CustomLayerIte
 import { FloatingInspector } from '../../FloatingInspector'
 import { IFloatingInspectorPosition, useInspectorPosition } from '../../FloatingInspectors/IFloatingInspectorPosition'
 
-// type KeyValue = { key: string, value: string }
-
 type IProps = ICustomLayerItemProps
 interface IState {
 	iconFailed: boolean
 }
 export class TransitionSourceRenderer extends CustomLayerItemRenderer<IProps, IState> {
-	leftLabel: HTMLElement
-	rightLabel: HTMLElement
+	leftLabel: HTMLElement | null = null
+	rightLabel: HTMLElement | null = null
 
 	constructor(props: IProps) {
 		super(props)
@@ -68,9 +66,9 @@ export class TransitionSourceRenderer extends CustomLayerItemRenderer<IProps, IS
 						style={this.getItemLabelOffsetLeft()}
 					>
 						{this.props.piece.instance.piece.name}
-						{content && content.icon && !this.state.iconFailed && (
+						{content?.icon && !this.state.iconFailed && (
 							<img
-								src={'/blueprints/assets/' + content.icon}
+								src={'/api/private/blueprints/assets/' + content.icon}
 								className="segment-timeline__piece__label__transition-icon"
 								onError={this.iconFailed}
 								alt={this.props.piece.instance.piece.name}
@@ -90,10 +88,10 @@ export class TransitionSourceRenderer extends CustomLayerItemRenderer<IProps, IS
 function TransitionFloatingInspector({
 	content,
 	position,
-}: {
+}: Readonly<{
 	content: TransitionContent
 	position: IFloatingInspectorPosition
-}) {
+}>) {
 	const ref = useRef<HTMLDivElement>(null)
 	const { style: floatingInspectorStyle } = useInspectorPosition(position, ref)
 
@@ -104,7 +102,7 @@ function TransitionFloatingInspector({
 					className="segment-timeline__mini-inspector segment-timeline__mini-inspector--video"
 					style={floatingInspectorStyle}
 				>
-					<img src={`/blueprints/assets/${content.preview}`} className="thumbnail" />
+					<img src={`/api/private/blueprints/assets/${content.preview}`} className="thumbnail" />
 				</div>
 			)}
 		</FloatingInspector>

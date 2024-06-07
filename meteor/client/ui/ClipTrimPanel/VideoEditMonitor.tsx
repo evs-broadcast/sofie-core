@@ -2,6 +2,7 @@ import * as React from 'react'
 import { withTranslation } from 'react-i18next'
 import { Translated } from '../../lib/ReactMeteorData/ReactMeteorData'
 import ClassNames from 'classnames'
+import { catchError } from '../../lib/lib'
 
 export interface IProps {
 	currentTime?: number
@@ -17,10 +18,10 @@ interface IState {
 
 export const VideoEditMonitor = withTranslation()(
 	class VideoEditMonitor extends React.Component<Translated<IProps>, IState> {
-		private videoEl: HTMLVideoElement
-		private retryCount: number = 0
-		private internalTime: number = 0
-		private lastPosition: number
+		private videoEl: HTMLVideoElement | null = null
+		private retryCount = 0
+		private internalTime = 0
+		private lastPosition = 0
 
 		constructor(props: Translated<IProps>) {
 			super(props)
@@ -89,7 +90,7 @@ export const VideoEditMonitor = withTranslation()(
 		}
 
 		handleStepBack = (_e: React.MouseEvent<HTMLButtonElement>) => {
-			if (this.props.fps) {
+			if (this.props.fps && this.videoEl) {
 				this.internalTime = Math.max(0, this.internalTime - 1 / this.props.fps)
 				this.videoEl.currentTime = this.internalTime
 				if (this.props.onCurrentTimeChange) {
@@ -103,11 +104,12 @@ export const VideoEditMonitor = withTranslation()(
 		}
 
 		handlePlay = (_e: React.MouseEvent<HTMLButtonElement>) => {
-			this.videoEl.play().catch(() => console.error('Could not start playback'))
+			if (!this.videoEl) return
+			this.videoEl.play().catch(catchError('videoEl.play'))
 		}
 
 		handleStepForward = (_e: React.MouseEvent<HTMLButtonElement>) => {
-			if (this.props.fps) {
+			if (this.props.fps && this.videoEl) {
 				this.internalTime = Math.min(
 					this.props.duration || this.videoEl.duration,
 					this.internalTime + 1 / this.props.fps

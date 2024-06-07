@@ -39,7 +39,8 @@ import {
 import { logger } from '../../lib/logging'
 import { internalStoreSystemSnapshot } from '../api/snapshot'
 import { GENESIS_SYSTEM_VERSION, parseVersion, Version } from '../../lib/collections/CoreSystem'
-import { clone, getHash, omit, protectString, stringifyError, unprotectString } from '../../lib/lib'
+import { clone, getHash, omit, protectString, unprotectString } from '../../lib/lib'
+import { stringifyError } from '@sofie-automation/shared-lib/dist/lib/stringifyError'
 import { evalBlueprint } from '../api/blueprints/cache'
 import {
 	MigrationContextShowStyle,
@@ -67,7 +68,7 @@ export const UNSUPPORTED_VERSIONS = [
 ]
 
 export function isVersionSupported(version: Version): boolean {
-	let isSupported: boolean = true
+	let isSupported = true
 	for (const uv of UNSUPPORTED_VERSIONS) {
 		if (semver.satisfies(version, uv)) {
 			isSupported = false
@@ -121,10 +122,10 @@ export async function prepareMigration(returnAllChunks?: boolean): Promise<Prepa
 	if (!databaseSystem) throw new Meteor.Error(500, 'System version not set up')
 
 	// Discover applicable migration steps:
-	let migrationNeeded: boolean = false
+	let migrationNeeded = false
 	const allMigrationSteps: Array<MigrationStepInternal> = []
 	const migrationChunks: Array<MigrationChunk> = []
-	let rank: number = 0
+	let rank = 0
 
 	const databaseVersion = parseVersion(databaseSystem.version)
 	const targetVersion = parseVersion(CURRENT_SYSTEM_VERSION)
@@ -328,11 +329,11 @@ export async function prepareMigration(returnAllChunks?: boolean): Promise<Prepa
 		return 0
 	})
 
-	let automaticStepCount: number = 0
-	let manualStepCount: number = 0
-	let ignoredStepCount: number = 0
+	let automaticStepCount = 0
+	let manualStepCount = 0
+	let ignoredStepCount = 0
 
-	let partialMigration: boolean = false
+	let partialMigration = false
 
 	// Filter steps:
 	const migrationSteps: { [id: string]: MigrationStepInternal } = {}
@@ -501,8 +502,8 @@ export async function runMigration(
 	chunks: Array<MigrationChunk>,
 	hash: string,
 	inputResults: Array<MigrationStepInputResult>,
-	isFirstOfPartialMigrations: boolean = true,
-	chunksLeft: number = 20
+	isFirstOfPartialMigrations = true,
+	chunksLeft = 20
 ): Promise<RunMigrationResult> {
 	if (chunksLeft < 0) {
 		logger.error(`Migration: Bailing out, looks like we're in a loop`)
@@ -644,7 +645,7 @@ export async function runMigration(
 		}
 	}
 
-	let migrationCompleted: boolean = false
+	let migrationCompleted = false
 
 	if (migration.manualStepCount === 0 && !warningMessages.length) {
 		// continue automatically with the next batch

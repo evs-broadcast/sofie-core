@@ -4,11 +4,11 @@ import { WrappedOverridableItemNormal, OverrideOpHelperForItemContents } from '.
 import { SchemaFormCommonProps } from './schemaFormUtil'
 import { SchemaFormWithOverrides } from './SchemaFormWithOverrides'
 
-interface SchemaFormInPlaceProps extends SchemaFormCommonProps {
+interface SchemaFormInPlaceProps extends Omit<SchemaFormCommonProps, 'isRequired'> {
 	/** The object to be modified in place */
 	object: any
 }
-export function SchemaFormInPlace({ object, ...commonProps }: SchemaFormInPlaceProps): JSX.Element {
+export function SchemaFormInPlace({ object, ...commonProps }: Readonly<SchemaFormInPlaceProps>): JSX.Element {
 	// This is a hack to avoid issues with the UI re-rendering as 'nothing' changed
 	const [editCount, setEditCount] = useState(0)
 	const forceRender = useCallback(() => setEditCount((v) => v + 1), [])
@@ -27,7 +27,7 @@ export function SchemaFormInPlace({ object, ...commonProps }: SchemaFormInPlaceP
 		[object, editCount]
 	)
 
-	return <SchemaFormWithOverrides {...commonProps} attr={''} item={wrappedItem} overrideHelper={helper} />
+	return <SchemaFormWithOverrides {...commonProps} attr={''} item={wrappedItem} overrideHelper={helper} isRequired />
 }
 
 /**

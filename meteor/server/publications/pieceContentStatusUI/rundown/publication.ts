@@ -4,17 +4,18 @@ import {
 	ExpectedPackageId,
 	PackageContainerPackageId,
 	PartId,
+	PartInstanceId,
 	PieceId,
 	PieceInstanceId,
 	RundownBaselineAdLibActionId,
 	RundownPlaylistId,
 	SegmentId,
 } from '@sofie-automation/corelib/dist/dataModel/Ids'
-import { IncludeAllMongoFieldSpecifier } from '@sofie-automation/corelib/dist/mongo'
+import { MongoFieldSpecifierOnesStrict } from '@sofie-automation/corelib/dist/mongo'
 import { ReadonlyDeep } from 'type-fest'
-import { CustomCollectionName, PubSub } from '../../../../lib/api/pubsub'
+import { CustomCollectionName, MeteorPubSub } from '../../../../lib/api/pubsub'
 import { UIPieceContentStatus } from '../../../../lib/api/rundownNotifications'
-import { RundownPlaylist } from '../../../../lib/collections/RundownPlaylists'
+import { DBRundownPlaylist } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
 import {
 	MediaObjects,
 	PackageContainerPackageStatuses,
@@ -33,7 +34,7 @@ import { logger } from '../../../logging'
 import { resolveCredentials } from '../../../security/lib/credentials'
 import { NoSecurityReadAccess } from '../../../security/noSecurity'
 import { RundownPlaylistReadAccess } from '../../../security/rundownPlaylist'
-import { ContentCache } from './reactiveContentCache'
+import { ContentCache, PartInstanceFields, createReactiveContentCache } from './reactiveContentCache'
 import { RundownContentObserver } from './rundownContentObserver'
 import { RundownsObserver } from '../../lib/rundownsObserver'
 import { LiveQueryHandle } from '../../../lib/lib'
@@ -41,6 +42,9 @@ import {
 	addItemsWithDependenciesChangesToChangedSet,
 	fetchStudio,
 	IContentStatusesUpdatePropsBase,
+	mediaObjectFieldSpecifier,
+	packageContainerPackageStatusesFieldSpecifier,
+	packageInfoFieldSpecifier,
 	PieceDependencies,
 	studioFieldSpecifier,
 } from '../common'
@@ -54,6 +58,7 @@ import {
 } from './regenerateItems'
 import { PieceContentStatusStudio } from '../checkPieceContentStatus'
 import { check, Match } from 'meteor/check'
+import { DBPartInstance } from '@sofie-automation/corelib/dist/dataModel/PartInstance'
 
 interface UIPieceContentStatusesArgs {
 	readonly rundownPlaylistId: RundownPlaylistId
@@ -77,6 +82,7 @@ interface UIPieceContentStatusesUpdateProps extends IContentStatusesUpdatePropsB
 
 	updatedSegmentIds: SegmentId[]
 	updatedPartIds: PartId[]
+	updatedPartInstanceIds: PartInstanceId[]
 
 	updatedPieceIds: PieceId[]
 	updatedPieceInstanceIds: PieceInstanceId[]
@@ -88,7 +94,9 @@ interface UIPieceContentStatusesUpdateProps extends IContentStatusesUpdatePropsB
 }
 
 type RundownPlaylistFields = '_id' | 'studioId'
-const rundownPlaylistFieldSpecifier = literal<IncludeAllMongoFieldSpecifier<RundownPlaylistFields>>({
+const rundownPlaylistFieldSpecifier = literal<
+	MongoFieldSpecifierOnesStrict<Pick<DBRundownPlaylist, RundownPlaylistFields>>
+>({
 	_id: 1,
 	studioId: 1,
 })
@@ -111,77 +119,82 @@ async function setupUIPieceContentStatusesPublicationObservers(
 
 	const playlist = (await RundownPlaylists.findOneAsync(args.rundownPlaylistId, {
 		projection: rundownPlaylistFieldSpecifier,
-	})) as Pick<RundownPlaylist, RundownPlaylistFields> | undefined
+	})) as Pick<DBRundownPlaylist, RundownPlaylistFields> | undefined
 	if (!playlist) throw new Error(`RundownPlaylist "${args.rundownPlaylistId}" not found!`)
 
 	const rundownsObserver = new RundownsObserver(playlist.studioId, playlist._id, (rundownIds) => {
 		logger.silly(`Creating new RundownContentObserver`)
-		const obs1 = new RundownContentObserver(rundownIds, (cache) => {
-			// Push update
-			triggerUpdate({ newCache: cache })
 
-			const innerQueries = [
-				cache.Segments.find({}).observeChanges({
-					added: (id) => triggerUpdate({ updatedSegmentIds: [protectString(id)] }),
-					changed: (id) => triggerUpdate({ updatedSegmentIds: [protectString(id)] }),
-					removed: (id) => triggerUpdate({ updatedSegmentIds: [protectString(id)] }),
-				}),
-				cache.Parts.find({}).observeChanges({
-					added: (id) => triggerUpdate({ updatedPartIds: [protectString(id)] }),
-					changed: (id) => triggerUpdate({ updatedPartIds: [protectString(id)] }),
-					removed: (id) => triggerUpdate({ updatedSegmentIds: [protectString(id)] }),
-				}),
-				cache.Pieces.find({}).observeChanges({
-					added: (id) => triggerUpdate({ updatedPieceIds: [protectString(id)] }),
-					changed: (id) => triggerUpdate({ updatedPieceIds: [protectString(id)] }),
-					removed: (id) => triggerUpdate({ updatedPieceIds: [protectString(id)] }),
-				}),
-				cache.PieceInstances.find({}).observeChanges({
-					added: (id) => triggerUpdate({ updatedPieceInstanceIds: [protectString(id)] }),
-					changed: (id) => triggerUpdate({ updatedPieceInstanceIds: [protectString(id)] }),
-					removed: (id) => triggerUpdate({ updatedPieceInstanceIds: [protectString(id)] }),
-				}),
-				cache.AdLibPieces.find({}).observeChanges({
-					added: (id) => triggerUpdate({ updatedAdlibPieceIds: [protectString(id)] }),
-					changed: (id) => triggerUpdate({ updatedAdlibPieceIds: [protectString(id)] }),
-					removed: (id) => triggerUpdate({ updatedAdlibPieceIds: [protectString(id)] }),
-				}),
-				cache.AdLibActions.find({}).observeChanges({
-					added: (id) => triggerUpdate({ updatedAdlibActionIds: [protectString(id)] }),
-					changed: (id) => triggerUpdate({ updatedAdlibActionIds: [protectString(id)] }),
-					removed: (id) => triggerUpdate({ updatedAdlibActionIds: [protectString(id)] }),
-				}),
-				cache.BaselineAdLibPieces.find({}).observeChanges({
-					added: (id) => triggerUpdate({ updatedBaselineAdlibPieceIds: [protectString(id)] }),
-					changed: (id) => triggerUpdate({ updatedBaselineAdlibPieceIds: [protectString(id)] }),
-					removed: (id) => triggerUpdate({ updatedBaselineAdlibPieceIds: [protectString(id)] }),
-				}),
-				cache.BaselineAdLibActions.find({}).observeChanges({
-					added: (id) => triggerUpdate({ updatedBaselineAdlibActionIds: [protectString(id)] }),
-					changed: (id) => triggerUpdate({ updatedBaselineAdlibActionIds: [protectString(id)] }),
-					removed: (id) => triggerUpdate({ updatedBaselineAdlibActionIds: [protectString(id)] }),
-				}),
-				cache.Rundowns.find({}).observeChanges({
-					added: () => triggerUpdate({ invalidateAll: true }),
-					changed: () => triggerUpdate({ invalidateAll: true }),
-					removed: () => triggerUpdate({ invalidateAll: true }),
-				}),
-				cache.ShowStyleSourceLayers.find({}).observeChanges({
-					added: () => triggerUpdate({ invalidateAll: true }),
-					changed: () => triggerUpdate({ invalidateAll: true }),
-					removed: () => triggerUpdate({ invalidateAll: true }),
-				}),
-			]
+		// TODO - can this be done cheaper?
+		const contentCache = createReactiveContentCache()
+		triggerUpdate({ newCache: contentCache })
 
-			return () => {
-				for (const query of innerQueries) {
-					query.stop()
-				}
-			}
-		})
+		const obs1 = new RundownContentObserver(rundownIds, contentCache)
+
+		const innerQueries = [
+			contentCache.Segments.find({}).observeChanges({
+				added: (id) => triggerUpdate({ updatedSegmentIds: [protectString(id)] }),
+				changed: (id) => triggerUpdate({ updatedSegmentIds: [protectString(id)] }),
+				removed: (id) => triggerUpdate({ updatedSegmentIds: [protectString(id)] }),
+			}),
+			contentCache.Parts.find({}).observeChanges({
+				added: (id) => triggerUpdate({ updatedPartIds: [protectString(id)] }),
+				changed: (id) => triggerUpdate({ updatedPartIds: [protectString(id)] }),
+				removed: (id) => triggerUpdate({ updatedPartIds: [protectString(id)] }),
+			}),
+			contentCache.Pieces.find({}).observeChanges({
+				added: (id) => triggerUpdate({ updatedPieceIds: [protectString(id)] }),
+				changed: (id) => triggerUpdate({ updatedPieceIds: [protectString(id)] }),
+				removed: (id) => triggerUpdate({ updatedPieceIds: [protectString(id)] }),
+			}),
+			contentCache.PartInstances.find({}).observeChanges({
+				added: (id) => triggerUpdate({ updatedPartInstanceIds: [protectString(id)] }),
+				changed: (id) => triggerUpdate({ updatedPartInstanceIds: [protectString(id)] }),
+				removed: (id) => triggerUpdate({ updatedPartInstanceIds: [protectString(id)] }),
+			}),
+			contentCache.PieceInstances.find({}).observeChanges({
+				added: (id) => triggerUpdate({ updatedPieceInstanceIds: [protectString(id)] }),
+				changed: (id) => triggerUpdate({ updatedPieceInstanceIds: [protectString(id)] }),
+				removed: (id) => triggerUpdate({ updatedPieceInstanceIds: [protectString(id)] }),
+			}),
+			contentCache.AdLibPieces.find({}).observeChanges({
+				added: (id) => triggerUpdate({ updatedAdlibPieceIds: [protectString(id)] }),
+				changed: (id) => triggerUpdate({ updatedAdlibPieceIds: [protectString(id)] }),
+				removed: (id) => triggerUpdate({ updatedAdlibPieceIds: [protectString(id)] }),
+			}),
+			contentCache.AdLibActions.find({}).observeChanges({
+				added: (id) => triggerUpdate({ updatedAdlibActionIds: [protectString(id)] }),
+				changed: (id) => triggerUpdate({ updatedAdlibActionIds: [protectString(id)] }),
+				removed: (id) => triggerUpdate({ updatedAdlibActionIds: [protectString(id)] }),
+			}),
+			contentCache.BaselineAdLibPieces.find({}).observeChanges({
+				added: (id) => triggerUpdate({ updatedBaselineAdlibPieceIds: [protectString(id)] }),
+				changed: (id) => triggerUpdate({ updatedBaselineAdlibPieceIds: [protectString(id)] }),
+				removed: (id) => triggerUpdate({ updatedBaselineAdlibPieceIds: [protectString(id)] }),
+			}),
+			contentCache.BaselineAdLibActions.find({}).observeChanges({
+				added: (id) => triggerUpdate({ updatedBaselineAdlibActionIds: [protectString(id)] }),
+				changed: (id) => triggerUpdate({ updatedBaselineAdlibActionIds: [protectString(id)] }),
+				removed: (id) => triggerUpdate({ updatedBaselineAdlibActionIds: [protectString(id)] }),
+			}),
+			contentCache.Rundowns.find({}).observeChanges({
+				added: () => triggerUpdate({ invalidateAll: true }),
+				changed: () => triggerUpdate({ invalidateAll: true }),
+				removed: () => triggerUpdate({ invalidateAll: true }),
+			}),
+			contentCache.ShowStyleSourceLayers.find({}).observeChanges({
+				added: () => triggerUpdate({ invalidateAll: true }),
+				changed: () => triggerUpdate({ invalidateAll: true }),
+				removed: () => triggerUpdate({ invalidateAll: true }),
+			}),
+		]
 
 		return () => {
 			obs1.dispose()
+
+			for (const query of innerQueries) {
+				query.stop()
+			}
 		}
 	})
 
@@ -206,7 +219,8 @@ async function setupUIPieceContentStatusesPublicationObservers(
 				added: (obj) => triggerUpdate(trackMediaObjectChange(obj.mediaId)),
 				changed: (obj) => triggerUpdate(trackMediaObjectChange(obj.mediaId)),
 				removed: (obj) => triggerUpdate(trackMediaObjectChange(obj.mediaId)),
-			}
+			},
+			{ projection: mediaObjectFieldSpecifier }
 		),
 		PackageInfos.observe(
 			{
@@ -219,7 +233,8 @@ async function setupUIPieceContentStatusesPublicationObservers(
 				added: (obj) => triggerUpdate(trackPackageInfoChange(obj.packageId)),
 				changed: (obj) => triggerUpdate(trackPackageInfoChange(obj.packageId)),
 				removed: (obj) => triggerUpdate(trackPackageInfoChange(obj.packageId)),
-			}
+			},
+			{ projection: packageInfoFieldSpecifier }
 		),
 		PackageContainerPackageStatuses.observeChanges(
 			{ studioId: playlist.studioId },
@@ -227,7 +242,8 @@ async function setupUIPieceContentStatusesPublicationObservers(
 				added: (id) => triggerUpdate(trackPackageContainerPackageStatusChange(id)),
 				changed: (id) => triggerUpdate(trackPackageContainerPackageStatusChange(id)),
 				removed: (id) => triggerUpdate(trackPackageContainerPackageStatusChange(id)),
-			}
+			},
+			{ projection: packageContainerPackageStatusesFieldSpecifier }
 		),
 	]
 }
@@ -284,7 +300,8 @@ async function manipulateUIPieceContentStatusesPublicationData(
 		state.contentCache,
 		collection,
 		new Set(updateProps?.updatedSegmentIds),
-		new Set(updateProps?.updatedPartIds)
+		new Set(updateProps?.updatedPartIds),
+		new Set(updateProps?.updatedPartInstanceIds)
 	)
 
 	let regeneratePieceIds: Set<PieceId>
@@ -406,18 +423,35 @@ function updatePartAndSegmentInfoForExistingDocs(
 	contentCache: ReadonlyDeep<ContentCache>,
 	collection: CustomPublishCollection<UIPieceContentStatus>,
 	updatedSegmentIds: Set<SegmentId>,
-	updatedPartIds: Set<PartId>
+	updatedPartIds: Set<PartId>,
+	updatedPartInstanceIds: Set<PartInstanceId>
 ) {
+	const updatedPartInstancesByPartId = new Map<PartId, Pick<DBPartInstance, PartInstanceFields>>()
+	for (const partInstanceId of updatedPartInstanceIds) {
+		const partInstance = contentCache.PartInstances.findOne(partInstanceId)
+		if (partInstance) updatedPartInstancesByPartId.set(partInstance.part._id, partInstance)
+	}
+
 	collection.updateAll((doc) => {
 		let changed = false
 
 		// If the part for this doc changed, update its part.
 		// Note: if the segment of the doc's part changes that will only be noticed here
-		if (doc.partId && updatedPartIds.has(doc.partId)) {
+		if (doc.partId && !doc.isPieceInstance && updatedPartIds.has(doc.partId)) {
 			const part = contentCache.Parts.findOne(doc.partId)
 			if (part && (part.segmentId !== doc.segmentId || part._rank !== doc.partRank)) {
 				doc.segmentId = part.segmentId
 				doc.partRank = part._rank
+				changed = true
+			}
+		} else if (doc.partId && doc.isPieceInstance) {
+			const newPartProps = updatedPartInstancesByPartId.get(doc.partId)
+			if (
+				newPartProps &&
+				(newPartProps.segmentId !== doc.segmentId || newPartProps.part._rank !== doc.partRank)
+			) {
+				doc.segmentId = newPartProps.segmentId
+				doc.partRank = newPartProps.part._rank
 				changed = true
 			}
 		}
@@ -437,7 +471,7 @@ function updatePartAndSegmentInfoForExistingDocs(
 }
 
 meteorCustomPublish(
-	PubSub.uiPieceContentStatuses,
+	MeteorPubSub.uiPieceContentStatuses,
 	CustomCollectionName.UIPieceContentStatuses,
 	async function (pub, rundownPlaylistId: RundownPlaylistId | null) {
 		check(rundownPlaylistId, Match.Maybe(String))
@@ -456,7 +490,7 @@ meteorCustomPublish(
 				UIPieceContentStatusesState,
 				UIPieceContentStatusesUpdateProps
 			>(
-				`pub_${PubSub.uiPieceContentStatuses}_${rundownPlaylistId}`,
+				`pub_${MeteorPubSub.uiPieceContentStatuses}_${rundownPlaylistId}`,
 				{ rundownPlaylistId },
 				setupUIPieceContentStatusesPublicationObservers,
 				manipulateUIPieceContentStatusesPublicationData,

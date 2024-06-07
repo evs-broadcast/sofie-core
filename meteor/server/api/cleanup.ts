@@ -1,7 +1,7 @@
 import { ProtectedString, getCurrentTime } from '../../lib/lib'
 import { CollectionCleanupResult } from '../../lib/api/system'
-import { MongoQuery } from '../../lib/typings/meteor'
-import { RundownPlaylist } from '../../lib/collections/RundownPlaylists'
+import { MongoQuery } from '@sofie-automation/corelib/dist/mongo'
+import { DBRundownPlaylist } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
 import {
 	getActiveRundownPlaylistsInStudioFromDb,
 	getExpiredRemovedPackageInfos,
@@ -77,7 +77,7 @@ import { generateTranslationBundleOriginId } from './translationsBundles'
  * If actuallyCleanup=true, cleans up old data. Otherwise just checks what old data there is
  * @returns A string if there is an issue preventing cleanup. CollectionCleanupResult otherwise
  */
-export async function cleanupOldDataInner(actuallyCleanup: boolean = false): Promise<CollectionCleanupResult | string> {
+export async function cleanupOldDataInner(actuallyCleanup = false): Promise<CollectionCleanupResult | string> {
 	if (actuallyCleanup) {
 		const notAllowedReason = await isAllowedToRunCleanup()
 		if (notAllowedReason) return `Could not run the cleanup function due to: ${notAllowedReason}`
@@ -454,7 +454,9 @@ async function isAllowedToRunCleanup(): Promise<string | void> {
 
 	const studios = await Studios.findFetchAsync({}, { fields: { _id: 1 } })
 	for (const studio of studios) {
-		const activePlaylist: RundownPlaylist | undefined = await getActiveRundownPlaylistsInStudioFromDb(studio._id)[0]
+		const activePlaylist: DBRundownPlaylist | undefined = (
+			await getActiveRundownPlaylistsInStudioFromDb(studio._id)
+		)[0]
 		if (activePlaylist) {
 			return `There is an active RundownPlaylist: "${activePlaylist.name}" in studio "${studio.name}" (${activePlaylist._id}, ${studio._id})`
 		}

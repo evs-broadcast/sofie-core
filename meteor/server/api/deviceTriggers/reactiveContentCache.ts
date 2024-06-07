@@ -10,12 +10,14 @@ import { DBRundownPlaylist } from '@sofie-automation/corelib/dist/dataModel/Rund
 import { DBSegment } from '@sofie-automation/corelib/dist/dataModel/Segment'
 import { DBShowStyleBase } from '@sofie-automation/corelib/dist/dataModel/ShowStyleBase'
 import { DBTriggeredActions } from '../../../lib/collections/TriggeredActions'
-import { ReactiveCacheCollection } from './ReactiveCacheCollection'
-import { IncludeAllMongoFieldSpecifier } from '@sofie-automation/corelib/dist/mongo'
+import { MongoFieldSpecifierOnesStrict } from '@sofie-automation/corelib/dist/mongo'
 import { literal } from '@sofie-automation/corelib/dist/lib'
+import { ReactiveCacheCollection } from '../../publications/lib/ReactiveCacheCollection'
 
 export type RundownPlaylistFields = '_id' | 'name' | 'activationId' | 'currentPartInfo' | 'nextPartInfo'
-export const rundownPlaylistFieldSpecifier = literal<IncludeAllMongoFieldSpecifier<RundownPlaylistFields>>({
+export const rundownPlaylistFieldSpecifier = literal<
+	MongoFieldSpecifierOnesStrict<Pick<DBRundownPlaylist, RundownPlaylistFields>>
+>({
 	_id: 1,
 	name: 1,
 	activationId: 1,
@@ -24,7 +26,7 @@ export const rundownPlaylistFieldSpecifier = literal<IncludeAllMongoFieldSpecifi
 })
 
 export type SegmentFields = '_id' | '_rank' | 'isHidden' | 'name' | 'rundownId' | 'identifier'
-export const segmentFieldSpecifier = literal<IncludeAllMongoFieldSpecifier<SegmentFields>>({
+export const segmentFieldSpecifier = literal<MongoFieldSpecifierOnesStrict<Pick<DBSegment, SegmentFields>>>({
 	_id: 1,
 	_rank: 1,
 	isHidden: 1,
@@ -46,7 +48,7 @@ export type PartFields =
 	| 'rundownId'
 	| 'segmentId'
 	| 'untimed'
-export const partFieldSpecifier = literal<IncludeAllMongoFieldSpecifier<PartFields>>({
+export const partFieldSpecifier = literal<MongoFieldSpecifierOnesStrict<Pick<DBPart, PartFields>>>({
 	_id: 1,
 	_rank: 1,
 	autoNext: 1,
@@ -62,7 +64,9 @@ export const partFieldSpecifier = literal<IncludeAllMongoFieldSpecifier<PartFiel
 })
 
 export type PartInstanceFields = '_id' | 'part'
-export const partInstanceFieldSpecifier = literal<IncludeAllMongoFieldSpecifier<PartInstanceFields>>({
+export const partInstanceFieldSpecifier = literal<
+	MongoFieldSpecifierOnesStrict<Pick<DBPartInstance, PartInstanceFields>>
+>({
 	_id: 1,
 	part: 1,
 })
@@ -77,7 +81,7 @@ export type AdLibActionFields =
 	| 'userData'
 	| 'uniquenessId'
 	| 'userDataManifest'
-export const adLibActionFieldSpecifier = literal<IncludeAllMongoFieldSpecifier<AdLibActionFields>>({
+export const adLibActionFieldSpecifier = literal<MongoFieldSpecifierOnesStrict<Pick<AdLibAction, AdLibActionFields>>>({
 	_id: 1,
 	actionId: 1,
 	display: 1,
@@ -105,10 +109,9 @@ export type AdLibPieceFields =
 	| 'floated'
 	| 'rundownId'
 	| 'partId'
-	| 'status'
 	| 'tags'
 	| 'uniquenessId'
-export const adLibPieceFieldSpecifier = literal<IncludeAllMongoFieldSpecifier<AdLibPieceFields>>({
+export const adLibPieceFieldSpecifier = literal<MongoFieldSpecifierOnesStrict<Pick<AdLibPiece, AdLibPieceFields>>>({
 	_id: 1,
 	_rank: 1,
 	name: 1,
@@ -124,7 +127,6 @@ export const adLibPieceFieldSpecifier = literal<IncludeAllMongoFieldSpecifier<Ad
 	floated: 1,
 	partId: 1,
 	rundownId: 1,
-	status: 1,
 	tags: 1,
 	uniquenessId: 1,
 })

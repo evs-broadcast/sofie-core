@@ -21,7 +21,8 @@ import { parseBlueprintDocument, WrappedShowStyleBlueprint, WrappedStudioBluepri
 import { ReadonlyObjectDeep } from 'type-fest/source/readonly-deep'
 import { ApmSpan, ApmTransaction } from '../profiler'
 import { DBShowStyleBase } from '@sofie-automation/corelib/dist/dataModel/ShowStyleBase'
-import { clone, deepFreeze, getRandomString, stringifyError } from '@sofie-automation/corelib/dist/lib'
+import { clone, deepFreeze, getRandomString } from '@sofie-automation/corelib/dist/lib'
+import { stringifyError } from '@sofie-automation/shared-lib/dist/lib/stringifyError'
 import { createShowStyleCompound } from '../showStyles'
 import { BlueprintManifestType } from '@sofie-automation/blueprints-integration'
 import {
@@ -33,8 +34,7 @@ import {
 import { getStudioQueueName, StudioJobFunc } from '@sofie-automation/corelib/dist/worker/studio'
 import { LockBase, PlaylistLock, RundownLock } from '../jobs/lock'
 import { logger } from '../logging'
-import { ReadOnlyCacheBase } from '../cache/CacheBase'
-import { IS_PRODUCTION } from '../environment'
+import { BaseModel } from '../modelBase'
 import { LocksManager } from './locks'
 import { unprotectString } from '@sofie-automation/corelib/dist/protectedString'
 import { EventsJobFunc, getEventsQueueName } from '@sofie-automation/corelib/dist/worker/events'
@@ -278,7 +278,7 @@ export class StudioCacheContextImpl implements StudioCacheContext {
 
 export class JobContextImpl extends StudioCacheContextImpl implements JobContext {
 	private readonly locks: Array<LockBase> = []
-	private readonly caches: Array<ReadOnlyCacheBase<any>> = []
+	private readonly caches: Array<BaseModel> = []
 
 	constructor(
 		directCollections: Readonly<IDirectCollections>,
@@ -291,7 +291,7 @@ export class JobContextImpl extends StudioCacheContextImpl implements JobContext
 		super(directCollections, cacheData)
 	}
 
-	trackCache(cache: ReadOnlyCacheBase<any>): void {
+	trackCache(cache: BaseModel): void {
 		this.caches.push(cache)
 	}
 
@@ -364,11 +364,11 @@ export class JobContextImpl extends StudioCacheContextImpl implements JobContext
 		}
 
 		// Ensure all caches were saved/aborted
-		if (!IS_PRODUCTION) {
-			for (const cache of this.caches) {
-				if (cache.hasChanges()) {
-					logger.warn(`Cache has unsaved changes: ${cache.DisplayName}`)
-				}
+		for (const cache of this.caches) {
+			try {
+				cache.assertNoChanges()
+			} catch (e) {
+				logger.warn(`${cache.displayName} has unsaved changes: ${stringifyError(e)}`)
 			}
 		}
 	}

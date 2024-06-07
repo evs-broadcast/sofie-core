@@ -1,6 +1,10 @@
 import { testInFiber } from '../../__mocks__/helpers/jest'
 import { transformTimeline } from '@sofie-automation/corelib/dist/playout/timeline'
-import { TimelineObjGeneric, TimelineObjType, TimelineObjRundown } from '../collections/Timeline'
+import {
+	TimelineObjGeneric,
+	TimelineObjType,
+	TimelineObjRundown,
+} from '@sofie-automation/corelib/dist/dataModel/Timeline'
 import { TSR } from '@sofie-automation/blueprints-integration'
 
 describe('lib/timeline', () => {
@@ -16,6 +20,7 @@ describe('lib/timeline', () => {
 					deviceType: TSR.DeviceType.ABSTRACT,
 				},
 				layer: 'L1',
+				priority: 0,
 			},
 			{
 				id: 'child0',
@@ -28,6 +33,7 @@ describe('lib/timeline', () => {
 				},
 				layer: 'L1',
 				inGroup: 'group0',
+				priority: 0,
 			},
 			{
 				id: 'child1',
@@ -40,6 +46,7 @@ describe('lib/timeline', () => {
 				},
 				layer: 'L1',
 				inGroup: 'group0',
+				priority: 0,
 			},
 			{
 				id: 'group0',
@@ -52,6 +59,7 @@ describe('lib/timeline', () => {
 				},
 				layer: 'L1',
 				isGroup: true,
+				priority: 0,
 			},
 			{
 				id: '2',
@@ -60,7 +68,7 @@ describe('lib/timeline', () => {
 					start: 0,
 				},
 				content: {
-					// @ts-expect-error temporary ignoring typing issue
+					deviceType: TSR.DeviceType.ABSTRACT,
 					callBack: 'partPlaybackStarted',
 					callBackData: {
 						rundownId: 'myRundown0',
@@ -69,7 +77,8 @@ describe('lib/timeline', () => {
 					callBackStopped: 'partPlaybackStopped',
 				},
 				layer: 'L1',
-				partId: 'myPart0',
+				// partId: 'myPart0',
+				priority: 0,
 			},
 			{
 				id: '3',
@@ -78,7 +87,7 @@ describe('lib/timeline', () => {
 					start: 0,
 				},
 				content: {
-					// @ts-expect-error temporary ignoring typing issue
+					deviceType: TSR.DeviceType.ABSTRACT,
 					callBack: 'piecePlaybackStarted',
 					callBackData: {
 						rundownId: 'myRundown0',
@@ -89,6 +98,7 @@ describe('lib/timeline', () => {
 				layer: 'L1',
 				// @ts-ignore
 				pieceId: 'myPiece0',
+				priority: 0,
 			},
 		]
 		const transformedTimeline = transformTimeline(timeline)

@@ -5,7 +5,7 @@ import { DashboardActionButton } from './DashboardActionButton'
 import { doUserAction, UserAction } from '../../../lib/clientUserAction'
 import { withTranslation } from 'react-i18next'
 import { Translated } from '../../lib/ReactMeteorData/react-meteor-data'
-import { RundownPlaylist } from '../../../lib/collections/RundownPlaylists'
+import { DBRundownPlaylist } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
 import { MeteorCall } from '../../../lib/api/methods'
 import { doModalDialog } from '../../lib/ModalDialog'
 import { NoticeLevel, Notification, NotificationCenter } from '../../../lib/notifications/notifications'
@@ -17,7 +17,7 @@ import { hashSingleUseToken } from '../../../lib/api/userActions'
 export interface IDashboardButtonGroupProps {
 	buttons: DashboardLayoutActionButton[]
 	studioMode: boolean
-	playlist: RundownPlaylist
+	playlist: DBRundownPlaylist
 
 	onChangeQueueAdLib?: (isQueue: boolean, e: any) => void
 }
@@ -102,7 +102,7 @@ export const DashboardActionButtonGroup = withTranslation()(
 		storeSnapshot = (e: React.SyntheticEvent<HTMLElement>) => {
 			const { t } = this.props
 			const playlistId: RundownPlaylistId = this.props.playlist._id
-			const reason: string = 'Taken by user'
+			const reason = 'Taken by user'
 			doUserAction(
 				t,
 				e,

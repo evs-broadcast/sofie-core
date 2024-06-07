@@ -9,11 +9,11 @@ import { PieceLifespan, VTContent } from '@sofie-automation/blueprints-integrati
 import { OffsetPosition } from '../../../utils/positions'
 import { CalculateTimingsPiece } from '@sofie-automation/corelib/dist/playout/timings'
 import { IFloatingInspectorPosition } from '../../FloatingInspectors/IFloatingInspectorPosition'
+import { LoopingPieceIcon } from '../../../lib/ui/icons/looping'
 
 export type SourceDurationLabelAlignment = 'left' | 'right'
 
 export interface ICustomLayerItemProps {
-	mediaPreviewUrl?: string
 	typeClass?: string
 	layer: ISourceLayerUi
 	outputLayer: IOutputLayerUi
@@ -23,9 +23,10 @@ export interface ICustomLayerItemProps {
 	isLiveLine: boolean
 	partStartsAt: number
 	partDuration: number // 0 if unknown
-	partExpectedDuration: number
+	partDisplayDuration: number
 	piece: PieceUi
 	timeScale: number
+	scrollLeft: number
 	onFollowLiveLine?: (state: boolean, event: any) => void
 	relative?: boolean
 	followLiveLine: boolean
@@ -46,12 +47,11 @@ export interface ICustomLayerItemProps {
 	getSourceDurationLabelAlignment?: () => SourceDurationLabelAlignment
 	showDuration?: boolean
 }
-export interface ISourceLayerItemState {}
 
-export class CustomLayerItemRenderer<
-	IProps extends ICustomLayerItemProps,
-	IState extends ISourceLayerItemState
-> extends React.Component<React.PropsWithChildren<ICustomLayerItemProps & IProps>, ISourceLayerItemState & IState> {
+export class CustomLayerItemRenderer<IProps extends ICustomLayerItemProps, IState> extends React.Component<
+	React.PropsWithChildren<ICustomLayerItemProps & IProps>,
+	IState
+> {
 	protected getSourceDurationLabelAlignment(): SourceDurationLabelAlignment {
 		return (
 			(this.props.getSourceDurationLabelAlignment &&
@@ -124,6 +124,11 @@ export class CustomLayerItemRenderer<
 		return false
 	}
 
+	protected renderLoopIcon(): JSX.Element | null {
+		if (!this.props.piece.instance.piece.content?.loop) return null
+		return <LoopingPieceIcon className="segment-timeline__piece__label-icon" playing={this.props.showMiniInspector} />
+	}
+
 	protected renderOverflowTimeLabel(): JSX.Element | null {
 		const overflowTime = this.doesOverflowTime()
 		if (
@@ -150,6 +155,7 @@ export class CustomLayerItemRenderer<
 		const postrollDuration = vtContent && vtContent.postrollDuration ? vtContent.postrollDuration : 0
 		if (
 			vtContent &&
+			!vtContent.loop &&
 			vtContent.sourceDuration !== undefined &&
 			vtContent.sourceDuration !== 0 &&
 			(this.props.piece.renderedInPoint || 0) + (vtContent.sourceDuration - seek) < (this.props.partDuration || 0)

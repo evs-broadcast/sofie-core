@@ -1,16 +1,16 @@
-import { DBStudio } from '../lib/collections/Studios'
+import { DBStudio } from '@sofie-automation/corelib/dist/dataModel/Studio'
 import { clone, getCurrentTime, unprotectString } from '../lib/lib'
-import { DBRundownPlaylist } from '../lib/collections/RundownPlaylists'
-import { DBRundown } from '../lib/collections/Rundowns'
-import { DBSegment } from '../lib/collections/Segments'
-import { DBPart } from '../lib/collections/Parts'
+import { DBRundownPlaylist } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
+import { DBRundown } from '@sofie-automation/corelib/dist/dataModel/Rundown'
+import { DBSegment } from '@sofie-automation/corelib/dist/dataModel/Segment'
+import { DBPart } from '@sofie-automation/corelib/dist/dataModel/Part'
 import { IBlueprintPieceType, PieceLifespan } from '@sofie-automation/blueprints-integration'
-import { Piece, PieceStatusCode, EmptyPieceTimelineObjectsBlob } from '../lib/collections/Pieces'
-import { AdLibPiece } from '../lib/collections/AdLibPieces'
+import { Piece, EmptyPieceTimelineObjectsBlob } from '@sofie-automation/corelib/dist/dataModel/Piece'
+import { AdLibPiece } from '@sofie-automation/corelib/dist/dataModel/AdLibPiece'
 import { getRundownId } from '../server/api/ingest/lib'
 import { wrapDefaultObject } from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
 import { PartInstance } from '../lib/collections/PartInstances'
-import { PieceInstance } from '../lib/collections/PieceInstances'
+import { PieceInstance } from '@sofie-automation/corelib/dist/dataModel/PieceInstance'
 import {
 	PartId,
 	PartInstanceId,
@@ -26,6 +26,7 @@ import {
 	ShowStyleVariantId,
 	StudioId,
 } from '@sofie-automation/corelib/dist/dataModel/Ids'
+import { DEFAULT_MINIMUM_TAKE_SPAN } from '@sofie-automation/shared-lib/dist/core/constants'
 
 export function defaultRundownPlaylist(_id: RundownPlaylistId, studioId: StudioId): DBRundownPlaylist {
 	return {
@@ -101,6 +102,7 @@ export function defaultStudio(_id: StudioId): DBStudio {
 		settings: {
 			frameRate: 25,
 			mediaPreviewsUrl: '',
+			minimumTakeSpan: DEFAULT_MINIMUM_TAKE_SPAN,
 		},
 		_rundownVersionHash: '',
 		routeSets: {},
@@ -114,6 +116,7 @@ export function defaultStudio(_id: StudioId): DBStudio {
 			inputDevices: wrapDefaultObject({}),
 		},
 		lastBlueprintConfig: undefined,
+		lastBlueprintFixUpHash: undefined,
 	}
 }
 
@@ -147,7 +150,6 @@ export function defaultPiece(_id: PieceId, rundownId: RundownId, segmentId: Segm
 		startSegmentId: segmentId,
 		startPartId: partId,
 		name: 'Default Piece',
-		status: PieceStatusCode.OK,
 		lifespan: PieceLifespan.WithinPart,
 		pieceType: IBlueprintPieceType.Normal,
 		invalid: false,
@@ -168,7 +170,6 @@ export function defaultAdLibPiece(_id: PieceId, rundownId: RundownId, partId: Pa
 		partId: partId,
 		_rank: 0,
 		name: 'Default Adlib',
-		status: PieceStatusCode.OK,
 		lifespan: PieceLifespan.WithinPart,
 		sourceLayerId: '',
 		outputLayerId: '',

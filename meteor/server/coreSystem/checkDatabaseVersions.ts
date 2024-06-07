@@ -1,7 +1,7 @@
 import { StatusCode } from '@sofie-automation/blueprints-integration'
 import { BlueprintId, StudioId } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import { unprotectString } from '@sofie-automation/corelib/dist/protectedString'
-import { Blueprint } from '../../lib/collections/Blueprints'
+import { Blueprint } from '@sofie-automation/corelib/dist/dataModel/Blueprint'
 import { Blueprints, ShowStyleBases, Studios } from '../collections'
 import {
 	parseVersion,
@@ -10,8 +10,8 @@ import {
 	isPrerelease,
 	parseCoreIntegrationCompatabilityRange,
 } from '../../lib/collections/CoreSystem'
-import { ShowStyleBase } from '../../lib/collections/ShowStyleBases'
-import { Studio } from '../../lib/collections/Studios'
+import { DBShowStyleBase } from '@sofie-automation/corelib/dist/dataModel/ShowStyleBase'
+import { DBStudio } from '@sofie-automation/corelib/dist/dataModel/Studio'
 import { lazyIgnore } from '../../lib/lib'
 import { logger } from '../logging'
 import { CURRENT_SYSTEM_VERSION } from '../migration/currentSystemVersion'
@@ -108,7 +108,7 @@ export function checkDatabaseVersions(): void {
 							{
 								fields: { _id: 1 },
 							}
-						)) as Array<Pick<ShowStyleBase, '_id'>>
+						)) as Array<Pick<DBShowStyleBase, '_id'>>
 						for (const showStyleBase of showStylesForBlueprint) {
 							if (o.statusCode === StatusCode.GOOD) {
 								o = compareSemverVersions(
@@ -126,7 +126,7 @@ export function checkDatabaseVersions(): void {
 								{
 									fields: { _id: 1 },
 								}
-							)) as Array<Pick<Studio, '_id'>>
+							)) as Array<Pick<DBStudio, '_id'>>
 							for (const studio of studiosForShowStyleBase) {
 								if (!checkedStudioIds.has(studio._id)) {
 									// only run once per blueprint and studio

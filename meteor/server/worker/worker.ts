@@ -4,7 +4,7 @@ import { getIngestQueueName, IngestJobFunc } from '@sofie-automation/corelib/dis
 import { getEventsQueueName } from '@sofie-automation/corelib/dist/worker/events'
 import { logger } from '../logging'
 import { Meteor } from 'meteor/meteor'
-import { FORCE_CLEAR_CACHES_JOB } from '@sofie-automation/corelib/dist/worker/shared'
+import { FORCE_CLEAR_CACHES_JOB, IS_INSPECTOR_ENABLED } from '@sofie-automation/corelib/dist/worker/shared'
 import { threadedClass, Promisify, ThreadedClassManager } from 'threadedclass'
 import type { JobSpec } from '@sofie-automation/job-worker/dist/main'
 import type { IpcJobWorker } from '@sofie-automation/job-worker/dist/ipc'
@@ -14,9 +14,9 @@ import {
 	getRandomString,
 	ManualPromise,
 	MeteorStartupAsync,
-	stringifyError,
 	Time,
 } from '../../lib/lib'
+import { stringifyError } from '@sofie-automation/shared-lib/dist/lib/stringifyError'
 import { UserActionsLogItem } from '../../lib/collections/UserActionsLog'
 import { triggerFastTrackObserver, FastTrackObservers } from '../publications/fastTrack'
 import { TimelineComplete } from '@sofie-automation/corelib/dist/dataModel/Timeline'
@@ -24,7 +24,7 @@ import { fetchStudioLight } from '../optimizations'
 import * as path from 'path'
 import { LogEntry } from 'winston'
 import { initializeWorkerStatus, setWorkerStatus } from './workerStatus'
-import { MongoQuery } from '../../lib/typings/meteor'
+import { MongoQuery } from '@sofie-automation/corelib/dist/mongo'
 import { UserActionsLog } from '../collections'
 import { MetricsCounter } from '@sofie-automation/corelib/dist/prometheus'
 
@@ -311,10 +311,11 @@ MeteorStartupAsync(async () => {
 			queueJobWithoutResult,
 			logLine,
 			fastTrackTimeline,
+			!IS_INSPECTOR_ENABLED,
 		],
 		{
 			autoRestart: true,
-			freezeLimit: FREEZE_LIMIT,
+			freezeLimit: IS_INSPECTOR_ENABLED ? 0 : FREEZE_LIMIT,
 			restartTimeout: RESTART_TIMEOUT,
 			killTimeout: KILL_TIMEOUT,
 		}

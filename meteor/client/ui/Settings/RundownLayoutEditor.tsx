@@ -1,8 +1,7 @@
-import * as React from 'react'
+import React, { useMemo } from 'react'
 import ClassNames from 'classnames'
 import { EditAttribute } from '../../lib/EditAttribute'
-import { Translated, translateWithTracker } from '../../lib/ReactMeteorData/react-meteor-data'
-import { MeteorReactComponent } from '../../lib/MeteorReactComponent'
+import { Translated, useSubscription, useTracker } from '../../lib/ReactMeteorData/react-meteor-data'
 import { faUpload, faPlus, faCheck, faPencilAlt, faDownload, faTrash } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
@@ -20,13 +19,13 @@ import {
 	CustomizableRegionSettingsManifest,
 	RundownLayoutsAPI,
 } from '../../../lib/api/rundownLayouts'
-import { PubSub } from '../../../lib/api/pubsub'
+import { MeteorPubSub } from '../../../lib/api/pubsub'
 import { getRandomString, literal, unprotectString } from '../../../lib/lib'
 import { UploadButton } from '../../lib/uploadButton'
 import { doModalDialog } from '../../lib/ModalDialog'
 import { NotificationCenter, Notification, NoticeLevel } from '../../../lib/notifications/notifications'
-import { fetchFrom } from '../../lib/lib'
-import { Studio } from '../../../lib/collections/Studios'
+import { catchError, fetchFrom } from '../../lib/lib'
+import { DBStudio } from '@sofie-automation/corelib/dist/dataModel/Studio'
 import { Link } from 'react-router-dom'
 import { MeteorCall } from '../../../lib/api/methods'
 import { defaultColorPickerPalette } from '../../lib/colorPicker'
@@ -38,12 +37,13 @@ import { RundownLayoutId, ShowStyleBaseId } from '@sofie-automation/corelib/dist
 import { OutputLayers, SourceLayers } from '@sofie-automation/corelib/dist/dataModel/ShowStyleBase'
 import { RundownLayouts } from '../../collections'
 import { LabelActual } from '../../lib/Components/LabelAndOverrides'
+import { withTranslation } from 'react-i18next'
 
 export interface IProps {
 	showStyleBaseId: ShowStyleBaseId
 	sourceLayers: SourceLayers
 	outputLayers: OutputLayers
-	studios: Studio[]
+	studios: DBStudio[]
 	customRegion: CustomizableRegionSettingsManifest
 }
 
@@ -57,20 +57,26 @@ interface ITrackedProps {
 	layoutTypes: RundownLayoutType[]
 }
 
-export default translateWithTracker<IProps, IState, ITrackedProps>((props: IProps) => {
-	const layoutTypes = props.customRegion.layouts.map((l) => l.type)
+export default function RundownLayoutEditor(props: Readonly<IProps>): JSX.Element {
+	useSubscription(MeteorPubSub.rundownLayouts, [props.showStyleBaseId])
 
-	const rundownLayouts = RundownLayouts.find({
-		showStyleBaseId: props.showStyleBaseId,
-		userId: { $exists: false },
-	}).fetch()
+	const layoutTypes = useMemo(() => props.customRegion.layouts.map((l) => l.type), [props.customRegion])
 
-	return {
-		rundownLayouts,
-		layoutTypes,
-	}
-})(
-	class RundownLayoutEditor extends MeteorReactComponent<Translated<IProps & ITrackedProps>, IState> {
+	const rundownLayouts = useTracker(
+		() =>
+			RundownLayouts.find({
+				showStyleBaseId: props.showStyleBaseId,
+				userId: { $exists: false },
+			}).fetch(),
+		[props.showStyleBaseId],
+		[]
+	)
+
+	return <RundownLayoutEditorContent {...props} layoutTypes={layoutTypes} rundownLayouts={rundownLayouts} />
+}
+
+const RundownLayoutEditorContent = withTranslation()(
+	class RundownLayoutEditorContent extends React.Component<Translated<IProps & ITrackedProps>, IState> {
 		constructor(props: Translated<IProps & ITrackedProps>) {
 			super(props)
 
@@ -80,17 +86,11 @@ export default translateWithTracker<IProps, IState, ITrackedProps>((props: IProp
 			}
 		}
 
-		componentDidMount(): void {
-			super.componentDidMount && super.componentDidMount()
-
-			this.subscribe(PubSub.rundownLayouts, {})
-		}
-
 		onAddLayout = () => {
 			const { t, showStyleBaseId } = this.props
 			MeteorCall.rundownLayout
 				.createRundownLayout(t('New Layout'), this.props.layoutTypes[0], showStyleBaseId, this.props.customRegion._id)
-				.catch(console.error)
+				.catch(catchError('rundownLayout.createRundownLayout'))
 		}
 
 		onAddButton = (item: RundownLayoutBase) => {
@@ -174,7 +174,7 @@ export default translateWithTracker<IProps, IState, ITrackedProps>((props: IProp
 		}
 
 		downloadItem = (item: RundownLayoutBase) => {
-			window.location.replace(`/shelfLayouts/download/${item._id}`)
+			window.location.replace(`/api/private/shelfLayouts/download/${item._id}`)
 		}
 
 		finishEditItem = (item: RundownLayoutBase) => {
@@ -197,7 +197,7 @@ export default translateWithTracker<IProps, IState, ITrackedProps>((props: IProp
 				no: t('Cancel'),
 				message: t('Are you sure you want to delete the shelf layout "{{name}}"?', { name: item.name }),
 				onAccept: () => {
-					MeteorCall.rundownLayout.removeRundownLayout(item._id).catch(console.error)
+					MeteorCall.rundownLayout.removeRundownLayout(item._id).catch(catchError('rundownLayout.removeRundownLayout'))
 				},
 			})
 		}
@@ -496,10 +496,10 @@ export default translateWithTracker<IProps, IState, ITrackedProps>((props: IProp
 				})
 		}
 
-		onUploadFile(e) {
+		onUploadFile(e: React.ChangeEvent<HTMLInputElement>) {
 			const { t } = this.props
 
-			const file = e.target.files[0]
+			const file = e.target.files?.[0]
 			if (!file) {
 				return
 			}
@@ -530,11 +530,11 @@ export default translateWithTracker<IProps, IState, ITrackedProps>((props: IProp
 					),
 					onAccept: () => {
 						if (uploadFileContents) {
-							fetchFrom(`/shelfLayouts/upload/${this.props.showStyleBaseId}`, {
+							fetchFrom(`/api/private/shelfLayouts/upload/${this.props.showStyleBaseId}`, {
 								method: 'POST',
 								body: uploadFileContents,
 								headers: {
-									'content-type': 'text/javascript',
+									'content-type': 'application/json',
 								},
 							})
 								.then(() => {

@@ -4,20 +4,20 @@ import { faExclamationTriangle } from '@fortawesome/free-solid-svg-icons'
 import { useTranslation } from 'react-i18next'
 import { unprotectString } from '../../../../lib/lib'
 import { EditAttribute } from '../../../lib/EditAttribute'
-import { ShowStyleBase } from '../../../../lib/collections/ShowStyleBases'
+import { DBShowStyleBase } from '@sofie-automation/corelib/dist/dataModel/ShowStyleBase'
 import { Link } from 'react-router-dom'
-import { Studio } from '../../../../lib/collections/Studios'
+import { DBStudio } from '@sofie-automation/corelib/dist/dataModel/Studio'
 import { ShowStyleBases } from '../../../collections'
 import { LabelActual } from '../../../lib/Components/LabelAndOverrides'
 
 interface IShowStyleGenericPropertiesProps {
-	showStyleBase: ShowStyleBase
-	compatibleStudios: Array<Studio>
+	showStyleBase: DBShowStyleBase
+	compatibleStudios: Array<DBStudio>
 }
 export function ShowStyleGenericProperties({
 	showStyleBase,
 	compatibleStudios,
-}: IShowStyleGenericPropertiesProps): JSX.Element {
+}: Readonly<IShowStyleGenericPropertiesProps>): JSX.Element {
 	const { t } = useTranslation()
 
 	return (
@@ -25,7 +25,7 @@ export function ShowStyleGenericProperties({
 			<div>
 				<label className="field">
 					<LabelActual label={t('Show Style Base Name')} />
-					{!(showStyleBase && showStyleBase.name) ? (
+					{!showStyleBase?.name ? (
 						<div className="error-notice inline">
 							<FontAwesomeIcon icon={faExclamationTriangle} /> {t('No name set')}
 						</div>

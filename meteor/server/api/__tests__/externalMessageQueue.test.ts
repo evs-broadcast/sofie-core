@@ -1,5 +1,5 @@
 import '../../../__mocks__/_extendJest'
-import { ExternalMessageQueueObj } from '../../../lib/collections/ExternalMessageQueue'
+import { ExternalMessageQueueObj } from '@sofie-automation/corelib/dist/dataModel/ExternalMessageQueue'
 import { ExternalMessageQueue, RundownPlaylists, Rundowns } from '../../collections'
 import { IBlueprintExternalMessageQueueType, PlaylistTimingType } from '@sofie-automation/blueprints-integration'
 import { testInFiber } from '../../../__mocks__/helpers/jest'
@@ -26,13 +26,13 @@ describe('Test external message queue static methods', () => {
 				partInstanceId: protectString('part_now'),
 				rundownId: protectString('rundown_1'),
 				manuallySelected: false,
-				consumesNextSegmentId: false,
+				consumesQueuedSegmentId: false,
 			},
 			nextPartInfo: {
 				partInstanceId: protectString('partNext'),
 				rundownId: protectString('rundown_1'),
 				manuallySelected: false,
-				consumesNextSegmentId: false,
+				consumesQueuedSegmentId: false,
 			},
 			previousPartInfo: null,
 			activationId: protectString('active'),

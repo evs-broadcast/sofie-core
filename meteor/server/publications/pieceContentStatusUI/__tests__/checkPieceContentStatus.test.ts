@@ -15,7 +15,7 @@ import {
 	PieceLifespan,
 	VTContent,
 } from '@sofie-automation/blueprints-integration'
-import { literal } from '@sofie-automation/corelib/dist/lib'
+import { Complete, literal } from '@sofie-automation/corelib/dist/lib'
 import { MongoMock } from '../../../../__mocks__/mongo'
 import {
 	PieceGeneric,
@@ -36,6 +36,8 @@ import { defaultStudio } from '../../../../__mocks__/defaultCollectionObjects'
 import { testInFiber } from '../../../../__mocks__/helpers/jest'
 import { MediaObjects } from '../../../collections'
 import { PieceDependencies } from '../common'
+import { DBStudio } from '@sofie-automation/corelib/dist/dataModel/Studio'
+import { DEFAULT_MINIMUM_TAKE_SPAN } from '@sofie-automation/shared-lib/dist/core/constants'
 
 const mockMediaObjectsCollection = MongoMock.getInnerMockCollection<MediaObject>(MediaObjects)
 
@@ -86,6 +88,7 @@ describe('lib/mediaObjects', () => {
 			supportedMediaFormats: '1920x1080i5000, 1280x720, i5000, i5000tff',
 			mediaPreviewsUrl: '',
 			frameRate: 25,
+			minimumTakeSpan: DEFAULT_MINIMUM_TAKE_SPAN,
 		})
 		expect(acceptedFormats).toEqual([
 			['1920', '1080', 'i', '5000', undefined],
@@ -167,13 +170,22 @@ describe('lib/mediaObjects', () => {
 			mediaPreviewsUrl: '',
 			supportedAudioStreams: '4',
 			frameRate: 25,
+			minimumTakeSpan: DEFAULT_MINIMUM_TAKE_SPAN,
 		}
 
 		const mockDefaultStudio = defaultStudio(protectString('studio0'))
-		const mockStudio: Pick<UIStudio, '_id' | 'settings' | 'packageContainers' | 'mappings' | 'routeSets'> = {
+		const mockStudio: Complete<
+			Pick<
+				DBStudio,
+				'_id' | 'settings' | 'packageContainers' | 'previewContainerIds' | 'thumbnailContainerIds' | 'routeSets'
+			> &
+				Pick<UIStudio, 'mappings'>
+		> = {
 			_id: mockDefaultStudio._id,
 			settings: mockStudioSettings,
 			packageContainers: mockDefaultStudio.packageContainers,
+			previewContainerIds: ['previews0'],
+			thumbnailContainerIds: ['thumbnails0'],
 			routeSets: mockDefaultStudio.routeSets,
 			mappings: applyAndValidateOverrides(mockDefaultStudio.mappingsWithOverrides).obj,
 		}
@@ -244,12 +256,11 @@ describe('lib/mediaObjects', () => {
 
 		const piece1 = literal<PieceGeneric>({
 			_id: protectString('piece1'),
-			status: PieceStatusCode.UNKNOWN,
 			name: 'Test_file',
 			prerollDuration: 0,
 			externalId: '',
 			lifespan: PieceLifespan.WithinPart,
-			metaData: {},
+			privateData: {},
 			outputLayerId: '',
 			sourceLayerId: '',
 			content: literal<VTContent>({
@@ -332,12 +343,11 @@ describe('lib/mediaObjects', () => {
 
 		const piece2 = literal<PieceGeneric>({
 			_id: protectString('piece2'),
-			status: PieceStatusCode.UNKNOWN,
 			name: 'Test_file_2',
 			prerollDuration: 0,
 			externalId: '',
 			lifespan: PieceLifespan.WithinPart,
-			metaData: {},
+			privateData: {},
 			outputLayerId: '',
 			sourceLayerId: '',
 			content: literal<VTContent>({
@@ -349,12 +359,11 @@ describe('lib/mediaObjects', () => {
 
 		const piece3 = literal<PieceGeneric>({
 			_id: protectString('piece3'),
-			status: PieceStatusCode.UNKNOWN,
 			name: 'Test_file_3',
 			prerollDuration: 0,
 			externalId: '',
 			lifespan: PieceLifespan.WithinPart,
-			metaData: {},
+			privateData: {},
 			outputLayerId: '',
 			sourceLayerId: '',
 			content: literal<VTContent>({

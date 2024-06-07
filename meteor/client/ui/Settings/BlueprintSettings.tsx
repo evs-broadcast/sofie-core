@@ -3,16 +3,15 @@ import { EditAttribute } from '../../lib/EditAttribute'
 import { Translated, translateWithTracker } from '../../lib/ReactMeteorData/react-meteor-data'
 import { Spinner } from '../../lib/Spinner'
 import { doModalDialog } from '../../lib/ModalDialog'
-import { MeteorReactComponent } from '../../lib/MeteorReactComponent'
-import { Blueprint } from '../../../lib/collections/Blueprints'
+import { Blueprint } from '@sofie-automation/corelib/dist/dataModel/Blueprint'
 import Moment from 'react-moment'
 import { Link } from 'react-router-dom'
-import { Studio } from '../../../lib/collections/Studios'
-import { ShowStyleBase } from '../../../lib/collections/ShowStyleBases'
+import { DBStudio } from '@sofie-automation/corelib/dist/dataModel/Studio'
+import { DBShowStyleBase } from '@sofie-automation/corelib/dist/dataModel/ShowStyleBase'
 import { ICoreSystem } from '../../../lib/collections/CoreSystem'
 import { BlueprintManifestType } from '@sofie-automation/blueprints-integration'
 import { NotificationCenter, Notification, NoticeLevel } from '../../../lib/notifications/notifications'
-import { fetchFrom } from '../../lib/lib'
+import { catchError, fetchFrom } from '../../lib/lib'
 import { UploadButton } from '../../lib/uploadButton'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faUpload, faExclamationTriangle } from '@fortawesome/free-solid-svg-icons'
@@ -31,8 +30,8 @@ interface IState {
 }
 interface ITrackedProps {
 	blueprint?: Blueprint
-	assignedStudios: Studio[]
-	assignedShowStyles: ShowStyleBase[]
+	assignedStudios: DBStudio[]
+	assignedShowStyles: DBShowStyleBase[]
 	assignedSystem: ICoreSystem | undefined
 }
 export default translateWithTracker<IProps, IState, ITrackedProps>((props: IProps) => {
@@ -45,7 +44,7 @@ export default translateWithTracker<IProps, IState, ITrackedProps>((props: IProp
 		assignedSystem: CoreSystem.findOne({ blueprintId: id }),
 	}
 })(
-	class BlueprintSettings extends MeteorReactComponent<Translated<IProps & ITrackedProps>, IState> {
+	class BlueprintSettings extends React.Component<Translated<IProps & ITrackedProps>, IState> {
 		constructor(props: Translated<IProps & ITrackedProps>) {
 			super(props)
 			this.state = {
@@ -53,10 +52,10 @@ export default translateWithTracker<IProps, IState, ITrackedProps>((props: IProp
 			}
 		}
 
-		onUploadFile(e) {
+		onUploadFile(e: React.ChangeEvent<HTMLInputElement>) {
 			const { t } = this.props
 
-			const file = e.target.files[0]
+			const file = e.target.files?.[0]
 			if (!file) {
 				return
 			}
@@ -89,7 +88,7 @@ export default translateWithTracker<IProps, IState, ITrackedProps>((props: IProp
 					),
 					onAccept: () => {
 						if (uploadFileContents && blueprint) {
-							fetchFrom(`/blueprints/restore/${blueprint._id}`, {
+							fetchFrom(`/api/private/blueprints/restore/${blueprint._id}`, {
 								method: 'POST',
 								body: uploadFileContents,
 								headers: {
@@ -129,7 +128,7 @@ export default translateWithTracker<IProps, IState, ITrackedProps>((props: IProp
 											),
 											onAccept: () => {
 												if (uploadFileContents && blueprint) {
-													fetchFrom(`/blueprints/restore/${blueprint._id}?force=1`, {
+													fetchFrom(`/api/private/blueprints/restore/${blueprint._id}?force=1`, {
 														method: 'POST',
 														body: uploadFileContents,
 														headers: {
@@ -148,7 +147,6 @@ export default translateWithTracker<IProps, IState, ITrackedProps>((props: IProp
 															)
 														})
 														.catch((err: string) => {
-															// console.error('Blueprint restore failure: ', err)
 															NotificationCenter.push(
 																new Notification(
 																	undefined,
@@ -167,7 +165,6 @@ export default translateWithTracker<IProps, IState, ITrackedProps>((props: IProp
 											},
 										})
 									} else {
-										// console.error('Blueprint restore failure: ', err)
 										NotificationCenter.push(
 											new Notification(
 												undefined,
@@ -191,7 +188,7 @@ export default translateWithTracker<IProps, IState, ITrackedProps>((props: IProp
 		}
 
 		assignSystemBlueprint(id: BlueprintId | undefined) {
-			MeteorCall.blueprint.assignSystemBlueprint(id).catch(console.error)
+			MeteorCall.blueprint.assignSystemBlueprint(id).catch(catchError('blueprint.assignSystemBlueprint'))
 		}
 
 		renderAssignment(blueprint: Blueprint) {

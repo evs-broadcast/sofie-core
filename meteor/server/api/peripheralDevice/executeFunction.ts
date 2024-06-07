@@ -3,7 +3,24 @@ import { PeripheralDeviceCommandId, PeripheralDeviceId } from '@sofie-automation
 import { createManualPromise, getCurrentTime, getRandomId } from '../../../lib/lib'
 import { PeripheralDeviceCommands } from '../../collections'
 import { logger } from '../../logging'
+import { TSR } from '@sofie-automation/blueprints-integration'
 
+export async function executePeripheralDeviceFunctionWithCustomTimeout(
+	deviceId: PeripheralDeviceId,
+	timeoutTime0: number | undefined,
+	action: {
+		functionName: string
+		args: Array<any>
+	}
+): Promise<any>
+export async function executePeripheralDeviceFunctionWithCustomTimeout(
+	deviceId: PeripheralDeviceId,
+	timeoutTime0: number | undefined,
+	action: {
+		actionId: string
+		payload?: Record<string, any>
+	}
+): Promise<TSR.ActionExecutionResult>
 export async function executePeripheralDeviceFunctionWithCustomTimeout(
 	deviceId: PeripheralDeviceId,
 	timeoutTime0: number | undefined,
@@ -82,7 +99,9 @@ export async function executePeripheralDeviceFunctionWithCustomTimeout(
 						completed = true
 						result.manualReject(
 							new Error(
-								`Timeout after ${timeoutTime} ms when executing the function "${cmd.functionName}" on device "${cmd.deviceId}"`
+								`Timeout after ${timeoutTime} ms when executing the function "${
+									cmd.functionName ?? cmd.actionId
+								}" on device "${cmd.deviceId}"`
 							)
 						)
 					}

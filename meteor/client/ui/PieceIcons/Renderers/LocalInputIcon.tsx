@@ -1,7 +1,7 @@
 import React from 'react'
 import { BaseRemoteInputIcon } from './RemoteInputIcon'
 
-export default function LocalInputIcon(props: { inputIndex?: string; abbreviation?: string }): JSX.Element {
+export default function LocalInputIcon(props: Readonly<{ inputIndex?: string; abbreviation?: string }>): JSX.Element {
 	return (
 		<tspan
 			x="15"

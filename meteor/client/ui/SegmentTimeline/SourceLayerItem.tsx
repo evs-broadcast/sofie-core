@@ -1,5 +1,4 @@
 import * as React from 'react'
-import * as _ from 'underscore'
 import { ISourceLayerUi, IOutputLayerUi, PartUi, PieceUi } from './SegmentTimelineContainer'
 import { SourceLayerType, PieceLifespan, IBlueprintPieceType } from '@sofie-automation/blueprints-integration'
 import { RundownUtils } from '../../lib/rundown'
@@ -29,8 +28,6 @@ export interface ISourceLayerItemProps {
 	layer: ISourceLayerUi
 	/** Output layer the source layer belongs to */
 	outputLayer: IOutputLayerUi
-	/** URL where media previews / thumbnails are available (e.g. media manager)  */
-	mediaPreviewUrl: string
 	/** Part containing this item */
 	part: PartUi
 	/** When the part starts (unix timestamp)  */
@@ -38,7 +35,7 @@ export interface ISourceLayerItemProps {
 	/** Part definite duration (generally set after part is played) */
 	partDuration: number
 	/** Part expected duration (before playout) */
-	partExpectedDuration: number
+	partDisplayDuration: number
 	/** The piece being rendered in this layer */
 	piece: PieceUi
 	/** Pieces belonging to the Part */
@@ -104,7 +101,9 @@ interface ISourceLayerItemState {
 }
 export const SourceLayerItem = withTranslation()(
 	class SourceLayerItem extends React.Component<ISourceLayerItemProps & WithTranslation, ISourceLayerItemState> {
-		constructor(props) {
+		animFrameHandle: number | undefined
+
+		constructor(props: ISourceLayerItemProps & WithTranslation) {
 			super(props)
 			this.state = {
 				showMiniInspector: false,
@@ -409,7 +408,7 @@ export const SourceLayerItem = withTranslation()(
 		// 	}
 		// }
 
-		private highlightTimeout: NodeJS.Timer
+		private highlightTimeout: NodeJS.Timer | undefined
 
 		private onHighlight = (e: HighlightEvent) => {
 			if (
@@ -486,40 +485,40 @@ export const SourceLayerItem = withTranslation()(
 		toggleMiniInspector = (e: MouseEvent | any, v: boolean) => {
 			this.setState({
 				showMiniInspector: v,
-			})
-			const elementPos = getElementDocumentOffset(this.state.itemElement) || {
-				top: 0,
-				left: 0,
-			}
-
-			const cursorPosition = {
-				left: e.clientX - elementPos.left,
-				top: e.clientY - elementPos.top,
-			}
-
-			const cursorTimePosition = Math.max(cursorPosition.left, 0) / this.props.timeScale
-
-			this.setState({
-				elementPosition: elementPos,
-				cursorPosition,
-				cursorTimePosition,
 				cursorRawPosition: {
 					clientX: e.clientX,
 					clientY: e.clientY,
 				},
 			})
+
+			if (v) {
+				const updatePos = () => {
+					const elementPos = getElementDocumentOffset(this.state.itemElement) || {
+						top: 0,
+						left: 0,
+					}
+					const cursorPosition = {
+						left: this.state.cursorRawPosition.clientX - elementPos.left,
+						top: this.state.cursorRawPosition.clientY - elementPos.top,
+					}
+
+					const cursorTimePosition = Math.max(cursorPosition.left, 0) / this.props.timeScale
+
+					this.setState({
+						elementPosition: elementPos,
+						cursorPosition,
+						cursorTimePosition,
+					})
+					this.animFrameHandle = requestAnimationFrame(updatePos)
+				}
+				this.animFrameHandle = requestAnimationFrame(updatePos)
+			} else if (this.animFrameHandle !== undefined) {
+				cancelAnimationFrame(this.animFrameHandle)
+			}
 		}
 
 		moveMiniInspector = (e: MouseEvent | any) => {
-			const cursorPosition = {
-				left: e.clientX - this.state.elementPosition.left,
-				top: e.clientY - this.state.elementPosition.top,
-			}
-			const cursorTimePosition = Math.max(cursorPosition.left, 0) / this.props.timeScale
-
 			this.setState({
-				cursorPosition: _.extend(this.state.cursorPosition, cursorPosition),
-				cursorTimePosition,
 				cursorRawPosition: {
 					clientX: e.clientX,
 					clientY: e.clientY,

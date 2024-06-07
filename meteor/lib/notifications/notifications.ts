@@ -151,10 +151,10 @@ class NotificationCenter0 {
 	/** The highlighted level of highlighted level */
 	private highlightedLevel: ReactiveVar<NoticeLevel>
 
-	private _isOpen: boolean = false
+	private _isOpen = false
 
 	/** In concentration mode, non-Critical notifications will be snoozed automatically */
-	private _isConcentrationMode: boolean = false
+	private _isConcentrationMode = false
 
 	constructor() {
 		this.highlightedSource = new ReactiveVar<NotificationsSource>(undefined)
@@ -179,13 +179,17 @@ class NotificationCenter0 {
 								? notification.message
 								: '[React Element]'
 
-							MeteorCall.client.clientLogNotification(
-								notification.created,
-								notifLogUserId,
-								notification.status,
-								message,
-								notification.source
-							)
+							MeteorCall.client
+								.clientLogNotification(
+									notification.created,
+									notifLogUserId,
+									notification.status,
+									message,
+									notification.source
+								)
+								.catch((e) => {
+									console.log(e)
+								})
 						}
 					})
 
@@ -537,16 +541,17 @@ export class Notification extends EventEmitter {
 	}
 }
 
-export function getNoticeLevelForPieceStatus(statusCode: PieceStatusCode): NoticeLevel | null {
+export function getNoticeLevelForPieceStatus(statusCode: PieceStatusCode | undefined): NoticeLevel | null {
 	switch (statusCode) {
 		case PieceStatusCode.OK:
 		case PieceStatusCode.UNKNOWN:
+		case undefined:
 			return null
 		case PieceStatusCode.SOURCE_NOT_SET:
 			return NoticeLevel.CRITICAL
 		case PieceStatusCode.SOURCE_MISSING:
-			return NoticeLevel.WARNING
 		case PieceStatusCode.SOURCE_BROKEN:
+		case PieceStatusCode.SOURCE_UNKNOWN_STATE:
 			return NoticeLevel.WARNING
 		case PieceStatusCode.SOURCE_HAS_ISSUES:
 		case PieceStatusCode.SOURCE_NOT_READY:
@@ -560,10 +565,12 @@ export function getNoticeLevelForPieceStatus(statusCode: PieceStatusCode): Notic
 Meteor.startup(() => {
 	if (!Meteor.isClient) return
 
-	window['testNotification'] = function (
+	const windowAny: any = window
+
+	windowAny['testNotification'] = function (
 		delay: number,
 		level: NoticeLevel = NoticeLevel.CRITICAL,
-		fakePersistent: boolean = false
+		fakePersistent = false
 	) {
 		NotificationCenter.push(
 			new Notification(
@@ -579,5 +586,5 @@ Meteor.startup(() => {
 			)
 		)
 	}
-	window['notificationCenter'] = NotificationCenter
+	windowAny['notificationCenter'] = NotificationCenter
 })

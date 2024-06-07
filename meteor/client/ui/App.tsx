@@ -52,11 +52,11 @@ import { ResetPasswordPage } from './Account/NotLoggedIn/ResetPasswordPage'
 import { AccountPage } from './Account/AccountPage'
 import { OrganizationPage } from './Account/OrganizationPage'
 import { getUser, User } from '../../lib/collections/Users'
-import { PubSub } from '../../lib/api/pubsub'
+import { MeteorPubSub } from '../../lib/api/pubsub'
 import { useTracker, useSubscription } from '../lib/ReactMeteorData/ReactMeteorData'
 import { DocumentTitleProvider } from '../lib/DocumentTitleProvider'
 import { Spinner } from '../lib/Spinner'
-import { isRunningInPWA } from '../lib/lib'
+import { catchError, isRunningInPWA } from '../lib/lib'
 import { firstIfArray, protectString } from '../../lib/lib'
 
 const NullComponent = () => null
@@ -82,8 +82,8 @@ export const App: React.FC = function App() {
 	const [lastStart] = useState(Date.now())
 	const [requestedRoute, setRequestedRoute] = useState<undefined | string>()
 
-	const userReady = useSubscription(PubSub.loggedInUser)
-	const orgReady = useSubscription(PubSub.organization, { _id: user?.organizationId ?? protectString('__never') })
+	const userReady = useSubscription(MeteorPubSub.loggedInUser)
+	const orgReady = useSubscription(MeteorPubSub.organization, user?.organizationId ?? null)
 
 	const subsReady = userReady && orgReady
 
@@ -145,13 +145,13 @@ export const App: React.FC = function App() {
 							once: true,
 						})
 					})
-					.catch((e) => console.error('Could not get FullScreen when running as a PWA', e))
+					.catch(catchError('documentElement.requestFullscreen'))
 
 				// Use Keyboard API to lock the keyboard and disable all browser shortcuts
 				if (!('keyboard' in navigator)) return
 				// but we check for its availability, so it should be fine.
 				// Keyboard Lock: https://wicg.github.io/keyboard-lock/
-				navigator.keyboard.lock().catch((e) => console.error('Could not get Keyboard Lock when running as a PWA', e))
+				navigator.keyboard.lock().catch(catchError('keyboard.lock'))
 			},
 			{
 				once: true,

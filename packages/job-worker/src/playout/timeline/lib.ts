@@ -1,5 +1,5 @@
 import { IBlueprintPieceType } from '@sofie-automation/blueprints-integration'
-import { PieceInstanceWithTimings } from '@sofie-automation/corelib/dist/playout/infinites'
+import { PieceInstanceWithTimings } from '@sofie-automation/corelib/dist/playout/processAndPrune'
 import { ReadonlyDeep } from 'type-fest'
 import { DEFINITELY_ENDED_FUTURE_DURATION } from '../infinites'
 
@@ -21,7 +21,10 @@ export function hasPieceInstanceDefinitelyEnded(
 	let relativeEnd: number | undefined
 	if (typeof pieceInstance.resolvedEndCap === 'number') {
 		relativeEnd = pieceInstance.resolvedEndCap
+	} else if (pieceInstance.resolvedEndCap) {
+		relativeEnd = nowInPart + pieceInstance.resolvedEndCap.offsetFromNow
 	}
+
 	if (pieceInstance.userDuration) {
 		const userDurationEnd =
 			'endRelativeToPart' in pieceInstance.userDuration

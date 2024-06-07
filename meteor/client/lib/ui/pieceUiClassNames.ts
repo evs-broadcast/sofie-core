@@ -22,15 +22,6 @@ export function pieceUiClassNames(
 	const innerPiece = pieceInstance.instance.piece
 
 	return classNames(baseClassName, typeClass, {
-		'with-in-transition':
-			innerPiece.transitions &&
-			innerPiece.transitions.inTransition &&
-			(innerPiece.transitions.inTransition.duration || 0) > 0,
-		'with-out-transition':
-			innerPiece.transitions &&
-			innerPiece.transitions.outTransition &&
-			(innerPiece.transitions.outTransition.duration || 0) > 0,
-
 		'hide-overflow-labels':
 			uiState && elementWidth
 				? uiState.leftAnchoredWidth > 0 && uiState.leftAnchoredWidth + uiState.rightAnchoredWidth > elementWidth
@@ -51,11 +42,12 @@ export function pieceUiClassNames(
 		'next-is-touching': pieceInstance.cropped,
 
 		'source-missing':
-			innerPiece.status === PieceStatusCode.SOURCE_MISSING ||
-			innerPiece.status === PieceStatusCode.SOURCE_NOT_SET,
-		'source-broken': innerPiece.status === PieceStatusCode.SOURCE_BROKEN,
-		'source-not-ready': innerPiece.status === PieceStatusCode.SOURCE_NOT_READY,
-		'unknown-state': innerPiece.status === PieceStatusCode.UNKNOWN,
+			pieceInstance.contentStatus?.status === PieceStatusCode.SOURCE_MISSING ||
+			pieceInstance.contentStatus?.status === PieceStatusCode.SOURCE_NOT_SET,
+		'source-unknown-state': pieceInstance.contentStatus?.status === PieceStatusCode.SOURCE_UNKNOWN_STATE,
+		'source-broken': pieceInstance.contentStatus?.status === PieceStatusCode.SOURCE_BROKEN,
+		'source-not-ready': pieceInstance.contentStatus?.status === PieceStatusCode.SOURCE_NOT_READY,
+		'unknown-state': pieceInstance.contentStatus?.status === PieceStatusCode.UNKNOWN,
 		disabled: pieceInstance.instance.disabled,
 
 		'invert-flash': highlight,

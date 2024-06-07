@@ -1,28 +1,40 @@
 import { omit } from '@sofie-automation/corelib/dist/lib'
-import { ProtectedString, isProtectedString, unprotectString } from '@sofie-automation/corelib/dist/protectedString'
+import { ProtectedString } from '@sofie-automation/corelib/dist/protectedString'
 import { Mongo } from 'meteor/mongo'
-import { ObserveCallbacks } from '../../../lib/collections/lib'
+import { ObserveChangesCallbacks } from '../../../lib/collections/lib'
+import { MongoModifier, MongoQuery } from '@sofie-automation/corelib/dist/mongo'
 
 type Reaction = () => void
 
-export class ReactiveCacheCollection<
-	Document extends { _id: ProtectedString<any> }
-> extends Mongo.Collection<Document> {
+export class ReactiveCacheCollection<Document extends { _id: ProtectedString<any> }> {
+	readonly #collection: Mongo.Collection<Document>
+
 	constructor(public collectionName: string, private reaction?: Reaction) {
-		super(null)
+		this.#collection = new Mongo.Collection<Document>(null)
 	}
 
-	insert(doc: Mongo.OptionalId<Document>, callback?: Function): string {
-		const id = super.insert(doc, callback)
+	find(
+		selector: Document['_id'] | Mongo.Selector<Document>,
+		options?: Mongo.Options<Document>
+	): Mongo.Cursor<Document, Document> {
+		return this.#collection.find(selector as any, options)
+	}
+
+	findOne(
+		selector: Document['_id'] | Mongo.Selector<Document>,
+		options?: Omit<Mongo.Options<Document>, 'limit'>
+	): Document | undefined {
+		return this.#collection.findOne(selector as any, options)
+	}
+
+	insert(doc: Mongo.OptionalId<Document>): string {
+		const id = this.#collection.insert(doc)
 		this.runReaction()
 		return id
 	}
 
-	remove(
-		selector: Document['_id'] | string | Mongo.ObjectID | Mongo.Selector<Document>,
-		callback?: Function
-	): number {
-		const num = super.remove(isProtectedString(selector) ? unprotectString(selector) : selector, callback)
+	remove(selector: Document['_id'] | MongoQuery<Document>): number {
+		const num = this.#collection.remove(selector as any)
 		if (num > 0) {
 			this.runReaction()
 		}
@@ -30,21 +42,15 @@ export class ReactiveCacheCollection<
 	}
 
 	update(
-		selector: Document['_id'] | string | Mongo.ObjectID | Mongo.Selector<Document>,
-		modifier: Mongo.Modifier<Document>,
+		selector: Document['_id'] | MongoQuery<Document>,
+		modifier: MongoModifier<Document>,
 		options?: {
-			multi?: boolean | undefined
-			upsert?: boolean | undefined
-			arrayFilters?: { [identifier: string]: any }[] | undefined
-		},
-		callback?: Function
+			multi?: boolean
+			upsert?: boolean
+			arrayFilters?: { [identifier: string]: any }[]
+		}
 	): number {
-		const num = super.update(
-			isProtectedString(selector) ? unprotectString(selector) : selector,
-			modifier,
-			options,
-			callback
-		)
+		const num = this.#collection.update(selector as any, modifier as any, options)
 		if (num > 0) {
 			this.runReaction()
 		}
@@ -52,96 +58,34 @@ export class ReactiveCacheCollection<
 	}
 
 	upsert(
-		selector: Document['_id'] | string | Mongo.ObjectID | Mongo.Selector<Document>,
+		selector: Document['_id'] | Mongo.Selector<Document>,
 		modifier: Mongo.Modifier<Document>,
-		options?: { multi?: boolean | undefined },
-		callback?: Function
-	): { numberAffected?: number | undefined; insertedId?: string | undefined } {
-		const res = super.upsert(
-			isProtectedString(selector) ? unprotectString(selector) : selector,
-			modifier,
-			options,
-			callback
-		)
+		options?: { multi?: boolean }
+	): { numberAffected?: number; insertedId?: string } {
+		const res = this.#collection.upsert(selector as any, modifier as any, options)
 		if (res.numberAffected || res.insertedId) {
 			this.runReaction()
 		}
 		return res
 	}
 
-	async insertAsync(doc: Mongo.OptionalId<Document>, callback?: Function): Promise<string> {
-		const result = await super.insertAsync(doc)
-		this.runReaction()
-		callback?.()
-		return result
-	}
-
-	async removeAsync(
-		selector: Document['_id'] | string | Mongo.ObjectID | Mongo.Selector<Document>,
-		callback?: Function
-	): Promise<number> {
-		const result = await super.removeAsync(
-			isProtectedString(selector) ? unprotectString(selector) : selector,
-			callback
-		)
-		if (result > 0) {
-			this.runReaction()
-		}
-		return result
-	}
-
-	async updateAsync(
-		selector: Document['_id'] | string | Mongo.ObjectID | Mongo.Selector<Document>,
-		modifier: Mongo.Modifier<Document>,
-		options?: {
-			multi?: boolean | undefined
-			upsert?: boolean | undefined
-			arrayFilters?: { [identifier: string]: any }[] | undefined
-		},
-		callback?: Function
-	): Promise<number> {
-		const result = await super.updateAsync(
-			isProtectedString(selector) ? unprotectString(selector) : selector,
-			modifier,
-			options,
-			callback
-		)
-		if (result > 0) {
-			this.runReaction()
-		}
-		return result
-	}
-
-	async upsertAsync(
-		selector: Document['_id'] | string | Mongo.ObjectID | Mongo.Selector<Document>,
-		modifier: Mongo.Modifier<Document>,
-		options?: { multi?: boolean | undefined },
-		callback?: Function
-	): Promise<{ numberAffected?: number | undefined; insertedId?: string | undefined }> {
-		const result = await super.upsertAsync(
-			isProtectedString(selector) ? unprotectString(selector) : selector,
-			modifier,
-			options,
-			callback
-		)
-		if (result.numberAffected || result.insertedId) {
-			this.runReaction()
-		}
-		return result
-	}
-
-	link(cb?: () => void): ObserveCallbacks<Document> {
+	link(cb?: () => void): ObserveChangesCallbacks<Document> {
 		return {
-			added: (doc: Document) => {
-				this.upsert(doc._id, { $set: omit(doc, '_id') as Partial<Document> })
+			added: (id: Document['_id'], fields: Partial<Document>) => {
+				this.upsert(id, { $set: omit(fields, '_id') as any })
 				cb?.()
 			},
-			changed: (doc: Document) => {
-				this.upsert(doc._id, { $set: omit(doc, '_id') as Partial<Document> })
+			changed: (id: Document['_id'], fields: Partial<Document>) => {
+				const unset: Partial<Record<keyof Document, 1>> = {}
+				for (const [key, value] of Object.entries<unknown>(fields)) {
+					if (value !== undefined) continue
+					unset[key as keyof Document] = 1
+				}
+				this.upsert(id, { $set: omit(fields, '_id') as any, $unset: unset as any })
 				cb?.()
 			},
-			removed: (doc: Document) => {
-				this.remove(doc._id)
+			removed: (id: Document['_id']) => {
+				this.remove(id)
 				cb?.()
 			},
 		}

@@ -1,20 +1,59 @@
 import { ExpectedPackageId, PackageContainerPackageId, StudioId } from '@sofie-automation/corelib/dist/dataModel/Ids'
-import { IncludeAllMongoFieldSpecifier } from '@sofie-automation/corelib/dist/mongo'
+import { PackageContainerPackageStatusDB } from '@sofie-automation/corelib/dist/dataModel/PackageContainerPackageStatus'
+import { PackageInfoDB } from '@sofie-automation/corelib/dist/dataModel/PackageInfos'
+import { MongoFieldSpecifierOnesStrict } from '@sofie-automation/corelib/dist/mongo'
 import { ProtectedString } from '@sofie-automation/corelib/dist/protectedString'
 import { applyAndValidateOverrides } from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
+import { MediaObject } from '@sofie-automation/shared-lib/dist/core/model/MediaObjects'
 import { ReadonlyDeep } from 'type-fest'
-import { Studio } from '../../../lib/collections/Studios'
+import { DBStudio } from '@sofie-automation/corelib/dist/dataModel/Studio'
 import { literal } from '../../../lib/lib'
 import { Studios } from '../../collections'
 import { PieceContentStatusStudio } from './checkPieceContentStatus'
 
-export type StudioFields = '_id' | 'settings' | 'packageContainers' | 'mappingsWithOverrides' | 'routeSets'
-export const studioFieldSpecifier = literal<IncludeAllMongoFieldSpecifier<StudioFields>>({
+export type StudioFields =
+	| '_id'
+	| 'settings'
+	| 'packageContainers'
+	| 'previewContainerIds'
+	| 'thumbnailContainerIds'
+	| 'mappingsWithOverrides'
+	| 'routeSets'
+export const studioFieldSpecifier = literal<MongoFieldSpecifierOnesStrict<Pick<DBStudio, StudioFields>>>({
 	_id: 1,
 	settings: 1,
 	packageContainers: 1,
+	previewContainerIds: 1,
+	thumbnailContainerIds: 1,
 	mappingsWithOverrides: 1,
 	routeSets: 1,
+})
+
+export type PackageContainerPackageStatusLight = Pick<PackageContainerPackageStatusDB, '_id' | 'studioId' | 'status'>
+export const packageContainerPackageStatusesFieldSpecifier = literal<
+	MongoFieldSpecifierOnesStrict<PackageContainerPackageStatusLight>
+>({
+	_id: 1,
+	studioId: 1,
+	status: 1,
+})
+
+export type PackageInfoLight = Pick<PackageInfoDB, '_id' | 'studioId' | 'packageId' | 'type' | 'payload'>
+export const packageInfoFieldSpecifier = literal<MongoFieldSpecifierOnesStrict<PackageInfoLight>>({
+	_id: 1,
+	studioId: 1,
+	packageId: 1,
+	type: 1,
+	payload: 1,
+})
+
+export type MediaObjectLight = Pick<MediaObject, '_id' | 'studioId' | 'mediaId' | 'mediainfo' | 'previewPath'>
+export const mediaObjectFieldSpecifier = literal<MongoFieldSpecifierOnesStrict<MediaObjectLight>>({
+	_id: 1,
+	studioId: 1,
+	mediaId: 1,
+	mediainfo: 1,
+	previewPath: 1,
 })
 
 export interface IContentStatusesUpdatePropsBase {
@@ -65,7 +104,7 @@ export function addItemsWithDependenciesChangesToChangedSet<T extends ProtectedS
 export async function fetchStudio(studioId: StudioId): Promise<PieceContentStatusStudio | undefined> {
 	const studio = (await Studios.findOneAsync(studioId, {
 		projection: studioFieldSpecifier,
-	})) as Pick<Studio, StudioFields> | undefined
+	})) as Pick<DBStudio, StudioFields> | undefined
 
 	if (!studio) {
 		return undefined
@@ -75,6 +114,8 @@ export async function fetchStudio(studioId: StudioId): Promise<PieceContentStatu
 		_id: studio._id,
 		settings: studio.settings,
 		packageContainers: studio.packageContainers,
+		previewContainerIds: studio.previewContainerIds,
+		thumbnailContainerIds: studio.thumbnailContainerIds,
 		mappings: applyAndValidateOverrides(studio.mappingsWithOverrides).obj,
 		routeSets: studio.routeSets,
 	}

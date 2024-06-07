@@ -2,7 +2,7 @@ import { NoteSeverity } from '@sofie-automation/blueprints-integration'
 import { assertNever, literal } from '@sofie-automation/corelib/dist/lib'
 import { MongoFieldSpecifierOnes } from '@sofie-automation/corelib/dist/mongo'
 import { UIPieceContentStatus, UISegmentPartNote } from '../../../lib/api/rundownNotifications'
-import { PieceStatusCode } from '../../../lib/collections/Pieces'
+import { PieceStatusCode } from '@sofie-automation/corelib/dist/dataModel/Piece'
 import { getIgnorePieceContentStatus } from '../../lib/localStorage'
 import { UIPieceContentStatuses, UISegmentPartNotes } from '../Collections'
 import { SegmentNoteCounts, SegmentUi } from './withResolvedSegment'
@@ -53,10 +53,12 @@ export function getReactivePieceNoteCountsForSegment(segment: SegmentUi): Segmen
 				case PieceStatusCode.SOURCE_HAS_ISSUES:
 				case PieceStatusCode.SOURCE_BROKEN:
 				case PieceStatusCode.SOURCE_MISSING:
+				case PieceStatusCode.SOURCE_UNKNOWN_STATE:
 					segmentNoteCounts.warning++
 					break
 				default:
 					assertNever(obj.status.status)
+					segmentNoteCounts.warning++
 					break
 			}
 		}

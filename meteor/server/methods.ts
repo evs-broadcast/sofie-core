@@ -3,7 +3,8 @@ import * as _ from 'underscore'
 import { logger } from './logging'
 import { extractFunctionSignature } from './lib'
 import { MethodContext, MethodContextAPI } from '../lib/api/methods'
-import { isPromise, stringifyError, waitForPromise } from '../lib/lib'
+import { isPromise, waitForPromise } from '../lib/lib'
+import { stringifyError } from '@sofie-automation/shared-lib/dist/lib/stringifyError'
 import { Settings } from '../lib/Settings'
 
 type MeteorMethod = (this: MethodContext, ...args: any[]) => any
@@ -27,7 +28,7 @@ export interface RunningMethods {
 	}
 }
 let runningMethods: RunningMethods = {}
-let runningMethodsId: number = 0
+let runningMethodsId = 0
 
 function getAllClassMethods(myClass: any): string[] {
 	const objectProtProps = Object.getOwnPropertyNames(Object.prototype)
@@ -40,7 +41,7 @@ function getAllClassMethods(myClass: any): string[] {
 
 /** This expects an array of values (likely the output of Parameters<T>), and makes anything optional be nullable instead */
 export type ReplaceOptionalWithNullInArray<T extends any[]> = {
-	[K in keyof T]: undefined extends T[K] ? NonNullable<T[K]> | null : T[K]
+	[K in keyof T]-?: undefined extends T[K] ? NonNullable<T[K]> | null : T[K]
 }
 
 /**
@@ -71,14 +72,14 @@ export function registerClassToMeteorMethods(
 		if (wrapper) {
 			methods[enumValue] = {
 				wrapped: function (...args: any[]) {
-					return wrapper(this, enumValue, args, orgClass.prototype[classMethodName])
+					return wrapper(this, enumValue, args, (orgClass.prototype as any)[classMethodName])
 				},
-				original: orgClass.prototype[classMethodName],
+				original: (orgClass.prototype as any)[classMethodName],
 			}
 		} else {
 			methods[enumValue] = {
-				wrapped: orgClass.prototype[classMethodName],
-				original: orgClass.prototype[classMethodName],
+				wrapped: (orgClass.prototype as any)[classMethodName],
+				original: (orgClass.prototype as any)[classMethodName],
 			}
 		}
 	})
@@ -108,16 +109,19 @@ function setMeteorMethods(orgMethods: MethodsInner, secret?: boolean): void {
 					const result = method.apply(this, args)
 
 					if (isPromise(result)) {
+						// Don't block execution of other methods while waiting for this to resolve. (This is how meteor 2.7 behaved, added to avoid breaking Sofie)
+						this.unblock()
+
 						// The method result is a promise
 						return Promise.resolve(result)
 							.finally(() => {
 								delete runningMethods[methodId]
 							})
-							.catch(async (e) => {
+							.catch(async (err) => {
 								if (!_suppressExtraErrorLogging) {
-									logger.error(e.message || e.reason || (e.toString ? e.toString() : null) || e)
+									logger.error(stringifyError(err))
 								}
-								return Promise.reject(e)
+								return Promise.reject(err)
 							})
 					} else {
 						delete runningMethods[methodId]
@@ -165,7 +169,7 @@ export function getRunningMethods(): RunningMethods {
 export function resetRunningMethods(): void {
 	runningMethods = {}
 }
-let _suppressExtraErrorLogging: boolean = false
+let _suppressExtraErrorLogging = false
 export function suppressExtraErrorLogging(value: boolean): void {
 	_suppressExtraErrorLogging = value
 }

@@ -13,6 +13,7 @@ import {
 	DeviceActionId,
 	DeviceTriggerMountedActionId,
 	PreviewWrappedAdLibId,
+	ShiftRegisterActionArguments,
 } from '../../../lib/api/triggers/MountedTriggers'
 import { isDeviceTrigger } from '../../../lib/api/triggers/triggerTypeSelectors'
 import { DBTriggeredActions, UITriggeredActionsObj } from '../../../lib/collections/TriggeredActions'
@@ -22,6 +23,7 @@ import { DeviceTriggerMountedActionAdlibsPreview, DeviceTriggerMountedActions } 
 import { ContentCache } from './reactiveContentCache'
 import { logger } from '../../logging'
 import { SomeAction, SomeBlueprintTrigger } from '@sofie-automation/blueprints-integration'
+import { DeviceActions } from '@sofie-automation/shared-lib/dist/core/model/ShowStyle'
 
 export class StudioDeviceTriggerManager {
 	#lastShowStyleBaseId: ShowStyleBaseId | null = null
@@ -80,9 +82,14 @@ export class StudioDeviceTriggerManager {
 			const addedPreviewIds: PreviewWrappedAdLibId[] = []
 
 			Object.entries<SomeAction>(triggeredAction.actions).forEach(([key, action]) => {
-				const actionId = protectString<DeviceActionId>(`${studioId}_${triggeredAction._id}_${key}`)
+				// Since the compiled aciton is cached using this actionId as a key, having the action
+				// and the filterChain length allows for a quicker invalidation without doing a deepEquals
+				const actionId = protectString<DeviceActionId>(
+					`${studioId}_${triggeredAction._id}_${key}_${action.action}_${action.filterChain.length}`
+				)
 				const existingAction = actionManager.getAction(actionId)
 				let thisAction: ExecutableAction
+				// Use the cached action or put a new one in the cache
 				if (existingAction) {
 					thisAction = existingAction
 				} else {
@@ -97,6 +104,19 @@ export class StudioDeviceTriggerManager {
 						return
 					}
 
+					let deviceActionArguments: ShiftRegisterActionArguments | undefined = undefined
+
+					if (action.action === DeviceActions.modifyShiftRegister) {
+						deviceActionArguments = {
+							type: 'modifyRegister',
+							register: action.register,
+							operation: action.operation,
+							value: action.value,
+							limitMin: action.limitMin,
+							limitMax: action.limitMax,
+						}
+					}
+
 					const deviceTriggerMountedActionId = protectString<DeviceTriggerMountedActionId>(
 						`${actionId}_${key}`
 					)
@@ -109,6 +129,7 @@ export class StudioDeviceTriggerManager {
 							deviceId: trigger.deviceId,
 							deviceTriggerId: trigger.triggerId,
 							values: trigger.values,
+							deviceActionArguments,
 							name: triggeredAction.name,
 						},
 					})

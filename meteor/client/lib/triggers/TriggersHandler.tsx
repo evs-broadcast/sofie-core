@@ -3,9 +3,9 @@ import { useEffect, useRef, useState } from 'react'
 import { TFunction } from 'i18next'
 import { useTranslation } from 'react-i18next'
 import Sorensen from '@sofie-automation/sorensen'
-import { PubSub } from '../../../lib/api/pubsub'
+import { MeteorPubSub } from '../../../lib/api/pubsub'
 import { useSubscription, useTracker } from '../ReactMeteorData/ReactMeteorData'
-import { RundownPlaylist } from '../../../lib/collections/RundownPlaylists'
+import { DBRundownPlaylist } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
 import { PlayoutActions, SomeAction, SomeBlueprintTrigger, TriggerType } from '@sofie-automation/blueprints-integration'
 import {
 	isPreviewableAction,
@@ -41,6 +41,9 @@ import {
 } from '../../../lib/api/triggers/MountedTriggers'
 import { isHotkeyTrigger } from '../../../lib/api/triggers/triggerTypeSelectors'
 import { RundownPlaylistCollectionUtil } from '../../../lib/collections/rundownPlaylistUtil'
+import { catchError } from '../lib'
+import { logger } from '../../../lib/logging'
+import { CorelibPubSub } from '@sofie-automation/corelib/dist/pubsub'
 
 type HotkeyTriggerListener = (e: KeyboardEvent) => void
 
@@ -70,32 +73,14 @@ function useSubscriptions(
 	showStyleBaseId: ShowStyleBaseId
 ) {
 	const allReady = [
-		useSubscription(PubSub.rundownPlaylists, {
-			_id: rundownPlaylistId,
-		}),
-		useSubscription(PubSub.rundowns, [rundownPlaylistId], null),
+		useSubscription(CorelibPubSub.rundownPlaylists, [rundownPlaylistId], null),
+		useSubscription(CorelibPubSub.rundownsInPlaylists, [rundownPlaylistId]),
 
-		useSubscription(PubSub.adLibActions, {
-			rundownId: {
-				$in: rundownIds,
-			},
-		}),
-		useSubscription(PubSub.adLibPieces, {
-			rundownId: {
-				$in: rundownIds,
-			},
-		}),
-		useSubscription(PubSub.rundownBaselineAdLibActions, {
-			rundownId: {
-				$in: rundownIds,
-			},
-		}),
-		useSubscription(PubSub.rundownBaselineAdLibPieces, {
-			rundownId: {
-				$in: rundownIds,
-			},
-		}),
-		useSubscription(PubSub.uiShowStyleBase, showStyleBaseId),
+		useSubscription(CorelibPubSub.adLibActions, rundownIds),
+		useSubscription(CorelibPubSub.adLibPieces, rundownIds),
+		useSubscription(CorelibPubSub.rundownBaselineAdLibActions, rundownIds),
+		useSubscription(CorelibPubSub.rundownBaselineAdLibPieces, rundownIds),
+		useSubscription(MeteorPubSub.uiShowStyleBase, showStyleBaseId),
 	]
 
 	return !allReady.some((state) => state === false)
@@ -123,6 +108,7 @@ function createAction(
 		},
 		listener: (e) => {
 			e.preventDefault()
+			e.stopPropagation()
 
 			const ctx = collectContext()
 			if (ctx) {
@@ -151,7 +137,7 @@ export const MountedGenericTriggers = createInMemorySyncMongoCollection<MountedG
 export function isMountedAdLibTrigger(
 	mountedTrigger: MountedAdLibTrigger | MountedGenericTrigger
 ): mountedTrigger is MountedAdLibTrigger {
-	return !!mountedTrigger['targetId']
+	return 'targetId' in mountedTrigger && !!mountedTrigger['targetId']
 }
 
 function isolatedAutorunWithCleanup(autorun: () => void | (() => void)): Tracker.Computation {
@@ -179,7 +165,7 @@ export const TriggersHandler: React.FC<IProps> = function TriggersHandler(
 	const [initialized, setInitialized] = useState(props.sorensen ? true : false)
 	const { t } = useTranslation()
 	const localSorensen = props.sorensen || Sorensen
-	const createdActions = useRef<Map<TriggeredActionId, (e) => void>>(new Map())
+	const createdActions = useRef<Map<TriggeredActionId, (e: any) => void>>(new Map())
 
 	function bindHotkey(id: TriggeredActionId, keys: string, up: boolean, action: HotkeyTriggerListener) {
 		try {
@@ -193,7 +179,7 @@ export const TriggersHandler: React.FC<IProps> = function TriggersHandler(
 				tag: id,
 			})
 		} catch (e) {
-			console.error(e)
+			logger.error(e)
 		}
 	}
 
@@ -216,13 +202,13 @@ export const TriggersHandler: React.FC<IProps> = function TriggersHandler(
 				.then(() => {
 					setInitialized(true)
 				})
-				.catch(console.error)
+				.catch(catchError('localSorensen.init'))
 		}
 
 		return () => {
 			// do not destroy, if we're using a provided instance of Sorensen
 			if (!props.sorensen) {
-				localSorensen.destroy().catch(console.error)
+				localSorensen.destroy().catch(catchError('localSorensen.destroy'))
 			}
 		}
 	}, []) // run once
@@ -256,7 +242,6 @@ export const TriggersHandler: React.FC<IProps> = function TriggersHandler(
 			'Digit9',
 			'Digit0',
 		]
-		const systemActionKeys = [Settings.confirmKeyCode, 'Tab']
 
 		const poisonKey: string | null = Settings.poisonKey
 
@@ -282,12 +267,6 @@ export const TriggersHandler: React.FC<IProps> = function TriggersHandler(
 					ordered: false,
 					preventDefaultPartials: false,
 				})
-				systemActionKeys.forEach((key) =>
-					localSorensen.bind(key, preventDefault, {
-						global: false,
-						exclusive: true,
-					})
-				)
 				fKeys.forEach((key) =>
 					localSorensen.bind(key, preventDefault, {
 						exclusive: false,
@@ -311,7 +290,6 @@ export const TriggersHandler: React.FC<IProps> = function TriggersHandler(
 			}
 			localSorensen.unbind('Control+KeyF', preventDefault)
 			localSorensen.unbind('Control+F5', preventDefault)
-			systemActionKeys.forEach((key) => localSorensen.unbind(key, preventDefault))
 			fKeys.forEach((key) => localSorensen.unbind(key, preventDefault))
 			ctrlDigitKeys.forEach((key) => localSorensen.unbind(`Control+${key}`, preventDefault))
 		}
@@ -334,7 +312,7 @@ export const TriggersHandler: React.FC<IProps> = function TriggersHandler(
 					nextPartInfo: 1,
 					currentPartInfo: 1,
 				},
-			}) as Pick<RundownPlaylist, '_id' | 'name' | 'activationId' | 'nextPartInfo' | 'currentPartInfo'> | undefined
+			}) as Pick<DBRundownPlaylist, '_id' | 'name' | 'activationId' | 'nextPartInfo' | 'currentPartInfo'> | undefined
 			if (playlist) {
 				let context = rundownPlaylistContext.get()
 				if (context === null) {
@@ -369,7 +347,7 @@ export const TriggersHandler: React.FC<IProps> = function TriggersHandler(
 		JSON.stringify(props.nextSegmentPartIds),
 	])
 
-	const triggerSubReady = useSubscription(PubSub.uiTriggeredActions, props.showStyleBaseId)
+	const triggerSubReady = useSubscription(MeteorPubSub.uiTriggeredActions, props.showStyleBaseId)
 
 	const rundownIds =
 		useTracker(() => {
@@ -423,9 +401,9 @@ export const TriggersHandler: React.FC<IProps> = function TriggersHandler(
 			if (!props.simulateTriggerBinding) {
 				createdActions.current.set(pair._id, action.listener)
 				Object.values<SomeBlueprintTrigger>(pair.triggers).forEach((trigger) => {
-					if (trigger.type === TriggerType.hotkey) {
-						bindHotkey(pair._id, trigger.keys, !!trigger.up, action.listener)
-					}
+					if (trigger.type !== TriggerType.hotkey) return
+					if (trigger.keys.trim() === '') return
+					bindHotkey(pair._id, trigger.keys, !!trigger.up, action.listener)
 				})
 			}
 
@@ -464,7 +442,7 @@ export const TriggersHandler: React.FC<IProps> = function TriggersHandler(
 					try {
 						previewAdLibs = action.preview()
 					} catch (e) {
-						console.error('Exception thrown while previewing action', e)
+						logger.error(e)
 					}
 
 					previewAdLibs.forEach((adLib) => {
@@ -500,9 +478,9 @@ export const TriggersHandler: React.FC<IProps> = function TriggersHandler(
 					const actionListener = createdActions.current.get(pair._id)
 					if (actionListener) {
 						Object.values<SomeBlueprintTrigger>(pair.triggers).forEach((trigger) => {
-							if (trigger.type === TriggerType.hotkey) {
-								unbindHotkey(trigger.keys, actionListener)
-							}
+							if (trigger.type !== TriggerType.hotkey) return
+							if (trigger.keys.trim() === '') return
+							unbindHotkey(trigger.keys, actionListener)
 						})
 					}
 
@@ -521,5 +499,6 @@ export const TriggersHandler: React.FC<IProps> = function TriggersHandler(
 	return null
 }
 
-window['MountedAdLibTriggers'] = MountedAdLibTriggers
-window['MountedGenericTriggers'] = MountedGenericTriggers
+const windowAny: any = window
+windowAny['MountedAdLibTriggers'] = MountedAdLibTriggers
+windowAny['MountedGenericTriggers'] = MountedGenericTriggers

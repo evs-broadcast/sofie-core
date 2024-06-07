@@ -43,10 +43,15 @@ export interface TimelineObjectCoreExt<
 	metaData?: TMetadata
 	/** Keyframes: Arbitrary data storage for plugins */
 	keyframes?: Array<TimelineKeyframeCoreExt<TContent, TKeyframeMetadata>>
+	/**
+	 * Priority of the object. When multiple overlap in the resolved timeline, highest priority wins.
+	 * Lookahead objects have a value of 0.1 (or slightly lower). Your baseline should be using a priority of 0, with other objects using 1 or higher.
+	 */
+	priority: number
 }
 
 export interface TimelineKeyframeCoreExt<TContent extends { deviceType: TSR.DeviceType }, TKeyframeMetadata = unknown>
-	extends TSR.Timeline.TimelineKeyframe<TContent> {
+	extends TSR.Timeline.TimelineKeyframe<Partial<TContent>> {
 	metaData?: TKeyframeMetadata
 	/** Whether to keep this keyframe when the object is copied for lookahead. By default all keyframes are removed */
 	preserveForLookahead?: boolean

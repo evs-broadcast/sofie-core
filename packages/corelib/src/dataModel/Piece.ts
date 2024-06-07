@@ -30,6 +30,9 @@ export enum PieceStatusCode {
 	/** The source (file, live input) is missing and cannot be played, as it would result in BTA */
 	SOURCE_MISSING = 30,
 
+	/** The source is in a reported, but unrecognized state */
+	SOURCE_UNKNOWN_STATE = 35,
+
 	/** Source not set - the source object is not set to an actual source */
 	SOURCE_NOT_SET = 40,
 }
@@ -40,18 +43,14 @@ export interface PieceGeneric extends Omit<IBlueprintPieceGeneric, 'content'> {
 
 	content: SomeContent
 
-	/** Playback availability status */
-	status: PieceStatusCode
 	/** A flag to signal that a given Piece has no content, and exists only as a marker on the timeline */
 	virtual?: boolean
-	/** The id of the piece this piece is a continuation of. If it is a continuation, the inTranstion must not be set, and enable.start must be 0 */
-	continuesRefId?: PieceId
 
 	/** Stringified timelineObjects */
 	timelineObjectsString: PieceTimelineObjectsBlob
 }
 
-export interface Piece extends PieceGeneric, Omit<IBlueprintPieceDB, '_id' | 'continuesRefId' | 'content'> {
+export interface Piece extends PieceGeneric, Omit<IBlueprintPieceDB, '_id' | 'content'> {
 	/**
 	 * This is the id of the rundown this piece starts playing in.
 	 * Currently this is the only rundown the piece could be playing in

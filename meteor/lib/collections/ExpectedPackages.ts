@@ -1,9 +1,7 @@
 import { ExpectedPackage } from '@sofie-automation/blueprints-integration'
 import { assertNever, literal } from '../lib'
-import { StudioLight } from './Studios'
+import { StudioLight } from '@sofie-automation/corelib/dist/dataModel/Studio'
 import deepExtend from 'deep-extend'
-
-export * from '@sofie-automation/corelib/dist/dataModel/ExpectedPackages'
 
 export function getPreviewPackageSettings(
 	expectedPackage: ExpectedPackage.Any

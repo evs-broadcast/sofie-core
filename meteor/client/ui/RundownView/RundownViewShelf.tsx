@@ -1,19 +1,13 @@
 import * as React from 'react'
 import * as _ from 'underscore'
 import { Translated, translateWithTracker } from '../../lib/ReactMeteorData/ReactMeteorData'
-import { MeteorReactComponent } from '../../lib/MeteorReactComponent'
 import { SegmentUi } from '../SegmentTimeline/SegmentTimelineContainer'
 import { unprotectString } from '../../../lib/lib'
-import { RundownPlaylist } from '../../../lib/collections/RundownPlaylists'
-import { OutputLayers, SourceLayers } from '../../../lib/collections/ShowStyleBases'
+import { DBRundownPlaylist } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
+import { OutputLayers, SourceLayers } from '@sofie-automation/corelib/dist/dataModel/ShowStyleBase'
 import { DashboardPieceButton } from '../Shelf/DashboardPieceButton'
 import { IBlueprintActionTriggerMode, ISourceLayer } from '@sofie-automation/blueprints-integration'
-import {
-	contextMenuHoldToDisplayTime,
-	ensureHasTrailingSlash,
-	UserAgentPointer,
-	USER_AGENT_POINTER_PROPERTY,
-} from '../../lib/lib'
+import { contextMenuHoldToDisplayTime, UserAgentPointer, USER_AGENT_POINTER_PROPERTY } from '../../lib/lib'
 import {
 	DashboardLayoutFilter,
 	PieceDisplayStyle,
@@ -40,7 +34,7 @@ import { PartInstanceId, PieceId } from '@sofie-automation/corelib/dist/dataMode
 interface IRundownViewShelfProps {
 	studio: UIStudio
 	segment: SegmentUi
-	playlist: RundownPlaylist
+	playlist: DBRundownPlaylist
 	showStyleBase: UIShowStyleBase
 	adLibSegmentUi: AdlibSegmentUi
 	hotkeyGroup: string
@@ -52,22 +46,22 @@ interface IRundownViewShelfTrackedProps {
 	outputLayers: OutputLayers
 	sourceLayers: SourceLayers
 	unfinishedAdLibIds: PieceId[]
-	unfinishedTags: string[]
+	unfinishedTags: readonly string[]
 	nextAdLibIds: PieceId[]
-	nextTags: string[]
+	nextTags: readonly string[]
 }
 
 interface IRundownViewShelfState {
 	singleClickMode: boolean
 }
 
-class RundownViewShelfInner extends MeteorReactComponent<
+class RundownViewShelfInner extends React.Component<
 	Translated<IRundownViewShelfProps & IRundownViewShelfTrackedProps>,
 	IRundownViewShelfState
 > {
 	usedHotkeys: Array<string> = []
 
-	constructor(props) {
+	constructor(props: Translated<IRundownViewShelfProps & IRundownViewShelfTrackedProps>) {
 		super(props)
 		this.state = {
 			singleClickMode: false,
@@ -246,11 +240,6 @@ class RundownViewShelfInner extends MeteorReactComponent<
 									playlist={this.props.playlist}
 									isOnAir={this.isAdLibOnAir(adLibPiece)}
 									isNext={this.isAdLibNext(adLibPiece)}
-									mediaPreviewUrl={
-										this.props.studio
-											? ensureHasTrailingSlash(this.props.studio.settings.mediaPreviewsUrl + '' || '') || ''
-											: ''
-									}
 									displayStyle={PieceDisplayStyle.BUTTONS}
 									widthScale={3.27} // @todo: css
 									isSelected={false}

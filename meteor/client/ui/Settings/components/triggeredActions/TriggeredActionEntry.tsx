@@ -12,7 +12,7 @@ import classNames from 'classnames'
 import { DBBlueprintTrigger } from '../../../../../lib/collections/TriggeredActions'
 import { useTracker } from '../../../../lib/ReactMeteorData/ReactMeteorData'
 import { ActionEditor } from './actionEditors/ActionEditor'
-import { OutputLayers, SourceLayers } from '../../../../../lib/collections/ShowStyleBases'
+import { OutputLayers, SourceLayers } from '@sofie-automation/corelib/dist/dataModel/ShowStyleBase'
 import { flatten, getRandomString, last, literal } from '../../../../../lib/lib'
 import { createAction, isPreviewableAction } from '../../../../../lib/api/triggers/actionFactory'
 import { PreviewContext } from './TriggeredActionsEditor'
@@ -34,6 +34,7 @@ import { ShowStyleBaseId, TriggeredActionId } from '@sofie-automation/corelib/di
 import { isHotkeyTrigger } from '../../../../../lib/api/triggers/triggerTypeSelectors'
 import { getAllCurrentAndDeletedItemsFromOverrides, useOverrideOpHelper } from '../../util/OverrideOpHelper'
 import { TriggeredActions } from '../../../../collections'
+import { catchError } from '../../../../lib/lib'
 
 interface IProps {
 	sourceLayers: SourceLayers | undefined
@@ -191,7 +192,7 @@ export const TriggeredActionEntry: React.FC<IProps> = React.memo(function Trigge
 					}
 				}
 			} catch (e) {
-				console.error(e)
+				catchError('TriggeredActionEntry previewItems')(e)
 			}
 			return [] as IWrappedAdLib[]
 		},

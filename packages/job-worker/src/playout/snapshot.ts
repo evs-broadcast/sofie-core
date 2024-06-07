@@ -1,6 +1,7 @@
 import { ExpectedPackageDBType, getExpectedPackageId } from '@sofie-automation/corelib/dist/dataModel/ExpectedPackages'
 import {
 	AdLibActionId,
+	ExpectedPackageId,
 	PartId,
 	PartInstanceId,
 	PieceId,
@@ -34,6 +35,7 @@ import { assertNever, getRandomId, literal } from '@sofie-automation/corelib/dis
 import { logger } from '../logging'
 import { JSONBlobParse, JSONBlobStringify } from '@sofie-automation/shared-lib/dist/lib/JSONBlob'
 import { DBRundownPlaylist } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
+import { RundownOrphanedReason } from '@sofie-automation/corelib/dist/dataModel/Rundown'
 
 /**
  * Generate the Playlist owned portions of a Playlist snapshot
@@ -161,7 +163,7 @@ export async function handleRestorePlaylistSnapshot(
 
 	for (const rd of snapshot.rundowns) {
 		if (!rd.orphaned) {
-			rd.orphaned = 'from-snapshot'
+			rd.orphaned = RundownOrphanedReason.FROM_SNAPSHOT
 		}
 
 		rd.playlistId = playlistId
@@ -267,6 +269,7 @@ export async function handleRestorePlaylistSnapshot(
 		piece._id = getRandomId()
 		pieceIdMap.set(oldId, piece._id)
 	}
+
 	for (const adlib of [
 		...snapshot.adLibPieces,
 		...snapshot.adLibActions,
@@ -285,7 +288,7 @@ export async function handleRestorePlaylistSnapshot(
 		pieceInstance.piece._id = (pieceIdMap.get(pieceInstance.piece._id) || getRandomId()) as PieceId // Note: don't warn if not found, as the piece may have been deleted
 		if (pieceInstance.infinite) {
 			pieceInstance.infinite.infinitePieceId =
-				pieceIdMap.get(pieceInstance.infinite.infinitePieceId) || getRandomId() // Note: don't warn if not found, as the piece may have been deleted
+				(pieceIdMap.get(pieceInstance.infinite.infinitePieceId) as PieceId) || getRandomId() // Note: don't warn if not found, as the piece may have been deleted
 		}
 	}
 
@@ -305,7 +308,10 @@ export async function handleRestorePlaylistSnapshot(
 		'previous'
 	)
 
+	const expectedPackageIdMap = new Map<ExpectedPackageId, ExpectedPackageId>()
 	for (const expectedPackage of snapshot.expectedPackages) {
+		const oldId = expectedPackage._id
+
 		switch (expectedPackage.fromPieceType) {
 			case ExpectedPackageDBType.PIECE:
 			case ExpectedPackageDBType.ADLIB_PIECE:
@@ -315,6 +321,7 @@ export async function handleRestorePlaylistSnapshot(
 				expectedPackage.pieceId =
 					pieceIdMap.get(expectedPackage.pieceId) ||
 					getRandomIdAndWarn(`expectedPackage.pieceId=${expectedPackage.pieceId}`)
+
 				expectedPackage._id = getExpectedPackageId(expectedPackage.pieceId, expectedPackage.blueprintPackageId)
 
 				break
@@ -338,7 +345,11 @@ export async function handleRestorePlaylistSnapshot(
 				assertNever(expectedPackage)
 				break
 		}
+
+		expectedPackageIdMap.set(oldId, expectedPackage._id)
 	}
+
+	snapshot.playlist.rundownIdsInOrder = snapshot.playlist.rundownIdsInOrder.map((id) => rundownIdMap.get(id) ?? id)
 
 	const rundownIds = snapshot.rundowns.map((r) => r._id)
 
@@ -385,116 +396,105 @@ export async function handleRestorePlaylistSnapshot(
 		return (objs || []).map((obj) => updateIds(obj))
 	}
 
-	await context.directCollections.runInTransaction(async (transaction) => {
-		await Promise.all([
-			saveIntoDb(context, context.directCollections.RundownPlaylists, transaction, { _id: playlistId }, [
-				snapshot.playlist,
-			]),
-			saveIntoDb(context, context.directCollections.Rundowns, transaction, { playlistId }, snapshot.rundowns),
-			saveIntoDb(
-				context,
-				context.directCollections.IngestDataCache,
-				transaction,
-				{ rundownId: { $in: rundownIds } },
-				updateItemIds(snapshot.ingestData, true)
-			),
-			saveIntoDb(
-				context,
-				context.directCollections.RundownBaselineObjects,
-				transaction,
-				{ rundownId: { $in: rundownIds } },
-				updateItemIds(snapshot.baselineObjs, true)
-			),
-			saveIntoDb(
-				context,
-				context.directCollections.RundownBaselineAdLibPieces,
-				transaction,
-				{ rundownId: { $in: rundownIds } },
-				updateItemIds(snapshot.baselineAdlibs, true)
-			),
-			saveIntoDb(
-				context,
-				context.directCollections.RundownBaselineAdLibActions,
-				transaction,
-				{ rundownId: { $in: rundownIds } },
-				updateItemIds(snapshot.baselineAdLibActions, true)
-			),
-			saveIntoDb(
-				context,
-				context.directCollections.Segments,
-				transaction,
-				{ rundownId: { $in: rundownIds } },
-				updateItemIds(snapshot.segments, false)
-			),
-			saveIntoDb(
-				context,
-				context.directCollections.Parts,
-				transaction,
-				{ rundownId: { $in: rundownIds } },
-				updateItemIds(snapshot.parts, false)
-			),
-			saveIntoDb(
-				context,
-				context.directCollections.PartInstances,
-				transaction,
-				{ rundownId: { $in: rundownIds } },
-				updateItemIds(snapshot.partInstances, false)
-			),
-			saveIntoDb(
-				context,
-				context.directCollections.Pieces,
-				transaction,
-				{ rundownId: { $in: rundownIds } },
-				updateItemIds(snapshot.pieces, false)
-			),
-			saveIntoDb(
-				context,
-				context.directCollections.PieceInstances,
-				transaction,
-				{ rundownId: { $in: rundownIds } },
-				updateItemIds(snapshot.pieceInstances, false)
-			),
-			saveIntoDb(
-				context,
-				context.directCollections.AdLibPieces,
-				transaction,
-				{ rundownId: { $in: rundownIds } },
-				updateItemIds(snapshot.adLibPieces, true)
-			),
-			saveIntoDb(
-				context,
-				context.directCollections.AdLibActions,
-				transaction,
-				{ rundownId: { $in: rundownIds } },
-				updateItemIds(snapshot.adLibActions, true)
-			),
-			saveIntoDb(
-				context,
-				context.directCollections.ExpectedMediaItems,
-				transaction,
-				{ partId: { $in: protectStringArray(_.keys(partIdMap)) } },
-				updateItemIds(snapshot.expectedMediaItems, true)
-			),
-			saveIntoDb(
-				context,
-				context.directCollections.ExpectedPlayoutItems,
-				transaction,
-				{ rundownId: { $in: rundownIds } },
-				updateItemIds(snapshot.expectedPlayoutItems || [], false)
-			),
-			saveIntoDb(
-				context,
-				context.directCollections.ExpectedPackages,
-				transaction,
-				{ rundownId: { $in: rundownIds } },
-				updateItemIds(snapshot.expectedPackages || [], false)
-			),
-		])
-	})
+	await Promise.all([
+		saveIntoDb(context, context.directCollections.RundownPlaylists, { _id: playlistId }, [snapshot.playlist]),
+		saveIntoDb(context, context.directCollections.Rundowns, { playlistId }, snapshot.rundowns),
+		saveIntoDb(
+			context,
+			context.directCollections.IngestDataCache,
+			{ rundownId: { $in: rundownIds } },
+			updateItemIds(snapshot.ingestData, true)
+		),
+		saveIntoDb(
+			context,
+			context.directCollections.RundownBaselineObjects,
+			{ rundownId: { $in: rundownIds } },
+			updateItemIds(snapshot.baselineObjs, true)
+		),
+		saveIntoDb(
+			context,
+			context.directCollections.RundownBaselineAdLibPieces,
+			{ rundownId: { $in: rundownIds } },
+			updateItemIds(snapshot.baselineAdlibs, true)
+		),
+		saveIntoDb(
+			context,
+			context.directCollections.RundownBaselineAdLibActions,
+			{ rundownId: { $in: rundownIds } },
+			updateItemIds(snapshot.baselineAdLibActions, true)
+		),
+		saveIntoDb(
+			context,
+			context.directCollections.Segments,
+			{ rundownId: { $in: rundownIds } },
+			updateItemIds(snapshot.segments, false)
+		),
+		saveIntoDb(
+			context,
+			context.directCollections.Parts,
+			{ rundownId: { $in: rundownIds } },
+			updateItemIds(snapshot.parts, false)
+		),
+		saveIntoDb(
+			context,
+			context.directCollections.PartInstances,
+			{ rundownId: { $in: rundownIds } },
+			updateItemIds(snapshot.partInstances, false)
+		),
+		saveIntoDb(
+			context,
+			context.directCollections.Pieces,
+			{ rundownId: { $in: rundownIds } },
+			updateItemIds(snapshot.pieces, false)
+		),
+		saveIntoDb(
+			context,
+			context.directCollections.PieceInstances,
+			{ rundownId: { $in: rundownIds } },
+			updateItemIds(snapshot.pieceInstances, false)
+		),
+		saveIntoDb(
+			context,
+			context.directCollections.AdLibPieces,
+			{ rundownId: { $in: rundownIds } },
+			updateItemIds(snapshot.adLibPieces, true)
+		),
+		saveIntoDb(
+			context,
+			context.directCollections.AdLibActions,
+			{ rundownId: { $in: rundownIds } },
+			updateItemIds(snapshot.adLibActions, true)
+		),
+		saveIntoDb(
+			context,
+			context.directCollections.ExpectedMediaItems,
+			{ partId: { $in: protectStringArray(_.keys(partIdMap)) } },
+			updateItemIds(snapshot.expectedMediaItems, true)
+		),
+		saveIntoDb(
+			context,
+			context.directCollections.ExpectedPlayoutItems,
+			{ rundownId: { $in: rundownIds } },
+			updateItemIds(snapshot.expectedPlayoutItems || [], false)
+		),
+		saveIntoDb(
+			context,
+			context.directCollections.ExpectedPackages,
+			{ rundownId: { $in: rundownIds } },
+			updateItemIds(snapshot.expectedPackages || [], false)
+		),
+	])
 
 	logger.info(`Restore done`)
 	return {
 		playlistId: playlistId,
+		remappedIds: {
+			rundownId: Array.from(rundownIdMap.entries()),
+			segmentId: Array.from(segmentIdMap.entries()),
+			partId: Array.from(partIdMap.entries()),
+			partInstanceId: Array.from(partInstanceIdMap.entries()),
+			expectedPackageId: Array.from(expectedPackageIdMap.entries()),
+		},
 	}
 }
 
@@ -517,7 +517,7 @@ function fixupImportedSelectedPartInstanceIds(
 			partInstanceId: oldId,
 			rundownId: partInstanceOldRundownIdMap.get(oldId) || protectString(''),
 			manuallySelected: false,
-			consumesNextSegmentId: false,
+			consumesQueuedSegmentId: false,
 		}
 	}
 
@@ -529,7 +529,7 @@ function fixupImportedSelectedPartInstanceIds(
 			partInstanceId: partInstanceIdMap.get(snapshotInfo.partInstanceId) || snapshotInfo.partInstanceId,
 			rundownId: rundownIdMap.get(snapshotInfo.rundownId) || snapshotInfo.rundownId,
 			manuallySelected: snapshotInfo.manuallySelected,
-			consumesNextSegmentId: snapshotInfo.consumesNextSegmentId,
+			consumesQueuedSegmentId: snapshotInfo.consumesQueuedSegmentId,
 		}
 	}
 }

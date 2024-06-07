@@ -2,11 +2,15 @@ import deepmerge from 'deepmerge'
 import { Meteor } from 'meteor/meteor'
 import { Mongo } from 'meteor/mongo'
 import { ReadonlyDeep } from 'type-fest'
-import { clone, createManualPromise, lazyIgnore, ProtectedString, stringifyError } from '../../../lib/lib'
+import { clone, createManualPromise, lazyIgnore, ProtectedString } from '../../../lib/lib'
+import { stringifyError } from '@sofie-automation/shared-lib/dist/lib/stringifyError'
+import { profiler } from '../../api/profiler'
 import { logger } from '../../logging'
 import { ReactiveCacheCollection } from '../../publications/lib/ReactiveCacheCollection'
 import { LiveQueryHandle } from '../lib'
 import { CustomPublish, CustomPublishChanges } from './publish'
+
+const apmNamespace = 'optimizedObserver'
 
 interface OptimizedObserverWrapper<TData extends { _id: ProtectedString<any> }, TArgs, TContext> {
 	/** Subscribers ready for data updates */
@@ -68,7 +72,7 @@ export async function setUpOptimizedObserverInner<
 		newProps: ReadonlyDeep<Partial<UpdateProps> | undefined>
 	) => Promise<[PublicationDoc[], CustomPublishChanges<PublicationDoc>]>,
 	receiver: CustomPublish<PublicationDoc>,
-	lazynessDuration: number = 3 // ms
+	lazynessDuration = 3 // ms
 ): Promise<void> {
 	let thisObserverWrapper = optimizedObservers[identifier] as
 		| OptimizedObserverWrapper<PublicationDoc, Args, State>
@@ -120,7 +124,7 @@ export async function setUpOptimizedObserverInner<
 		}
 		receiver.onStop(() => removeReceiver())
 
-		logger.debug(`Starting publication ${identifier} `)
+		logger.debug(`Starting publication ${identifier}`)
 
 		// Start the optimizedObserver
 		try {
@@ -225,6 +229,9 @@ async function createOptimizedObserverWorker<
 		lazyIgnore(
 			`optimizedObserver_${identifier}`,
 			async () => {
+				logger.silly(`Updating optimized observer ${identifier}`)
+				const transaction = profiler.startTransaction(identifier, apmNamespace)
+
 				try {
 					// Mark the update as running
 					updateIsRunning = true
@@ -237,6 +244,7 @@ async function createOptimizedObserverWorker<
 							delete optimizedObservers[identifier]
 							await thisObserverWorker.stopObservers()
 							thisObserverWorker = undefined
+							logger.silly(`Cancelling update for optimized observer ${identifier}`)
 							return
 						}
 
@@ -244,6 +252,7 @@ async function createOptimizedObserverWorker<
 						const newProps = pendingUpdate as ReadonlyDeep<Partial<UpdateProps>>
 						pendingUpdate = {}
 
+						const manipulateSpan = transaction?.startSpan('manipulateData')
 						const start = Date.now()
 						const [newDocs, changes] = await manipulateData(
 							thisObserverWorker.args,
@@ -252,10 +261,12 @@ async function createOptimizedObserverWorker<
 						)
 						const manipulateTime = Date.now()
 						const manipulateDuration = manipulateTime - start
+						if (manipulateSpan) manipulateSpan.end()
 
 						const hasChanges =
 							changes.added.length > 0 || changes.changed.length > 0 || changes.removed.length > 0
 
+						const publishSpan = transaction?.startSpan('publish')
 						// If result === null, that means no changes were made
 						if (hasChanges) {
 							for (const dataReceiver of thisObserverWrapper.activeSubscribers) {
@@ -273,6 +284,7 @@ async function createOptimizedObserverWorker<
 								dataReceiver.init(thisObserverWorker.lastData)
 							}
 						}
+						if (publishSpan) publishSpan.end()
 
 						const publishTime = Date.now() - manipulateTime
 						const totalTime = Date.now() - start
@@ -284,11 +296,17 @@ async function createOptimizedObserverWorker<
 							logger.debug(
 								`Slow optimized observer ${identifier}. Total: ${totalTime}, manipulate: ${manipulateDuration}, publish: ${publishTime} (receivers: ${thisObserverWrapper.activeSubscribers.length})`
 							)
+						} else {
+							logger.silly(
+								`Updated optimized observer ${identifier}. Total: ${totalTime}, manipulate: ${manipulateDuration}, publish: ${publishTime} (receivers: ${thisObserverWrapper.activeSubscribers.length})`
+							)
 						}
 					}
 				} catch (e) {
 					logger.error(`optimizedObserver ${identifier} errored: ${stringifyError(e)}`)
 				} finally {
+					if (transaction) transaction.end()
+
 					// Update has finished, check if another needs to be performed
 					updateIsRunning = false
 

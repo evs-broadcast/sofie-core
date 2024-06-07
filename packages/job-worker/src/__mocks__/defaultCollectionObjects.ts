@@ -1,26 +1,27 @@
+import { IBlueprintPieceType, PieceLifespan, PlaylistTimingType } from '@sofie-automation/blueprints-integration'
 import { AdLibPiece } from '@sofie-automation/corelib/dist/dataModel/AdLibPiece'
 import {
-	RundownPlaylistId,
-	StudioId,
+	PartId,
 	PeripheralDeviceId,
+	PieceId,
+	RundownId,
+	RundownPlaylistId,
+	SegmentId,
 	ShowStyleBaseId,
 	ShowStyleVariantId,
-	SegmentId,
-	RundownId,
-	PartId,
-	PieceId,
+	StudioId,
 } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import { DBPart } from '@sofie-automation/corelib/dist/dataModel/Part'
-import { EmptyPieceTimelineObjectsBlob, Piece, PieceStatusCode } from '@sofie-automation/corelib/dist/dataModel/Piece'
+import { EmptyPieceTimelineObjectsBlob, Piece } from '@sofie-automation/corelib/dist/dataModel/Piece'
 import { DBRundown } from '@sofie-automation/corelib/dist/dataModel/Rundown'
 import { DBRundownPlaylist } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
 import { DBSegment } from '@sofie-automation/corelib/dist/dataModel/Segment'
 import { DBStudio } from '@sofie-automation/corelib/dist/dataModel/Studio'
 import { unprotectString } from '@sofie-automation/corelib/dist/protectedString'
+import { wrapDefaultObject } from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
+import { DEFAULT_MINIMUM_TAKE_SPAN } from '@sofie-automation/shared-lib/dist/core/constants'
 import { getRundownId } from '../ingest/lib'
 import { getCurrentTime } from '../lib'
-import { IBlueprintPieceType, PieceLifespan, PlaylistTimingType } from '@sofie-automation/blueprints-integration'
-import { wrapDefaultObject } from '@sofie-automation/corelib/dist/settings/objectWithOverrides'
 
 export function defaultRundownPlaylist(_id: RundownPlaylistId, studioId: StudioId): DBRundownPlaylist {
 	return {
@@ -98,6 +99,8 @@ export function defaultStudio(_id: StudioId): DBStudio {
 		settings: {
 			frameRate: 25,
 			mediaPreviewsUrl: '',
+			minimumTakeSpan: DEFAULT_MINIMUM_TAKE_SPAN,
+			allowScratchpad: true,
 		},
 		routeSets: {},
 		routeSetExclusivityGroups: {},
@@ -111,6 +114,7 @@ export function defaultStudio(_id: StudioId): DBStudio {
 		},
 		_rundownVersionHash: '',
 		lastBlueprintConfig: undefined,
+		lastBlueprintFixUpHash: undefined,
 	}
 }
 
@@ -144,7 +148,6 @@ export function defaultPiece(_id: PieceId, rundownId: RundownId, segmentId: Segm
 		startSegmentId: segmentId,
 		startPartId: partId,
 		name: 'Default Piece',
-		status: PieceStatusCode.OK,
 		lifespan: PieceLifespan.WithinPart,
 		invalid: false,
 		enable: {
@@ -165,7 +168,6 @@ export function defaultAdLibPiece(_id: PieceId, rundownId: RundownId, partId: Pa
 		partId: partId,
 		_rank: 0,
 		name: 'Default Adlib',
-		status: PieceStatusCode.OK,
 		lifespan: PieceLifespan.WithinPart,
 		sourceLayerId: '',
 		outputLayerId: '',

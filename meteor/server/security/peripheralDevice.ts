@@ -1,10 +1,10 @@
 import { Meteor } from 'meteor/meteor'
 import { check } from '../../lib/check'
-import { PeripheralDevice } from '../../lib/collections/PeripheralDevices'
+import { PeripheralDevice } from '@sofie-automation/corelib/dist/dataModel/PeripheralDevice'
 import { isProtectedString } from '../../lib/lib'
 import { logNotAllowed } from './lib/lib'
-import { MediaWorkFlow } from '../../lib/collections/MediaWorkFlows'
-import { MongoQueryKey } from '../../lib/typings/meteor'
+import { MediaWorkFlow } from '@sofie-automation/shared-lib/dist/core/model/MediaWorkFlows'
+import { MongoQueryKey } from '@sofie-automation/corelib/dist/mongo'
 import { Credentials, ResolvedCredentials, resolveCredentials } from './lib/credentials'
 import { allowAccessToPeripheralDevice, allowAccessToPeripheralDeviceContent } from './lib/security'
 import { Settings } from '../../lib/Settings'
@@ -61,6 +61,7 @@ export namespace PeripheralDeviceContentWriteAccess {
 	 * Check if a user is allowed to execute a PeripheralDevice function in a Studio
 	 */
 	export async function executeFunction(cred0: Credentials, deviceId: PeripheralDeviceId): Promise<ContentAccess> {
+		triggerWriteAccess()
 		const device = await PeripheralDevices.findOneAsync(deviceId)
 		if (!device) throw new Meteor.Error(404, `PeripheralDevice "${deviceId}" not found`)
 

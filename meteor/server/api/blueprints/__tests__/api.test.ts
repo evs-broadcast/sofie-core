@@ -2,7 +2,7 @@ import * as _ from 'underscore'
 import { setupDefaultStudioEnvironment, packageBlueprint } from '../../../../__mocks__/helpers/database'
 import { testInFiber } from '../../../../__mocks__/helpers/jest'
 import { literal, getRandomId, protectString } from '../../../../lib/lib'
-import { Blueprint } from '../../../../lib/collections/Blueprints'
+import { Blueprint } from '@sofie-automation/corelib/dist/dataModel/Blueprint'
 import { BlueprintManifestType } from '@sofie-automation/blueprints-integration'
 import { SYSTEM_ID, ICoreSystem } from '../../../../lib/collections/CoreSystem'
 import { insertBlueprint, uploadBlueprint } from '../api'
@@ -69,6 +69,7 @@ describe('Test blueprint management api', () => {
 				blueprintVersion: '',
 				integrationVersion: '',
 				TSRVersion: '',
+				hasFixUpFunction: false,
 			}
 			await Blueprints.insertAsync(blueprint)
 			return blueprint
@@ -282,7 +283,7 @@ describe('Test blueprint management api', () => {
 
 			await expect(uploadBlueprint(DEFAULT_CONTEXT, existingBlueprint._id, blueprintStr)).rejects.toThrowMeteor(
 				400,
-				`Cannot replace old blueprint (of type \"showstyle\") with new blueprint of type \"studio\"`
+				`Cannot replace old blueprint (of type "showstyle") with new blueprint of type "studio"`
 			)
 		})
 		testInFiber('success - showstyle', async () => {
@@ -319,6 +320,7 @@ describe('Test blueprint management api', () => {
 					showStyleConfigSchema: JSON.stringify({ show1: true }) as any,
 					hasCode: !!blueprintStr,
 					code: blueprintStr,
+					hasFixUpFunction: false,
 				})
 			)
 			expect(blueprint.studioConfigSchema).toBeUndefined()
@@ -361,6 +363,7 @@ describe('Test blueprint management api', () => {
 					studioConfigSchema: JSONBlobStringify({ studio1: true } as any),
 					hasCode: !!blueprintStr,
 					code: blueprintStr,
+					hasFixUpFunction: false,
 				})
 			)
 			expect(blueprint.showStyleConfigSchema).toBeUndefined()
@@ -403,6 +406,7 @@ describe('Test blueprint management api', () => {
 					TSRVersion: '0.3.0',
 					hasCode: !!blueprintStr,
 					code: blueprintStr,
+					hasFixUpFunction: false,
 				})
 			)
 			expect(blueprint.showStyleConfigSchema).toBeUndefined()
@@ -447,6 +451,7 @@ describe('Test blueprint management api', () => {
 					studioConfigSchema: JSONBlobStringify({ studio1: true } as any),
 					hasCode: !!blueprintStr,
 					code: blueprintStr,
+					hasFixUpFunction: false,
 				})
 			)
 			expect(blueprint.showStyleConfigSchema).toBeUndefined()
@@ -492,6 +497,7 @@ describe('Test blueprint management api', () => {
 					showStyleConfigSchema: JSONBlobStringify({ show1: true } as any),
 					hasCode: !!blueprintStr,
 					code: blueprintStr,
+					hasFixUpFunction: false,
 				})
 			)
 			expect(blueprint.studioConfigSchema).toBeUndefined()
@@ -524,7 +530,7 @@ describe('Test blueprint management api', () => {
 
 			await expect(uploadBlueprint(DEFAULT_CONTEXT, existingBlueprint._id, blueprintStr)).rejects.toThrowMeteor(
 				422,
-				`Cannot replace old blueprint \"${existingBlueprint._id}\" (\"ss1\") with new blueprint \"show2\"`
+				`Cannot replace old blueprint "${existingBlueprint._id}" ("ss1") with new blueprint "show2"`
 			)
 		})
 		testInFiber('update - drop blueprintId', async () => {
@@ -554,7 +560,7 @@ describe('Test blueprint management api', () => {
 
 			await expect(uploadBlueprint(DEFAULT_CONTEXT, existingBlueprint._id, blueprintStr)).rejects.toThrowMeteor(
 				422,
-				`Cannot replace old blueprint \"${existingBlueprint._id}\" (\"ss1\") with new blueprint \"\"`
+				`Cannot replace old blueprint "${existingBlueprint._id}" ("ss1") with new blueprint ""`
 			)
 		})
 	})

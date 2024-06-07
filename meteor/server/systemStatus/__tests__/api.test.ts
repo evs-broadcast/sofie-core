@@ -1,15 +1,14 @@
 import '../../../__mocks__/_extendJest'
-import { testInFiber } from '../../../__mocks__/helpers/jest'
 import { setupDefaultStudioEnvironment, DefaultEnvironment } from '../../../__mocks__/helpers/database'
 import { literal, unprotectString } from '../../../lib/lib'
 import { MeteorMock } from '../../../__mocks__/meteor'
 import { status2ExternalStatus, setSystemStatus } from '../systemStatus'
 import { StatusResponse } from '../../../lib/api/systemStatus'
-
-import { PickerMock, parseResponseBuffer, MockResponseDataString } from '../../../__mocks__/meteorhacks-picker'
-import { Response as MockResponse, Request as MockRequest } from 'mock-http'
 import { StatusCode } from '@sofie-automation/blueprints-integration'
 import { MeteorCall } from '../../../lib/api/methods'
+import { callKoaRoute } from '../../../__mocks__/koa-util'
+import { healthRouter } from '../api'
+import { UIBlueprintUpgradeStatus } from '../../../lib/api/upgradeStatus'
 
 // we don't want the deviceTriggers observer to start up at this time
 jest.mock('../../api/deviceTriggers/observer')
@@ -18,48 +17,26 @@ require('../api')
 require('../../coreSystem/index')
 const PackageInfo = require('../../../package.json')
 
-import * as checkUpgradeStatus from '../../migration/upgrades/checkStatus'
-import { GetUpgradeStatusResult } from '../../../lib/api/migration'
-jest.spyOn(checkUpgradeStatus, 'getUpgradeStatus').mockReturnValue(
-	Promise.resolve(
-		literal<GetUpgradeStatusResult>({
-			studios: [],
-			showStyleBases: [],
-		})
-	)
+import * as getServerBlueprintUpgradeStatuses from '../../publications/blueprintUpgradeStatus/systemStatus'
+jest.spyOn(getServerBlueprintUpgradeStatuses, 'getServerBlueprintUpgradeStatuses').mockReturnValue(
+	Promise.resolve(literal<UIBlueprintUpgradeStatus[]>([]))
 )
 
 describe('systemStatus API', () => {
 	let env: DefaultEnvironment
 
 	describe('General health endpoint', () => {
-		async function callRoute(): Promise<MockResponseDataString> {
-			const routeName = '/health'
-			const route = PickerMock.mockRoutes[routeName]
-			expect(route).toBeTruthy()
-
-			const res = new MockResponse()
-			const req = new MockRequest({
+		async function callRoute() {
+			const ctx = await callKoaRoute(healthRouter, {
 				method: 'GET',
-				url: `/health`,
+				url: '/',
 			})
 
-			await route.handler({}, req, res, jest.fn())
-
-			const resStr = parseResponseBuffer(res)
-			expect(resStr).toMatchObject(
-				literal<Partial<MockResponseDataString>>({
-					headers: {
-						'content-type': 'application/json',
-					},
-					timedout: false,
-					ended: true,
-				})
-			)
-			return resStr
+			expect(ctx.response.type).toBe('application/json')
+			return ctx
 		}
 
-		testInFiber('REST /health with state BAD', async () => {
+		test('REST /health with state BAD', async () => {
 			env = await setupDefaultStudioEnvironment()
 			MeteorMock.mockRunMeteorStartup()
 			await MeteorMock.sleepNoFakeTimers(200)
@@ -73,14 +50,9 @@ describe('systemStatus API', () => {
 			})
 			expect(result0.checks && result0.checks.length).toBeGreaterThan(0)
 
-			let systemHealth
-			try {
-				const response = await callRoute()
-				expect(response.statusCode).toBe(500)
-				systemHealth = JSON.parse(response.bufferStr)
-			} catch (e) {
-				expect(true).toBe(false) // should not throw
-			}
+			const response = await callRoute()
+			expect(response.response.status).toBe(500)
+			const systemHealth = JSON.parse(response.body as any)
 
 			expect(systemHealth).toMatchObject({
 				status: status2ExternalStatus(expectedStatus0),
@@ -89,33 +61,17 @@ describe('systemStatus API', () => {
 	})
 
 	describe('Specific studio health endpoint', () => {
-		async function callRoute(studioId?: string): Promise<MockResponseDataString> {
-			const routeName = '/health/:studioId'
-			const route = PickerMock.mockRoutes[routeName]
-			expect(route).toBeTruthy()
-
-			const res = new MockResponse()
-			const req = new MockRequest({
+		async function callRoute(studioId?: string) {
+			const ctx = await callKoaRoute(healthRouter, {
 				method: 'GET',
-				url: `/health/${studioId}`,
+				url: `/${studioId}`,
 			})
 
-			await route.handler({ studioId: studioId || '' }, req, res, jest.fn())
-
-			const resStr = parseResponseBuffer(res)
-			expect(resStr).toMatchObject(
-				literal<Partial<MockResponseDataString>>({
-					headers: {
-						'content-type': 'application/json',
-					},
-					timedout: false,
-					ended: true,
-				})
-			)
-			return resStr
+			expect(ctx.response.type).toBe('application/json')
+			return ctx
 		}
 
-		testInFiber('REST /health with state GOOD', async () => {
+		test('REST /health with state GOOD', async () => {
 			env = await setupDefaultStudioEnvironment()
 			MeteorMock.mockRunMeteorStartup()
 			await MeteorMock.sleepNoFakeTimers(200)
@@ -139,14 +95,9 @@ describe('systemStatus API', () => {
 			})
 			expect(result0.checks && result0.checks.length).toBeGreaterThan(0)
 
-			let systemHealth
-			try {
-				const response = await callRoute(unprotectString(env.studio._id))
-				expect(response.statusCode).toBe(200)
-				systemHealth = JSON.parse(response.bufferStr)
-			} catch (e) {
-				expect(true).toBe(false) // should not throw
-			}
+			const response = await callRoute(unprotectString(env.studio._id))
+			expect(response.response.status).toBe(200)
+			const systemHealth = JSON.parse(response.body as any)
 
 			expect(systemHealth).toMatchObject({
 				status: status2ExternalStatus(expectedStatus0),

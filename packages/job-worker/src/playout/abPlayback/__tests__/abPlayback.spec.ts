@@ -1,5 +1,5 @@
 import { ABResolverOptions, IBlueprintPieceType, PieceLifespan } from '@sofie-automation/blueprints-integration'
-import { EmptyPieceTimelineObjectsBlob, PieceStatusCode } from '@sofie-automation/corelib/dist/dataModel/Piece'
+import { EmptyPieceTimelineObjectsBlob } from '@sofie-automation/corelib/dist/dataModel/Piece'
 import { PieceInstancePiece, ResolvedPieceInstance } from '@sofie-automation/corelib/dist/dataModel/PieceInstance'
 import { ABSessionAssignments } from '@sofie-automation/corelib/dist/dataModel/RundownPlaylist'
 import { OnGenerateTimelineObjExt } from '@sofie-automation/corelib/dist/dataModel/Timeline'
@@ -32,13 +32,12 @@ function createBasicResolvedPieceInstance(
 		},
 		sourceLayerId: '',
 		outputLayerId: '',
-		metaData: {},
+		privateData: {},
 		lifespan: PieceLifespan.WithinPart,
 		timelineObjectsString: EmptyPieceTimelineObjectsBlob,
 		content: {},
 		invalid: false,
 		startPartId: protectString(''),
-		status: PieceStatusCode.UNKNOWN,
 		pieceType: IBlueprintPieceType.Normal,
 	})
 
@@ -53,13 +52,16 @@ function createBasicResolvedPieceInstance(
 	}
 
 	return literal<ResolvedPieceInstance>({
-		_id: protectString(`inst_${id}`),
-		partInstanceId: protectString(''),
-		rundownId: protectString(''),
-		playlistActivationId: protectString(''),
-		piece,
+		instance: {
+			_id: protectString(`inst_${id}`),
+			partInstanceId: protectString(''),
+			rundownId: protectString(''),
+			playlistActivationId: protectString(''),
+			piece,
+		},
 		resolvedStart: start,
 		resolvedDuration: duration,
+		timelinePriority: 0,
 	})
 }
 
@@ -141,9 +143,9 @@ describe('resolveMediaPlayers', () => {
 
 		expect(mockGetPieceSessionId).toHaveBeenCalledTimes(3)
 		expect(mockGetObjectSessionId).toHaveBeenCalledTimes(0)
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(1, pieces[0], 'clip_abc')
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(2, pieces[1], 'clip_def')
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(3, pieces[2], 'clip_ghi')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(1, pieces[0].instance, 'clip_abc')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(2, pieces[1].instance, 'clip_def')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(3, pieces[2].instance, 'clip_ghi')
 	})
 
 	test('basic pieces - players with string Ids', () => {
@@ -177,9 +179,9 @@ describe('resolveMediaPlayers', () => {
 
 		expect(mockGetPieceSessionId).toHaveBeenCalledTimes(3)
 		expect(mockGetObjectSessionId).toHaveBeenCalledTimes(0)
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(1, pieces[0], 'clip_abc')
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(2, pieces[1], 'clip_def')
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(3, pieces[2], 'clip_ghi')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(1, pieces[0].instance, 'clip_abc')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(2, pieces[1].instance, 'clip_def')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(3, pieces[2].instance, 'clip_ghi')
 	})
 
 	test('basic pieces - players with number and string Ids', () => {
@@ -213,9 +215,9 @@ describe('resolveMediaPlayers', () => {
 
 		expect(mockGetPieceSessionId).toHaveBeenCalledTimes(3)
 		expect(mockGetObjectSessionId).toHaveBeenCalledTimes(0)
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(1, pieces[0], 'clip_abc')
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(2, pieces[1], 'clip_def')
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(3, pieces[2], 'clip_ghi')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(1, pieces[0].instance, 'clip_abc')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(2, pieces[1].instance, 'clip_def')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(3, pieces[2].instance, 'clip_ghi')
 	})
 
 	test('Multiple pieces same id', () => {
@@ -248,10 +250,10 @@ describe('resolveMediaPlayers', () => {
 
 		expect(mockGetPieceSessionId).toHaveBeenCalledTimes(4)
 		expect(mockGetObjectSessionId).toHaveBeenCalledTimes(0)
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(1, pieces[0], 'clip_abc')
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(2, pieces[1], 'clip_abc')
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(3, pieces[2], 'clip_abc')
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(4, pieces[3], 'clip_abc')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(1, pieces[0].instance, 'clip_abc')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(2, pieces[1].instance, 'clip_abc')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(3, pieces[2].instance, 'clip_abc')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(4, pieces[3].instance, 'clip_abc')
 	})
 
 	test('Reuse after gap', () => {
@@ -285,9 +287,9 @@ describe('resolveMediaPlayers', () => {
 
 		expect(mockGetPieceSessionId).toHaveBeenCalledTimes(3)
 		expect(mockGetObjectSessionId).toHaveBeenCalledTimes(0)
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(1, pieces[0], 'clip_abc')
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(2, pieces[1], 'clip_def')
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(3, pieces[2], 'clip_ghi')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(1, pieces[0].instance, 'clip_abc')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(2, pieces[1].instance, 'clip_def')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(3, pieces[2].instance, 'clip_ghi')
 	})
 
 	test('Reuse immediately', () => {
@@ -321,9 +323,9 @@ describe('resolveMediaPlayers', () => {
 
 		expect(mockGetPieceSessionId).toHaveBeenCalledTimes(3)
 		expect(mockGetObjectSessionId).toHaveBeenCalledTimes(0)
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(1, pieces[0], 'clip_abc')
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(2, pieces[1], 'clip_def')
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(3, pieces[2], 'clip_ghi')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(1, pieces[0].instance, 'clip_abc')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(2, pieces[1].instance, 'clip_def')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(3, pieces[2].instance, 'clip_ghi')
 	})
 
 	test('Reuse immediately dense', () => {
@@ -357,9 +359,9 @@ describe('resolveMediaPlayers', () => {
 
 		expect(mockGetPieceSessionId).toHaveBeenCalledTimes(3)
 		expect(mockGetObjectSessionId).toHaveBeenCalledTimes(0)
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(1, pieces[0], 'clip_abc')
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(2, pieces[1], 'clip_def')
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(3, pieces[2], 'clip_ghi')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(1, pieces[0].instance, 'clip_abc')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(2, pieces[1].instance, 'clip_def')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(3, pieces[2].instance, 'clip_ghi')
 	})
 
 	test('basic reassignment', () => {
@@ -404,9 +406,9 @@ describe('resolveMediaPlayers', () => {
 
 		expect(mockGetPieceSessionId).toHaveBeenCalledTimes(3)
 		expect(mockGetObjectSessionId).toHaveBeenCalledTimes(0)
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(1, pieces[0], 'clip_abc')
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(2, pieces[1], 'clip_def')
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(3, pieces[2], 'clip_ghi')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(1, pieces[0].instance, 'clip_abc')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(2, pieces[1].instance, 'clip_def')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(3, pieces[2].instance, 'clip_ghi')
 	})
 
 	test('optional gets discarded', () => {
@@ -451,9 +453,9 @@ describe('resolveMediaPlayers', () => {
 
 		expect(mockGetPieceSessionId).toHaveBeenCalledTimes(3)
 		expect(mockGetObjectSessionId).toHaveBeenCalledTimes(0)
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(1, pieces[0], 'clip_abc')
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(2, pieces[1], 'clip_def')
-		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(3, pieces[2], 'clip_ghi')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(1, pieces[0].instance, 'clip_abc')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(2, pieces[1].instance, 'clip_def')
+		expect(mockGetPieceSessionId).toHaveBeenNthCalledWith(3, pieces[2].instance, 'clip_ghi')
 	})
 
 	// TODO add some tests which check lookahead

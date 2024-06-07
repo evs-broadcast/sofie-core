@@ -11,7 +11,7 @@ import { AdLibFilter } from './filterPreviews/AdLibFilter'
 import { literal } from '../../../../../../lib/lib'
 import { ViewFilter } from './filterPreviews/ViewFilter'
 import { RundownPlaylistFilter } from './filterPreviews/RundownPlaylistFilter'
-import { OutputLayers, SourceLayers } from '../../../../../../lib/collections/ShowStyleBases'
+import { OutputLayers, SourceLayers } from '@sofie-automation/corelib/dist/dataModel/ShowStyleBase'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faExclamationTriangle, faPlus } from '@fortawesome/free-solid-svg-icons'
 import { ActionSelector } from './actionSelector/ActionSelector'
@@ -75,7 +75,7 @@ export const ActionEditor: React.FC<IProps> = function ActionEditor({
 		[action, overrideHelper]
 	)
 
-	function onFilterInsertNext(filterIndex) {
+	function onFilterInsertNext(filterIndex: number) {
 		if (action.filterChain.length === filterIndex + 1) {
 			const obj =
 				filterIndex > -1
@@ -178,7 +178,7 @@ export const ActionEditor: React.FC<IProps> = function ActionEditor({
 					<RundownPlaylistFilter link={chainLink} key={chainIndex} />
 				) : (
 					<dl className="triggered-action-entry__action__filter" key={chainIndex}>
-						<dt>{chainLink.object}</dt>
+						<dt>{(chainLink as any).object}</dt>
 					</dl>
 				)
 			)}

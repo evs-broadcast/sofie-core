@@ -6,7 +6,7 @@ import {
 	ShowStyleBaseId,
 } from '@sofie-automation/corelib/dist/dataModel/Ids'
 import { DBPart } from '@sofie-automation/corelib/dist/dataModel/Part'
-import { EmptyPieceTimelineObjectsBlob, Piece, PieceStatusCode } from '@sofie-automation/corelib/dist/dataModel/Piece'
+import { EmptyPieceTimelineObjectsBlob, Piece } from '@sofie-automation/corelib/dist/dataModel/Piece'
 import { RundownBaselineAdLibItem } from '@sofie-automation/corelib/dist/dataModel/RundownBaselineAdLibPiece'
 import { protectString } from '@sofie-automation/corelib/dist/protectedString'
 import { getCurrentTime, getSystemVersion } from '../lib'
@@ -124,6 +124,7 @@ export async function setupMockShowStyleBase(
 		// hotkeyLegend?: Array<HotkeyDefinition>
 		_rundownVersionHash: '',
 		lastBlueprintConfig: undefined,
+		lastBlueprintFixUpHash: undefined,
 	}
 	const showStyleBase = _.extend(defaultShowStyleBase, doc)
 	await context.mockCollections.ShowStyleBases.insertOne(showStyleBase)
@@ -243,7 +244,6 @@ export async function setupDefaultRundown(
 		startSegmentId: part00.segmentId,
 		startPartId: part00._id,
 		name: 'Piece 000',
-		status: PieceStatusCode.OK,
 		enable: {
 			start: 0,
 		},
@@ -264,7 +264,6 @@ export async function setupDefaultRundown(
 		startSegmentId: part00.segmentId,
 		startPartId: part00._id,
 		name: 'Piece 001',
-		status: PieceStatusCode.OK,
 		enable: {
 			start: 0,
 		},
@@ -286,7 +285,6 @@ export async function setupDefaultRundown(
 		externalId: 'MOCK_ADLIB_000',
 		partId: part00._id,
 		rundownId: rundownId,
-		status: PieceStatusCode.UNKNOWN,
 		name: 'AdLib 0',
 		sourceLayerId: sourceLayerIds[1],
 		outputLayerId: outputLayerIds[0],
@@ -314,7 +312,6 @@ export async function setupDefaultRundown(
 		startSegmentId: part01.segmentId,
 		startPartId: part01._id,
 		name: 'Piece 010',
-		status: PieceStatusCode.OK,
 		enable: {
 			start: 0,
 		},
@@ -385,7 +382,6 @@ export async function setupDefaultRundown(
 		externalId: 'MOCK_GLOBAL_ADLIB_0',
 		lifespan: PieceLifespan.OutOnRundownEnd,
 		rundownId: rundownId,
-		status: PieceStatusCode.UNKNOWN,
 		name: 'Global AdLib 0',
 		sourceLayerId: sourceLayerIds[0],
 		outputLayerId: outputLayerIds[0],
@@ -399,7 +395,6 @@ export async function setupDefaultRundown(
 		externalId: 'MOCK_GLOBAL_ADLIB_1',
 		lifespan: PieceLifespan.OutOnRundownEnd,
 		rundownId: rundownId,
-		status: PieceStatusCode.UNKNOWN,
 		name: 'Global AdLib 1',
 		sourceLayerId: sourceLayerIds[1],
 		outputLayerId: outputLayerIds[0],

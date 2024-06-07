@@ -8,30 +8,29 @@ import {
 	SegmentId,
 	ShowStyleBaseId,
 } from '../dataModel/Ids'
-import { ISourceLayer, PieceLifespan } from '@sofie-automation/blueprints-integration'
+import { PieceLifespan } from '@sofie-automation/blueprints-integration'
 import { PieceInstance, PieceInstancePiece, rewrapPieceToInstance } from '../dataModel/PieceInstance'
 import { DBPartInstance } from '../dataModel/PartInstance'
 import { DBRundown } from '../dataModel/Rundown'
 import { ReadonlyDeep } from 'type-fest'
-import { assertNever, flatten, getRandomId, groupByToMapFunc, literal, max, normalizeArrayToMapFunc } from '../lib'
+import { assertNever, clone, flatten, getRandomId, groupByToMapFunc, max, normalizeArrayToMapFunc } from '../lib'
 import { protectString } from '../protectedString'
-import { getPieceControlObjectId } from './ids'
-import { SourceLayers } from '../dataModel/ShowStyleBase'
 import _ = require('underscore')
 import { MongoQuery } from '../mongo'
+import { DBSegment, SegmentOrphanedReason } from '../dataModel/Segment'
 
-export function buildPiecesStartingInThisPartQuery(part: DBPart): MongoQuery<Piece> {
+export function buildPiecesStartingInThisPartQuery(part: ReadonlyDeep<DBPart>): MongoQuery<Piece> {
 	return { startPartId: part._id }
 }
 
 export function buildPastInfinitePiecesForThisPartQuery(
-	part: DBPart,
-	partsIdsBeforeThisInSegment: PartId[],
-	segmentsIdsBeforeThisInRundown: SegmentId[],
+	part: ReadonlyDeep<DBPart>,
+	partIdsToReceiveOnSegmentEndFrom: PartId[],
+	segmentsToReceiveOnRundownEndFrom: SegmentId[],
 	rundownIdsBeforeThisInPlaylist: RundownId[]
 ): MongoQuery<Piece> | null {
 	const fragments = _.compact([
-		partsIdsBeforeThisInSegment.length > 0
+		partIdsToReceiveOnSegmentEndFrom.length > 0
 			? {
 					// same segment, and previous part
 					lifespan: {
@@ -45,10 +44,10 @@ export function buildPastInfinitePiecesForThisPartQuery(
 					},
 					startRundownId: part.rundownId,
 					startSegmentId: part.segmentId,
-					startPartId: { $in: partsIdsBeforeThisInSegment },
+					startPartId: { $in: partIdsToReceiveOnSegmentEndFrom },
 			  }
 			: undefined,
-		segmentsIdsBeforeThisInRundown.length > 0
+		segmentsToReceiveOnRundownEndFrom.length > 0
 			? {
 					// same rundown, and previous segment
 					lifespan: {
@@ -59,7 +58,7 @@ export function buildPastInfinitePiecesForThisPartQuery(
 						],
 					},
 					startRundownId: part.rundownId,
-					startSegmentId: { $in: segmentsIdsBeforeThisInRundown },
+					startSegmentId: { $in: segmentsToReceiveOnRundownEndFrom },
 			  }
 			: undefined,
 		rundownIdsBeforeThisInPlaylist.length > 0
@@ -92,32 +91,43 @@ export function buildPastInfinitePiecesForThisPartQuery(
 
 export function getPlayheadTrackingInfinitesForPart(
 	playlistActivationId: RundownPlaylistActivationId,
-	partsBeforeThisInSegmentSet: Set<PartId>,
-	segmentsBeforeThisInRundownSet: Set<SegmentId>,
-	rundownsBeforeThisInPlaylist: RundownId[],
+	partsToReceiveOnSegmentEndFromSet: Set<PartId>,
+	segmentsToReceiveOnRundownEndFromSet: Set<SegmentId>,
+	rundownsToReceiveOnShowStyleEndFrom: RundownId[],
 	rundownsToShowstyles: Map<RundownId, ShowStyleBaseId>,
-	currentPartInstance: DBPartInstance,
-	currentPartPieceInstances: PieceInstance[],
-	rundown: ReadonlyDeep<Pick<DBRundown, '_id' | 'showStyleBaseId'>>,
-	part: DBPart,
+	currentPartInstance: ReadonlyDeep<DBPartInstance>,
+	playingSegment: ReadonlyDeep<Pick<DBSegment, '_id' | 'orphaned'>>,
+	currentPartPieceInstances: ReadonlyDeep<PieceInstance[]>,
+	intoRundown: ReadonlyDeep<Pick<DBRundown, '_id' | 'showStyleBaseId'>>,
+	intoPart: ReadonlyDeep<DBPart>,
+	intoSegment: ReadonlyDeep<Pick<DBSegment, '_id' | 'orphaned'>>,
 	newInstanceId: PartInstanceId,
 	nextPartIsAfterCurrentPart: boolean,
 	isTemporary: boolean
 ): PieceInstance[] {
+	if (
+		intoSegment._id !== playingSegment._id &&
+		(intoSegment.orphaned === SegmentOrphanedReason.SCRATCHPAD ||
+			playingSegment.orphaned === SegmentOrphanedReason.SCRATCHPAD)
+	) {
+		// If crossing the boundary between of the scratchpad, don't continue any infinites
+		return []
+	}
+
 	const canContinueAdlibOnEnds = nextPartIsAfterCurrentPart
 	interface InfinitePieceSet {
-		[PieceLifespan.OutOnShowStyleEnd]?: PieceInstance
-		[PieceLifespan.OutOnRundownEnd]?: PieceInstance
-		[PieceLifespan.OutOnSegmentEnd]?: PieceInstance
-		onChange?: PieceInstance
+		[PieceLifespan.OutOnShowStyleEnd]?: ReadonlyDeep<PieceInstance>
+		[PieceLifespan.OutOnRundownEnd]?: ReadonlyDeep<PieceInstance>
+		[PieceLifespan.OutOnSegmentEnd]?: ReadonlyDeep<PieceInstance>
+		onChange?: ReadonlyDeep<PieceInstance>
 	}
 	const piecesOnSourceLayers = new Map<string, InfinitePieceSet>()
 
 	const canContinueShowStyleEndInfinites = continueShowStyleEndInfinites(
-		rundownsBeforeThisInPlaylist,
+		rundownsToReceiveOnShowStyleEndFrom,
 		rundownsToShowstyles,
 		currentPartInstance.rundownId,
-		rundown
+		intoRundown
 	)
 
 	const groupedPlayingPieceInstances = groupByToMapFunc(currentPartPieceInstances, (p) => p.piece.sourceLayerId)
@@ -133,7 +143,7 @@ export function getPlayheadTrackingInfinitesForPart(
 		}
 
 		// Some basic resolving, to figure out which is our candidate
-		let lastPieceInstance: PieceInstance | undefined
+		let lastPieceInstance: ReadonlyDeep<PieceInstance> | undefined
 		for (const candidate of lastPieceInstances) {
 			if (lastPieceInstance === undefined || isCandidateBetterToBeContinued(lastPieceInstance, candidate)) {
 				lastPieceInstance = candidate
@@ -145,13 +155,13 @@ export function getPlayheadTrackingInfinitesForPart(
 			let isUsed = false
 			switch (lastPieceInstance.piece.lifespan) {
 				case PieceLifespan.OutOnSegmentChange:
-					if (currentPartInstance.segmentId === part.segmentId) {
+					if (currentPartInstance.segmentId === intoPart.segmentId) {
 						// Still in the same segment
 						isUsed = true
 					}
 					break
 				case PieceLifespan.OutOnRundownChange:
-					if (lastPieceInstance.rundownId === part.rundownId) {
+					if (lastPieceInstance.rundownId === intoPart.rundownId) {
 						// Still in the same rundown
 						isUsed = true
 					}
@@ -193,14 +203,14 @@ export function getPlayheadTrackingInfinitesForPart(
 					switch (mode) {
 						case PieceLifespan.OutOnSegmentEnd:
 							isValid =
-								currentPartInstance.segmentId === part.segmentId &&
-								partsBeforeThisInSegmentSet.has(candidatePiece.piece.startPartId)
+								currentPartInstance.segmentId === intoPart.segmentId &&
+								partsToReceiveOnSegmentEndFromSet.has(candidatePiece.piece.startPartId)
 							break
 						case PieceLifespan.OutOnRundownEnd:
 							isValid =
-								candidatePiece.rundownId === part.rundownId &&
-								(segmentsBeforeThisInRundownSet.has(currentPartInstance.segmentId) ||
-									currentPartInstance.segmentId === part.segmentId)
+								candidatePiece.rundownId === intoPart.rundownId &&
+								(segmentsToReceiveOnRundownEndFromSet.has(currentPartInstance.segmentId) ||
+									currentPartInstance.segmentId === intoPart.segmentId)
 							break
 						case PieceLifespan.OutOnShowStyleEnd:
 							isValid = canContinueShowStyleEndInfinites
@@ -221,7 +231,7 @@ export function getPlayheadTrackingInfinitesForPart(
 			const instance = rewrapPieceToInstance(
 				p.piece,
 				playlistActivationId,
-				part.rundownId,
+				intoPart.rundownId,
 				newInstanceId,
 				isTemporary
 			)
@@ -255,7 +265,7 @@ export function getPlayheadTrackingInfinitesForPart(
 	)
 }
 
-function markPieceInstanceAsContinuation(previousInstance: PieceInstance, instance: PieceInstance) {
+function markPieceInstanceAsContinuation(previousInstance: ReadonlyDeep<PieceInstance>, instance: PieceInstance) {
 	instance._id = protectString(`${instance._id}_continue`)
 	instance.dynamicallyInserted = previousInstance.dynamicallyInserted
 	instance.adLibSourceId = previousInstance.adLibSourceId
@@ -264,14 +274,14 @@ function markPieceInstanceAsContinuation(previousInstance: PieceInstance, instan
 }
 
 export function isPiecePotentiallyActiveInPart(
-	previousPartInstance: DBPartInstance | undefined,
-	partsBeforeThisInSegment: Set<PartId>,
-	segmentsBeforeThisInRundown: Set<SegmentId>,
-	rundownsBeforeThisInPlaylist: RundownId[],
+	previousPartInstance: ReadonlyDeep<DBPartInstance> | undefined,
+	partsToReceiveOnSegmentEndFrom: Set<PartId>,
+	segmentsToReceiveOnRundownEndFrom: Set<SegmentId>,
+	rundownsToReceiveOnShowStyleEndFrom: RundownId[],
 	rundownsToShowstyles: Map<RundownId, ShowStyleBaseId>,
 	rundown: ReadonlyDeep<Pick<DBRundown, '_id' | 'showStyleBaseId'>>,
-	part: DBPart,
-	pieceToCheck: Piece
+	part: ReadonlyDeep<DBPart>,
+	pieceToCheck: ReadonlyDeep<Piece>
 ): boolean {
 	// If its from the current part
 	if (pieceToCheck.startPartId === part._id) {
@@ -284,14 +294,15 @@ export function isPiecePotentiallyActiveInPart(
 			return false
 		case PieceLifespan.OutOnSegmentEnd:
 			return (
-				pieceToCheck.startSegmentId === part.segmentId && partsBeforeThisInSegment.has(pieceToCheck.startPartId)
+				pieceToCheck.startSegmentId === part.segmentId &&
+				partsToReceiveOnSegmentEndFrom.has(pieceToCheck.startPartId)
 			)
 		case PieceLifespan.OutOnRundownEnd:
 			if (pieceToCheck.startRundownId === part.rundownId) {
 				if (pieceToCheck.startSegmentId === part.segmentId) {
-					return partsBeforeThisInSegment.has(pieceToCheck.startPartId)
+					return partsToReceiveOnSegmentEndFrom.has(pieceToCheck.startPartId)
 				} else {
-					return segmentsBeforeThisInRundown.has(pieceToCheck.startSegmentId)
+					return segmentsToReceiveOnRundownEndFrom.has(pieceToCheck.startSegmentId)
 				}
 			} else {
 				return false
@@ -305,7 +316,7 @@ export function isPiecePotentiallyActiveInPart(
 				// Predicting what will happen at arbitrary point in the future
 				return (
 					pieceToCheck.startSegmentId === part.segmentId &&
-					partsBeforeThisInSegment.has(pieceToCheck.startPartId)
+					partsToReceiveOnSegmentEndFrom.has(pieceToCheck.startPartId)
 				)
 			}
 		case PieceLifespan.OutOnRundownChange:
@@ -317,13 +328,13 @@ export function isPiecePotentiallyActiveInPart(
 				// Predicting what will happen at arbitrary point in the future
 				return (
 					pieceToCheck.startRundownId === part.rundownId &&
-					segmentsBeforeThisInRundown.has(pieceToCheck.startSegmentId)
+					segmentsToReceiveOnRundownEndFrom.has(pieceToCheck.startSegmentId)
 				)
 			}
 		case PieceLifespan.OutOnShowStyleEnd:
 			return previousPartInstance && pieceToCheck.lifespan === PieceLifespan.OutOnShowStyleEnd
 				? continueShowStyleEndInfinites(
-						rundownsBeforeThisInPlaylist,
+						rundownsToReceiveOnShowStyleEndFrom,
 						rundownsToShowstyles,
 						previousPartInstance.rundownId,
 						rundown
@@ -342,9 +353,9 @@ export function isPiecePotentiallyActiveInPart(
  * @param playingPieceInstances The PieceInstances from the current PartInstance
  * @param rundown The Rundown the Part belongs to
  * @param part The Part the PartInstance is based on
- * @param partsBeforeThisInSegmentSet Set of PartIds that exist in the Segment before the part being processed
- * @param segmentsBeforeThisInRundownSet Set of SegmentIds that exist in the Rundown before the part being processed
- * @param rundownsBeforeThisInPlaylist Set of RundownIds that exist in the Playlist before the part being processed
+ * @param partsToReceiveOnSegmentEndFromSet Set of PartIds that exist in the Segment before the part being processed
+ * @param segmentsToReceiveOnRundownEndFromSet Set of SegmentIds that exist in the Rundown before the part being processed
+ * @param rundownsToReceiveOnShowStyleEndFrom Set of RundownIds that exist in the Playlist before the part being processed
  * @param rundownsToShowstyles Lookup of RundownIds in the Playlist, to their ShowStyleBase id
  * @param possiblePieces Array of Pieces that should be considered for being a PieceInstance in the new PartInstance
  * @param orderedPartIds Ordered array of all PartId in the Rundown
@@ -355,21 +366,26 @@ export function isPiecePotentiallyActiveInPart(
  */
 export function getPieceInstancesForPart(
 	playlistActivationId: RundownPlaylistActivationId,
-	playingPartInstance: DBPartInstance | undefined,
-	playingPieceInstances: PieceInstance[] | undefined,
+	playingPartInstance: ReadonlyDeep<DBPartInstance> | undefined,
+	playingSegment: ReadonlyDeep<Pick<DBSegment, '_id' | 'orphaned'>> | undefined,
+	playingPieceInstances: ReadonlyDeep<PieceInstance[]> | undefined,
 	rundown: ReadonlyDeep<Pick<DBRundown, '_id' | 'showStyleBaseId'>>,
-	part: DBPart,
-	partsBeforeThisInSegmentSet: Set<PartId>,
-	segmentsBeforeThisInRundownSet: Set<SegmentId>,
-	rundownsBeforeThisInPlaylist: RundownId[],
+	segment: ReadonlyDeep<Pick<DBSegment, '_id' | 'orphaned'>>,
+	part: ReadonlyDeep<DBPart>,
+	partsToReceiveOnSegmentEndFromSet: Set<PartId>,
+	segmentsToReceiveOnRundownEndFromSet: Set<SegmentId>,
+	rundownsToReceiveOnShowStyleEndFrom: RundownId[],
 	rundownsToShowstyles: Map<RundownId, ShowStyleBaseId>,
-	possiblePieces: Piece[],
+	possiblePieces: ReadonlyDeep<Piece>[],
 	orderedPartIds: PartId[],
 	newInstanceId: PartInstanceId,
 	nextPartIsAfterCurrentPart: boolean,
 	isTemporary: boolean
 ): PieceInstance[] {
-	const doesPieceAStartBeforePieceB = (pieceA: PieceInstancePiece, pieceB: PieceInstancePiece): boolean => {
+	const doesPieceAStartBeforePieceB = (
+		pieceA: ReadonlyDeep<PieceInstancePiece>,
+		pieceB: ReadonlyDeep<PieceInstancePiece>
+	): boolean => {
 		if (pieceA.startPartId === pieceB.startPartId) {
 			return pieceA.enable.start < pieceB.enable.start
 		}
@@ -388,9 +404,9 @@ export function getPieceInstancesForPart(
 	}
 
 	interface InfinitePieceSet {
-		[PieceLifespan.OutOnShowStyleEnd]?: Piece
-		[PieceLifespan.OutOnRundownEnd]?: Piece
-		[PieceLifespan.OutOnSegmentEnd]?: Piece
+		[PieceLifespan.OutOnShowStyleEnd]?: ReadonlyDeep<Piece>
+		[PieceLifespan.OutOnRundownEnd]?: ReadonlyDeep<Piece>
+		[PieceLifespan.OutOnSegmentEnd]?: ReadonlyDeep<Piece>
 		// onChange?: PieceInstance
 	}
 	const piecesOnSourceLayers = new Map<string, InfinitePieceSet>()
@@ -405,9 +421,9 @@ export function getPieceInstancesForPart(
 		) {
 			const useIt = isPiecePotentiallyActiveInPart(
 				playingPartInstance,
-				partsBeforeThisInSegmentSet,
-				segmentsBeforeThisInRundownSet,
-				rundownsBeforeThisInPlaylist,
+				partsToReceiveOnSegmentEndFromSet,
+				segmentsToReceiveOnRundownEndFromSet,
+				rundownsToReceiveOnShowStyleEndFrom,
 				rundownsToShowstyles,
 				rundown,
 				part,
@@ -426,22 +442,25 @@ export function getPieceInstancesForPart(
 	}
 
 	// OnChange infinites take priority over onEnd, as they travel with the playhead
-	const infinitesFromPrevious = playingPartInstance
-		? getPlayheadTrackingInfinitesForPart(
-				playlistActivationId,
-				partsBeforeThisInSegmentSet,
-				segmentsBeforeThisInRundownSet,
-				rundownsBeforeThisInPlaylist,
-				rundownsToShowstyles,
-				playingPartInstance,
-				playingPieceInstances || [],
-				rundown,
-				part,
-				newInstanceId,
-				nextPartIsAfterCurrentPart,
-				isTemporary
-		  )
-		: []
+	const infinitesFromPrevious =
+		playingPartInstance && playingSegment
+			? getPlayheadTrackingInfinitesForPart(
+					playlistActivationId,
+					partsToReceiveOnSegmentEndFromSet,
+					segmentsToReceiveOnRundownEndFromSet,
+					rundownsToReceiveOnShowStyleEndFrom,
+					rundownsToShowstyles,
+					playingPartInstance,
+					playingSegment,
+					playingPieceInstances || [],
+					rundown,
+					part,
+					segment,
+					newInstanceId,
+					nextPartIsAfterCurrentPart,
+					isTemporary
+			  )
+			: []
 
 	// Compile the resulting list
 
@@ -450,8 +469,14 @@ export function getPieceInstancesForPart(
 		(p) => p.infinite?.infinitePieceId
 	)
 
-	const wrapPiece = (p: PieceInstancePiece) => {
-		const instance = rewrapPieceToInstance(p, playlistActivationId, part.rundownId, newInstanceId, isTemporary)
+	const wrapPiece = (p: ReadonlyDeep<PieceInstancePiece>) => {
+		const instance = rewrapPieceToInstance(
+			clone<PieceInstancePiece>(p),
+			playlistActivationId,
+			part.rundownId,
+			newInstanceId,
+			isTemporary
+		)
 
 		if (instance.piece.lifespan !== PieceLifespan.WithinPart) {
 			const existingPiece = nextPartIsAfterCurrentPart
@@ -494,162 +519,15 @@ export function getPieceInstancesForPart(
 			pieceSet[PieceLifespan.OutOnSegmentEnd],
 		])
 		result.push(...onEndPieces.map(wrapPiece))
-
-		// if (pieceSet.onChange) {
-		// 	result.push(rewrapInstance(pieceSet.onChange))
-		// }
 	}
 
 	return result
 }
 
-export interface PieceInstanceWithTimings extends PieceInstance {
-	/**
-	 * This is a maximum end point of the pieceInstance.
-	 * If the pieceInstance also has a enable.duration or userDuration set then the shortest one will need to be used
-	 * This can be:
-	 *  - 'now', if it was stopped by something that does not need a preroll (or is virtual)
-	 *  - '#something.start + 100', if it was stopped by something that needs a preroll
-	 *  - '100', if not relative to now at all
-	 */
-	resolvedEndCap?: number | string
-	priority: number
-}
-
-/**
- * Get the `enable: { start: ?? }` for the new piece in terms that can be used as an `end` for another object
- */
-function getPieceStartTime(newPieceStart: number | 'now', newPiece: PieceInstance): number | string {
-	return typeof newPieceStart === 'number' ? newPieceStart : `#${getPieceControlObjectId(newPiece)}.start`
-}
-
-function isClear(piece?: PieceInstance): boolean {
-	return !!piece?.piece.virtual
-}
-
-function isCappedByAVirtual(
-	activePieces: PieceInstanceOnInfiniteLayers,
-	key: keyof PieceInstanceOnInfiniteLayers,
-	newPiece: PieceInstance
-): boolean {
-	if (
-		(key === 'onRundownEnd' || key === 'onShowStyleEnd') &&
-		activePieces.onSegmentEnd &&
-		isCandidateMoreImportant(newPiece, activePieces.onSegmentEnd)
-	)
-		return true
-	if (
-		key === 'onShowStyleEnd' &&
-		activePieces.onRundownEnd &&
-		isCandidateMoreImportant(newPiece, activePieces.onRundownEnd)
-	)
-		return true
-	return false
-}
-
-/**
- * Process the infinite pieces to determine the start time and a maximum end time for each.
- * Any pieces which have no chance of being shown (duplicate start times) are pruned
- * The stacking order of infinites is considered, to define the stop times
- */
-export function processAndPrunePieceInstanceTimings(
-	sourceLayers: SourceLayers,
-	pieces: PieceInstance[],
-	nowInPart: number,
-	keepDisabledPieces?: boolean,
-	includeVirtual?: boolean
-): PieceInstanceWithTimings[] {
-	const results: PieceInstanceWithTimings[] = []
-
-	// We want to group by exclusive groups, to let them be resolved
-	const exclusiveGroupMap = new Map<string, string>()
-	for (const layer of Object.values<ISourceLayer | undefined>(sourceLayers)) {
-		if (layer?.exclusiveGroup) {
-			exclusiveGroupMap.set(layer._id, layer.exclusiveGroup)
-		}
-	}
-
-	const groupedPieces = groupByToMapFunc(
-		keepDisabledPieces ? pieces : pieces.filter((p) => !p.disabled),
-		// At this stage, if a Piece is disabled, the `keepDisabledPieces` must be turned on. If that's the case
-		// we split out the disabled Pieces onto the sourceLayerId they actually exist on, instead of putting them
-		// onto the shared "exclusivityGroup" layer. This may cause it to not display "exactly" accurately
-		// while in the disabled state, but it should keep it from affecting any not-disabled Pieces.
-		(p) =>
-			p.disabled ? p.piece.sourceLayerId : exclusiveGroupMap.get(p.piece.sourceLayerId) || p.piece.sourceLayerId
-	)
-	for (const pieces of groupedPieces.values()) {
-		// Group and sort the pieces so that we can step through each point in time
-		const piecesByStart: Array<[number | 'now', PieceInstance[]]> = _.sortBy(
-			Array.from(groupByToMapFunc(pieces, (p) => p.piece.enable.start).entries()).map(([k, v]) =>
-				literal<[number | 'now', PieceInstance[]]>([k === 'now' ? 'now' : Number(k), v])
-			),
-			([k]) => (k === 'now' ? nowInPart : k)
-		)
-
-		// Step through time
-		const activePieces: PieceInstanceOnInfiniteLayers = {}
-		for (const [newPiecesStart, pieces] of piecesByStart) {
-			const newPieces = findPieceInstancesOnInfiniteLayers(pieces)
-
-			// Apply the updates
-			// Note: order is important, the higher layers must be done first
-			updateWithNewPieces(results, activePieces, newPieces, newPiecesStart, includeVirtual, 'other')
-			updateWithNewPieces(results, activePieces, newPieces, newPiecesStart, includeVirtual, 'onSegmentEnd')
-			updateWithNewPieces(results, activePieces, newPieces, newPiecesStart, includeVirtual, 'onRundownEnd')
-			updateWithNewPieces(results, activePieces, newPieces, newPiecesStart, includeVirtual, 'onShowStyleEnd')
-		}
-	}
-
-	// Strip out any pieces that start and end at the same point
-	return results.filter((p) => p.resolvedEndCap === undefined || p.resolvedEndCap !== p.piece.enable.start)
-}
-function updateWithNewPieces(
-	results: PieceInstanceWithTimings[],
-	activePieces: PieceInstanceOnInfiniteLayers,
-	newPieces: PieceInstanceOnInfiniteLayers,
-	newPiecesStart: number | 'now',
-	includeVirtual: boolean | undefined,
-	key: keyof PieceInstanceOnInfiniteLayers
-): void {
-	const newPiece = newPieces[key]
-	if (newPiece) {
-		const activePiece = activePieces[key]
-		if (activePiece) {
-			activePiece.resolvedEndCap = getPieceStartTime(newPiecesStart, newPiece)
-		}
-		// track the new piece
-		activePieces[key] = newPiece
-
-		// We don't want to include virtual pieces in the output (most of the time)
-		// TODO - do we want to always output virtual pieces from the 'other' group?
-		if (
-			includeVirtual ||
-			((!isClear(newPiece) || key === 'other') && !isCappedByAVirtual(activePieces, key, newPiece))
-		) {
-			// add the piece to results
-			results.push(newPiece)
-
-			if (
-				key === 'onSegmentEnd' ||
-				(key === 'onRundownEnd' && !activePieces.onSegmentEnd) ||
-				(key === 'onShowStyleEnd' && !activePieces.onSegmentEnd && !activePieces.onRundownEnd)
-			) {
-				// when start === 0, we are likely to have multiple infinite continuations. Only stop the 'other' if it should not be considered for being on air
-				if (
-					activePieces.other &&
-					(newPiecesStart !== 0 || isCandidateBetterToBeContinued(activePieces.other, newPiece))
-				) {
-					// These modes should stop the 'other' when they start if not hidden behind a higher priority onEnd
-					activePieces.other.resolvedEndCap = getPieceStartTime(newPiecesStart, newPiece)
-					activePieces.other = undefined
-				}
-			}
-		}
-	}
-}
-
-function isCandidateMoreImportant(best: PieceInstance, candidate: PieceInstance): boolean | undefined {
+export function isCandidateMoreImportant(
+	best: ReadonlyDeep<PieceInstance>,
+	candidate: ReadonlyDeep<PieceInstance>
+): boolean | undefined {
 	// Prioritise the one from this part over previous part
 	if (best.infinite?.fromPreviousPart && !candidate.infinite?.fromPreviousPart) {
 		// Prefer the candidate as it is not from previous
@@ -687,82 +565,28 @@ function isCandidateMoreImportant(best: PieceInstance, candidate: PieceInstance)
 	return undefined
 }
 
-function isCandidateBetterToBeContinued(best: PieceInstance, candidate: PieceInstance): boolean {
+export function isCandidateBetterToBeContinued(
+	best: ReadonlyDeep<PieceInstance>,
+	candidate: ReadonlyDeep<PieceInstance>
+): boolean {
 	// Fallback to id, as we dont have any other criteria and this will be stable.
 	// Note: we shouldnt even get here, as it shouldnt be possible for multiple to start at the same time, but it is possible
 	return isCandidateMoreImportant(best, candidate) ?? best.piece._id < candidate.piece._id
 }
 
-interface PieceInstanceOnInfiniteLayers {
-	onShowStyleEnd?: PieceInstanceWithTimings
-	onRundownEnd?: PieceInstanceWithTimings
-	onSegmentEnd?: PieceInstanceWithTimings
-	other?: PieceInstanceWithTimings
-}
-function findPieceInstancesOnInfiniteLayers(pieces: PieceInstance[]): PieceInstanceOnInfiniteLayers {
-	if (pieces.length === 0) {
-		return {}
-	}
-
-	const res: PieceInstanceOnInfiniteLayers = {}
-
-	for (const piece of pieces) {
-		switch (piece.piece.lifespan) {
-			case PieceLifespan.OutOnShowStyleEnd:
-				if (!res.onShowStyleEnd || isCandidateBetterToBeContinued(res.onShowStyleEnd, piece)) {
-					res.onShowStyleEnd = {
-						...piece,
-						priority: 0,
-					}
-				}
-				break
-			case PieceLifespan.OutOnRundownEnd:
-				if (!res.onRundownEnd || isCandidateBetterToBeContinued(res.onRundownEnd, piece)) {
-					res.onRundownEnd = {
-						...piece,
-						priority: 1,
-					}
-				}
-				break
-			case PieceLifespan.OutOnSegmentEnd:
-				if (!res.onSegmentEnd || isCandidateBetterToBeContinued(res.onSegmentEnd, piece)) {
-					res.onSegmentEnd = {
-						...piece,
-						priority: 2,
-					}
-				}
-				break
-			case PieceLifespan.OutOnRundownChange:
-			case PieceLifespan.OutOnSegmentChange:
-			case PieceLifespan.WithinPart:
-				if (!res.other || isCandidateBetterToBeContinued(res.other, piece)) {
-					res.other = {
-						...piece,
-						priority: 5,
-					}
-				}
-				break
-			default:
-				assertNever(piece.piece.lifespan)
-		}
-	}
-
-	return res
-}
-
 function continueShowStyleEndInfinites(
-	rundownsBeforeThisInPlaylist: RundownId[],
+	rundownsToReceiveOnShowStyleEndFrom: RundownId[],
 	rundownsToShowstyles: Map<RundownId, ShowStyleBaseId>,
 	previousRundownId: RundownId,
-	rundown: ReadonlyDeep<Pick<DBRundown, '_id' | 'showStyleBaseId'>>
+	targetRundown: ReadonlyDeep<Pick<DBRundown, '_id' | 'showStyleBaseId'>>
 ): boolean {
 	let canContinueShowStyleEndInfinites = true
-	if (rundown.showStyleBaseId !== rundownsToShowstyles.get(previousRundownId)) {
+	if (targetRundown.showStyleBaseId !== rundownsToShowstyles.get(previousRundownId)) {
 		canContinueShowStyleEndInfinites = false
 	} else {
-		const targetShowStyle = rundown.showStyleBaseId
-		canContinueShowStyleEndInfinites = rundownsBeforeThisInPlaylist
-			.slice(rundownsBeforeThisInPlaylist.indexOf(previousRundownId))
+		const targetShowStyle = targetRundown.showStyleBaseId
+		canContinueShowStyleEndInfinites = rundownsToReceiveOnShowStyleEndFrom
+			.slice(rundownsToReceiveOnShowStyleEndFrom.indexOf(previousRundownId))
 			.every((r) => rundownsToShowstyles.get(r) === targetShowStyle)
 	}
 

@@ -24,7 +24,7 @@ export function calculateSessionTimeRanges(
 ): SessionRequest[] {
 	const sessionRequests: { [sessionId: string]: SessionRequest | undefined } = {}
 	for (const p of resolvedPieces) {
-		const abSessions = p.piece.abSessions
+		const abSessions = p.instance.piece.abSessions
 		if (!abSessions) continue
 
 		const start = p.resolvedStart
@@ -36,12 +36,12 @@ export function calculateSessionTimeRanges(
 			if (session.poolName !== poolName) continue
 
 			const sessionId = abSessionHelper.getPieceABSessionId(
-				p,
-				abSessionHelper.validateSessionName(p._id, session)
+				p.instance,
+				abSessionHelper.validateSessionName(p.instance._id, session)
 			)
 
 			// Note: multiple generated sessionIds for a single piece will not work as there will not be enough info to assign objects to different players. TODO is this still true?
-			const val = sessionRequests[sessionId] || undefined
+			const val = sessionRequests[sessionId]
 			if (val) {
 				// This session is already known, so extend the session to cover all the pieces
 				sessionRequests[sessionId] = {
@@ -105,7 +105,7 @@ export function calculateSessionTimeRanges(
 		if (!sessionRequests[grp.id]) {
 			result.push({
 				id: grp.id,
-				start: Number.POSITIVE_INFINITY, // Distant future
+				start: Number.MAX_SAFE_INTEGER, // Distant future
 				end: undefined,
 				lookaheadRank: i + 1, // This is so that we can easily work out which to use first
 				playerId: previousAssignmentMap[grp.id]?.playerId,

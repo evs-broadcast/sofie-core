@@ -1,10 +1,10 @@
 import * as React from 'react'
-import { Translated, translateWithTracker } from '../../lib/ReactMeteorData/react-meteor-data'
+import { Translated, useSubscription, useTracker } from '../../lib/ReactMeteorData/react-meteor-data'
 import {
 	PeripheralDevice,
 	PeripheralDeviceType,
 	PERIPHERAL_SUBTYPE_PROCESS,
-} from '../../../lib/collections/PeripheralDevices'
+} from '@sofie-automation/corelib/dist/dataModel/PeripheralDevice'
 import * as reacti18next from 'react-i18next'
 import * as i18next from 'i18next'
 import Moment from 'react-moment'
@@ -15,11 +15,9 @@ import { faTrash, faEye } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import * as _ from 'underscore'
 import { doModalDialog } from '../../lib/ModalDialog'
-import { MeteorReactComponent } from '../../lib/MeteorReactComponent'
 import { callPeripheralDeviceAction, PeripheralDevicesAPI } from '../../lib/clientAPI'
 import { NotificationCenter, NoticeLevel, Notification } from '../../../lib/notifications/notifications'
 import { getAllowConfigure, getAllowDeveloper, getAllowStudio, getHelpMode } from '../../lib/localStorage'
-import { PubSub } from '../../../lib/api/pubsub'
 import ClassNames from 'classnames'
 import { StatusCode, TSR } from '@sofie-automation/blueprints-integration'
 import { ICoreSystem } from '../../../lib/collections/CoreSystem'
@@ -38,12 +36,14 @@ import { PeripheralDeviceId } from '@sofie-automation/shared-lib/dist/core/model
 import { DebugStateTable } from './DebugState'
 import { JSONBlobParse } from '@sofie-automation/shared-lib/dist/lib/JSONBlob'
 import { ClientAPI } from '../../../lib/api/client'
+import { catchError } from '../../lib/lib'
+import { logger } from '../../../lib/logging'
+import { CorelibPubSub } from '@sofie-automation/corelib/dist/pubsub'
 
 interface IDeviceItemProps {
-	// key: string,
+	parentDevice: PeripheralDevice | null
 	device: PeripheralDevice
 	showRemoveButtons?: boolean
-	toplevel?: boolean
 	hasChildren?: boolean
 
 	debugState: object | undefined
@@ -187,6 +187,10 @@ export const DeviceItem = reacti18next.withTranslation()(
 
 			const namespaces = ['peripheralDevice_' + this.props.device._id]
 
+			const configManifest = (this.props.parentDevice ?? this.props.device)?.configManifest?.subdeviceManifest?.[
+				this.props.device.subType
+			]
+
 			return (
 				<div key={unprotectString(this.props.device._id)} className="device-item">
 					<div className="status-container">
@@ -209,7 +213,7 @@ export const DeviceItem = reacti18next.withTranslation()(
 							visible={
 								getHelpMode() &&
 								this.props.device.type === PeripheralDeviceType.PLAYOUT &&
-								this.props.toplevel === true &&
+								!this.props.parentDevice &&
 								!this.props.hasChildren &&
 								this.props.hasChildren !== undefined
 							}
@@ -239,21 +243,20 @@ export const DeviceItem = reacti18next.withTranslation()(
 
 					<div className="actions-container">
 						<div className="device-item__actions">
-							{this.props.device.configManifest?.subdeviceManifest?.[this.props.device.subType] &&
-								this.props.device.configManifest.subdeviceManifest[this.props.device.subType].actions?.map((action) => (
-									<React.Fragment key={action.id}>
-										<button
-											className="btn btn-secondary"
-											onClick={(e) => {
-												e.preventDefault()
-												e.stopPropagation()
-												this.onExecuteAction(e, this.props.device, action)
-											}}
-										>
-											{translateMessage({ key: action.name, namespaces }, i18nTranslator)}
-										</button>
-									</React.Fragment>
-								))}
+							{configManifest?.actions?.map((action) => (
+								<React.Fragment key={action.id}>
+									<button
+										className="btn btn-secondary"
+										onClick={(e) => {
+											e.preventDefault()
+											e.stopPropagation()
+											this.onExecuteAction(e, this.props.device, action)
+										}}
+									>
+										{translateMessage({ key: action.name, namespaces }, i18nTranslator)}
+									</button>
+								</React.Fragment>
+							))}
 							{getAllowDeveloper() ? (
 								<button
 									key="button-ignore"
@@ -265,6 +268,11 @@ export const DeviceItem = reacti18next.withTranslation()(
 										e.stopPropagation()
 										this.onToggleIgnore(this.props.device)
 									}}
+									title={
+										this.props.device.ignore
+											? 'Click to show device status to users'
+											: 'Click to hide device status from users'
+									}
 								>
 									<FontAwesomeIcon icon={faEye} />
 								</button>
@@ -287,7 +295,9 @@ export const DeviceItem = reacti18next.withTranslation()(
 												</p>
 											),
 											onAccept: () => {
-												MeteorCall.peripheralDevice.removePeripheralDevice(this.props.device._id).catch(console.error)
+												MeteorCall.peripheralDevice
+													.removePeripheralDevice(this.props.device._id)
+													.catch(catchError('peripheralDevice.removePeripheralDevice'))
 											},
 										})
 									}}
@@ -302,10 +312,13 @@ export const DeviceItem = reacti18next.withTranslation()(
 										onClick={(e) => {
 											e.preventDefault()
 											e.stopPropagation()
+											e.persist()
 
 											doModalDialog({
-												title: t('Delete'),
-												message: <p>{t('Are you sure you want to restart this device?')}</p>,
+												message: t('Are you sure you want to restart this device?'),
+												title: t('Restart this Device?'),
+												yes: t('Restart'),
+												no: t('Cancel'),
 												onAccept: () => {
 													const { t } = this.props
 													PeripheralDevicesAPI.restartDevice(this.props.device, e)
@@ -456,7 +469,7 @@ export const CoreItem = reacti18next.withTranslation()(
 															return
 														}
 														let time = 'unknown'
-														const match = restartMessage.match(/([\d\.]+)s/)
+														const match = restartMessage.match(/([\d.]+)s/)
 														if (match) {
 															time = match[1]
 														}
@@ -503,21 +516,26 @@ interface DeviceInHierarchy {
 	children: Array<DeviceInHierarchy>
 }
 
-export default translateWithTracker<ISystemStatusProps, ISystemStatusState, ISystemStatusTrackedProps>(() => {
-	return {
-		coreSystem: CoreSystem.findOne(),
-		devices: PeripheralDevices.find({}, { sort: { lastConnected: -1 } }).fetch(),
-	}
-})(
-	class SystemStatus extends MeteorReactComponent<
+export default function SystemStatus(props: Readonly<ISystemStatusProps>): JSX.Element {
+	// Subscribe to data:
+	useSubscription(CorelibPubSub.peripheralDevices, null)
+
+	const coreSystem = useTracker(() => CoreSystem.findOne(), [])
+	const devices = useTracker(() => PeripheralDevices.find({}, { sort: { lastConnected: -1 } }).fetch(), [], [])
+
+	return <SystemStatusContent {...props} coreSystem={coreSystem} devices={devices} />
+}
+
+const SystemStatusContent = reacti18next.withTranslation()(
+	class SystemStatusContent extends React.Component<
 		Translated<ISystemStatusProps & ISystemStatusTrackedProps>,
 		ISystemStatusState
 	> {
 		private refreshInterval: NodeJS.Timer | undefined = undefined
 		private refreshDebugStatesInterval: NodeJS.Timer | undefined = undefined
-		private destroyed: boolean = false
+		private destroyed = false
 
-		constructor(props) {
+		constructor(props: Translated<ISystemStatusProps & ISystemStatusTrackedProps>) {
 			super(props)
 
 			this.state = {
@@ -530,9 +548,6 @@ export default translateWithTracker<ISystemStatusProps, ISystemStatusState, ISys
 			this.refreshSystemStatus()
 			this.refreshInterval = setInterval(this.refreshSystemStatus, 5000)
 			this.refreshDebugStatesInterval = setInterval(this.refreshDebugStates, 1000)
-
-			// Subscribe to data:
-			this.subscribe(PubSub.peripheralDevices, {})
 		}
 
 		componentWillUnmount(): void {
@@ -552,9 +567,10 @@ export default translateWithTracker<ISystemStatusProps, ISystemStatusState, ISys
 						systemStatus: systemStatus,
 					})
 				})
-				.catch(() => {
+				.catch((err) => {
 					if (this.destroyed) return
-					// console.error(err)
+
+					logger.error('systemStatus.getSystemStatus', err)
 					NotificationCenter.push(
 						new Notification(
 							'systemStatus_failed',
@@ -563,13 +579,12 @@ export default translateWithTracker<ISystemStatusProps, ISystemStatusState, ISys
 							'RundownList'
 						)
 					)
-					return
 				})
 		}
 
 		refreshDebugStates = () => {
 			for (const device of this.props.devices) {
-				if (device.type === PeripheralDeviceType.PLAYOUT && device.settings && device.settings['debugState']) {
+				if (device.type === PeripheralDeviceType.PLAYOUT && device.settings && (device.settings as any)['debugState']) {
 					MeteorCall.systemStatus
 						.getDebugStates(device._id)
 						.then((res) => {
@@ -588,7 +603,7 @@ export default translateWithTracker<ISystemStatusProps, ISystemStatusState, ISys
 
 		renderPeripheralDevices() {
 			const devices: Array<DeviceInHierarchy> = []
-			const refs = {}
+			const refs: Record<string, DeviceInHierarchy | undefined> = {}
 			const devicesToAdd: Record<string, DeviceInHierarchy> = {}
 			// First, add all as references:
 			_.each(this.props.devices, (device) => {
@@ -602,7 +617,7 @@ export default translateWithTracker<ISystemStatusProps, ISystemStatusState, ISys
 			// Then, map and add devices:
 			_.each(devicesToAdd, (d: DeviceInHierarchy) => {
 				if (d.device.parentDeviceId) {
-					const parent: DeviceInHierarchy = refs[unprotectString(d.device.parentDeviceId)]
+					const parent = refs[unprotectString(d.device.parentDeviceId)]
 					if (parent) {
 						parent.children.push(d)
 					} else {
@@ -614,12 +629,12 @@ export default translateWithTracker<ISystemStatusProps, ISystemStatusState, ISys
 				}
 			})
 
-			const getDeviceContent = (d: DeviceInHierarchy, toplevel: boolean): JSX.Element => {
+			const getDeviceContent = (parentDevice: DeviceInHierarchy | null, d: DeviceInHierarchy): JSX.Element => {
 				const content: JSX.Element[] = [
 					<DeviceItem
 						key={'device' + d.device._id}
+						parentDevice={parentDevice?.device ?? null}
 						device={d.device}
-						toplevel={toplevel}
 						hasChildren={d.children.length !== 0}
 						debugState={this.state.deviceDebugState.get(d.device._id)}
 					/>,
@@ -629,7 +644,7 @@ export default translateWithTracker<ISystemStatusProps, ISystemStatusState, ISys
 					_.each(d.children, (child: DeviceInHierarchy) =>
 						children.push(
 							<li key={'childdevice' + child.device._id} className="child-device-li">
-								{getDeviceContent(child, false)}
+								{getDeviceContent(d, child)}
 							</li>
 						)
 					)
@@ -651,7 +666,7 @@ export default translateWithTracker<ISystemStatusProps, ISystemStatusState, ISys
 					{this.props.coreSystem && (
 						<CoreItem coreSystem={this.props.coreSystem} systemStatus={this.state.systemStatus} />
 					)}
-					{_.map(devices, (d) => getDeviceContent(d, true))}
+					{_.map(devices, (d) => getDeviceContent(null, d))}
 				</React.Fragment>
 			)
 		}

@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { withTranslation } from 'react-i18next'
-import { PeripheralDevice } from '../../../../lib/collections/PeripheralDevices'
+import { PeripheralDevice } from '@sofie-automation/corelib/dist/dataModel/PeripheralDevice'
 import { Translated } from '../../../lib/ReactMeteorData/react-meteor-data'
 import { IngestDeviceSettings } from '@sofie-automation/corelib/dist/dataModel/PeripheralDeviceSettings/ingestDevice'
 import { NotificationCenter, Notification, NoticeLevel } from '../../../../lib/notifications/notifications'
@@ -19,10 +19,10 @@ export const ConfigManifestOAuthFlowComponent = withTranslation()(
 			super(props)
 			this.state = {}
 		}
-		onUploadCredentialsFile(e) {
+		onUploadCredentialsFile(e: React.ChangeEvent<HTMLInputElement>) {
 			const { t } = this.props
 
-			const file = e.target.files[0]
+			const file = e.target.files?.[0]
 			if (!file) {
 				return
 			}
@@ -37,11 +37,11 @@ export const ConfigManifestOAuthFlowComponent = withTranslation()(
 
 				const uploadFileContents = (e2.target as any).result
 
-				fetchFrom(`/devices/${this.props.device._id}/uploadCredentials`, {
+				fetchFrom(`/api/private/peripheralDevices/${this.props.device._id}/uploadCredentials`, {
 					method: 'POST',
 					body: uploadFileContents,
 					headers: {
-						'content-type': 'text/javascript',
+						'content-type': 'application/json',
 					},
 				})
 					.then(() => {
@@ -71,7 +71,7 @@ export const ConfigManifestOAuthFlowComponent = withTranslation()(
 		resetAppCredentials() {
 			const { t } = this.props
 
-			fetchFrom(`/devices/${this.props.device._id}/resetAppCredentials`, {
+			fetchFrom(`/api/private/peripheralDevices/${this.props.device._id}/resetAppCredentials`, {
 				method: 'POST',
 			})
 				.then(() => {
@@ -99,7 +99,7 @@ export const ConfigManifestOAuthFlowComponent = withTranslation()(
 		resetAuth() {
 			const { t } = this.props
 
-			fetchFrom(`/devices/${this.props.device._id}/resetAuth`, {
+			fetchFrom(`/api/private/peripheralDevices/${this.props.device._id}/resetAuth`, {
 				method: 'POST',
 			})
 				.then(() => {

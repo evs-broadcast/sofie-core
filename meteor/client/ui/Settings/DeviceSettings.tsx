@@ -4,12 +4,11 @@ import {
 	PeripheralDeviceType,
 	PERIPHERAL_SUBTYPE_PROCESS,
 	PeripheralDeviceCategory,
-} from '../../../lib/collections/PeripheralDevices'
+} from '@sofie-automation/corelib/dist/dataModel/PeripheralDevice'
 import { EditAttribute } from '../../lib/EditAttribute'
 import { doModalDialog } from '../../lib/ModalDialog'
 import { Translated, translateWithTracker } from '../../lib/ReactMeteorData/react-meteor-data'
 import { Spinner } from '../../lib/Spinner'
-import { MeteorReactComponent } from '../../lib/MeteorReactComponent'
 import { PeripheralDevicesAPI } from '../../lib/clientAPI'
 
 import { NotificationCenter, Notification, NoticeLevel } from '../../../lib/notifications/notifications'
@@ -37,7 +36,7 @@ interface IDeviceSettingsTrackedProps {
 	subDevices: PeripheralDevice[] | undefined
 }
 export default translateWithTracker<IDeviceSettingsProps, IDeviceSettingsState, IDeviceSettingsTrackedProps>(
-	(props: IDeviceSettingsProps) => {
+	(props: Readonly<IDeviceSettingsProps>) => {
 		return {
 			device: PeripheralDevices.findOne(props.match.params.deviceId),
 			subDevices: PeripheralDevices.find({
@@ -46,7 +45,7 @@ export default translateWithTracker<IDeviceSettingsProps, IDeviceSettingsState, 
 		}
 	}
 )(
-	class DeviceSettings extends MeteorReactComponent<Translated<IDeviceSettingsProps & IDeviceSettingsTrackedProps>> {
+	class DeviceSettings extends React.Component<Translated<IDeviceSettingsProps & IDeviceSettingsTrackedProps>> {
 		renderSpecifics() {
 			if (this.props.device && this.props.device.subType === PERIPHERAL_SUBTYPE_PROCESS) {
 				if (this.props.device.configManifest) {
@@ -69,7 +68,9 @@ export default translateWithTracker<IDeviceSettingsProps, IDeviceSettingsState, 
 			return null
 		}
 
-		restartDevice(device: PeripheralDevice) {
+		restartDevice(device: PeripheralDevice, e: React.UIEvent<HTMLElement>) {
+			e.persist()
+
 			const { t } = this.props
 			doModalDialog({
 				message: t('Are you sure you want to restart this device?'),
@@ -148,7 +149,7 @@ export default translateWithTracker<IDeviceSettingsProps, IDeviceSettingsState, 
 							<h2 className="mhn mtn">{t('Generic Properties')}</h2>
 							<label className="field">
 								<LabelActual label={t('Device Name')} />
-								{!(this.props.device && this.props.device.name) ? (
+								{!device?.name ? (
 									<div className="error-notice inline">
 										{t('No name set')} <FontAwesomeIcon icon={faExclamationTriangle} />
 									</div>
@@ -157,7 +158,7 @@ export default translateWithTracker<IDeviceSettingsProps, IDeviceSettingsState, 
 									<EditAttribute
 										modifiedClassName="bghl"
 										attribute="name"
-										obj={this.props.device}
+										obj={device}
 										type="text"
 										collection={PeripheralDevices}
 										className="mdinput"
@@ -168,7 +169,10 @@ export default translateWithTracker<IDeviceSettingsProps, IDeviceSettingsState, 
 						</div>
 						<div className="col c12 rl-c6 alright">
 							<div className="mbs">
-								<button className="btn btn-secondary btn-tight" onClick={() => device && this.restartDevice(device)}>
+								<button
+									className="btn btn-secondary btn-tight"
+									onClick={(e) => device && this.restartDevice(device, e)}
+								>
 									{t('Restart Device')}
 								</button>
 							</div>
@@ -213,7 +217,7 @@ export default translateWithTracker<IDeviceSettingsProps, IDeviceSettingsState, 
 							<EditAttribute
 								modifiedClassName="bghl"
 								attribute="disableVersionChecks"
-								obj={this.props.device}
+								obj={device}
 								type="checkbox"
 								collection={PeripheralDevices}
 								className="input"
@@ -225,9 +229,9 @@ export default translateWithTracker<IDeviceSettingsProps, IDeviceSettingsState, 
 						{this.renderSpecifics()}
 					</div>
 
-					{this.props.device &&
-					this.props.device.type === PeripheralDeviceType.PACKAGE_MANAGER &&
-					this.props.device.subType === PERIPHERAL_SUBTYPE_PROCESS
+					{device &&
+					device.type === PeripheralDeviceType.PACKAGE_MANAGER &&
+					device.subType === PERIPHERAL_SUBTYPE_PROCESS
 						? this.renderPackageManagerSpecial()
 						: null}
 				</div>
@@ -252,22 +256,20 @@ export default translateWithTracker<IDeviceSettingsProps, IDeviceSettingsState, 
 interface IngestDeviceCoreConfigProps {
 	device: PeripheralDevice
 }
-function IngestDeviceCoreConfig({ device }: IngestDeviceCoreConfigProps) {
+function IngestDeviceCoreConfig({ device }: Readonly<IngestDeviceCoreConfigProps>) {
 	const { t } = useTranslation()
 
 	return (
-		<>
-			<label className="field">
-				<LabelActual label={t('NRCS Name')} />
-				<EditAttribute
-					modifiedClassName="bghl"
-					attribute="nrcsName"
-					obj={device}
-					type="text"
-					collection={PeripheralDevices}
-					className="form-control input text-input input-l"
-				/>
-			</label>
-		</>
+		<label className="field">
+			<LabelActual label={t('NRCS Name')} />
+			<EditAttribute
+				modifiedClassName="bghl"
+				attribute="nrcsName"
+				obj={device}
+				type="text"
+				collection={PeripheralDevices}
+				className="form-control input text-input input-l"
+			/>
+		</label>
 	)
 }

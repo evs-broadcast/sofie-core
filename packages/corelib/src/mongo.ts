@@ -2,7 +2,7 @@ import * as _ from 'underscore'
 import { ProtectedString } from './protectedString'
 import * as objectPath from 'object-path'
 // eslint-disable-next-line node/no-extraneous-import
-import type { Filter, UpdateFilter } from 'mongodb'
+import type { Condition, Filter, UpdateFilter } from 'mongodb'
 
 /** Hack's using typings pulled from meteor */
 
@@ -17,13 +17,22 @@ export type MongoFieldSpecifierOnes<T> = {
 export type MongoFieldSpecifierZeroes<T> = {
 	[P in keyof T]?: 0
 }
-export type MongoFieldSpecifier<T> = MongoFieldSpecifierOnes<T> | MongoFieldSpecifierZeroes<T>
+export type MongoFieldSpecifier<T> =
+	| MongoFieldSpecifierOnes<T>
+	| MongoFieldSpecifierZeroes<T>
+	| MongoFieldSpecifierOnesStrict<Partial<T>>
 
 /**
  * Type helper to construct a field specifier to include all the keys mentioned in a type union.
  * This ensures with Typescript that the fields specified in the query, match what we cast to afterwards
  */
-export type IncludeAllMongoFieldSpecifier<T extends string> = { [key in T]: 1 }
+export type MongoFieldSpecifierOnesStrict<T extends Record<string, any>> = {
+	[key in keyof T]?: T[key] extends ProtectedString<any>
+		? 1
+		: T[key] extends object | undefined
+		? MongoFieldSpecifierOnesStrict<T[key]> | 1
+		: 1
+}
 
 export interface FindOneOptions<TDoc> {
 	sort?: SortSpecifier<TDoc>
@@ -40,6 +49,7 @@ export interface FindOptions<TDoc> extends FindOneOptions<TDoc> {
  * Used for simplified expressions (ie not using $and, $or etc..)
  * */
 export type MongoQuery<TDoc> = Filter<TDoc>
+export type MongoQueryKey<T> = RegExp | T | Condition<T> // Allowed properties in a MongoQuery
 export type MongoModifier<TDoc> = UpdateFilter<TDoc>
 
 /** End of hacks */
@@ -136,7 +146,6 @@ export function mongoWhere<T>(o: Record<string, any>, selector: MongoQuery<T>): 
 				}
 			}
 		} catch (e) {
-			// logger.warn(e || e.reason || e.toString()) // todo: why this logs empty message for TypeError (or any Error)?
 			ok = false
 		}
 	}

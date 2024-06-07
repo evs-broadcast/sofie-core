@@ -1,18 +1,21 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { PieceLifespan } from '@sofie-automation/blueprints-integration'
-import { meteorSubscribe, PubSub } from '../../../lib/api/pubsub'
+import { meteorSubscribe } from '../../../lib/api/pubsub'
 import { useSubscription, useTracker } from '../../lib/ReactMeteorData/ReactMeteorData'
 import {
 	// PartUi,
 	withResolvedSegment,
-	IProps as IResolvedSegmentProps,
-	ITrackedProps as ITrackedResolvedSegmentProps,
+	IResolvedSegmentProps,
+	ITrackedResolvedSegmentProps,
 } from '../SegmentContainer/withResolvedSegment'
 import { SpeechSynthesiser } from '../../lib/speechSynthesis'
 import { SegmentStoryboard } from './SegmentStoryboard'
 import { unprotectString } from '../../../lib/lib'
 import { LIVELINE_HISTORY_SIZE as TIMELINE_LIVELINE_HISTORY_SIZE } from '../SegmentTimeline/SegmentTimelineContainer'
 import { PartInstances, Parts, Segments } from '../../collections'
+import { literal } from '@sofie-automation/shared-lib/dist/lib/lib'
+import { MongoFieldSpecifierOnes } from '@sofie-automation/corelib/dist/mongo'
+import { PartInstance } from '../../../lib/collections/PartInstances'
+import { CorelibPubSub } from '@sofie-automation/corelib/dist/pubsub'
 
 export const LIVELINE_HISTORY_SIZE = TIMELINE_LIVELINE_HISTORY_SIZE
 
@@ -42,12 +45,7 @@ export const SegmentStoryboardContainer = withResolvedSegment<IProps>(function S
 		[segmentId]
 	)
 
-	const piecesReady = useSubscription(PubSub.pieces, {
-		startRundownId: rundownId,
-		startPartId: {
-			$in: partIds,
-		},
-	})
+	const piecesReady = useSubscription(CorelibPubSub.pieces, [rundownId], partIds ?? [])
 
 	const partInstanceIds = useTracker(
 		() =>
@@ -68,15 +66,7 @@ export const SegmentStoryboardContainer = withResolvedSegment<IProps>(function S
 		[segmentId]
 	)
 
-	const pieceInstancesReady = useSubscription(PubSub.pieceInstances, {
-		rundownId: rundownId,
-		partInstanceId: {
-			$in: partInstanceIds,
-		},
-		reset: {
-			$ne: true,
-		},
-	})
+	const pieceInstancesReady = useSubscription(CorelibPubSub.pieceInstances, [rundownId], partInstanceIds ?? [], {})
 
 	useTracker(() => {
 		const segment = Segments.findOne(segmentId, {
@@ -86,28 +76,12 @@ export const SegmentStoryboardContainer = withResolvedSegment<IProps>(function S
 			},
 		})
 		segment &&
-			meteorSubscribe(PubSub.pieces, {
-				invalid: {
-					$ne: true,
-				},
-				$or: [
-					// same rundown, and previous segment
-					{
-						startRundownId: rundownId,
-						startSegmentId: { $in: Array.from(segmentsIdsBefore.values()) },
-						lifespan: {
-							$in: [PieceLifespan.OutOnRundownEnd, PieceLifespan.OutOnRundownChange, PieceLifespan.OutOnShowStyleEnd],
-						},
-					},
-					// Previous rundown
-					{
-						startRundownId: { $in: Array.from(rundownIdsBefore.values()) },
-						lifespan: {
-							$in: [PieceLifespan.OutOnShowStyleEnd],
-						},
-					},
-				],
-			})
+			meteorSubscribe(
+				CorelibPubSub.piecesInfiniteStartingBefore,
+				rundownId,
+				Array.from(segmentsIdsBefore.values()),
+				Array.from(rundownIdsBefore.values())
+			)
 	}, [segmentId, rundownId, segmentsIdsBefore.values(), rundownIdsBefore.values()])
 
 	const isLiveSegment = useTracker(
@@ -134,11 +108,11 @@ export const SegmentStoryboardContainer = withResolvedSegment<IProps>(function S
 			}
 
 			const partInstance = PartInstances.findOne(props.playlist.nextPartInfo.partInstanceId, {
-				fields: {
-					//@ts-expect-error typescript doesnt like it
+				fields: literal<MongoFieldSpecifierOnes<PartInstance>>({
 					segmentId: 1,
+					//@ts-expect-error typescript doesnt like it
 					'part._id': 1,
-				},
+				}),
 			})
 			if (!partInstance) {
 				return false
@@ -240,7 +214,7 @@ export const SegmentStoryboardContainer = withResolvedSegment<IProps>(function S
 			playlist={props.playlist}
 			isLiveSegment={isLiveSegment}
 			isNextSegment={isNextSegment}
-			isQueuedSegment={props.playlist.nextSegmentId === props.segmentui._id}
+			isQueuedSegment={props.playlist.queuedSegmentId === props.segmentui._id}
 			hasRemoteItems={props.hasRemoteItems}
 			hasGuestItems={props.hasGuestItems}
 			currentPartWillAutoNext={currentPartWillAutoNext}
@@ -249,8 +223,6 @@ export const SegmentStoryboardContainer = withResolvedSegment<IProps>(function S
 			liveLineHistorySize={LIVELINE_HISTORY_SIZE}
 			displayLiveLineCounter={props.displayLiveLineCounter}
 			onContextMenu={props.onContextMenu}
-			// onFollowLiveLine={this.onFollowLiveLine}
-			// onShowEntireSegment={this.onShowEntireSegment}
 			onScroll={onScroll}
 			isLastSegment={props.isLastSegment}
 			lastValidPartIndex={props.lastValidPartIndex}

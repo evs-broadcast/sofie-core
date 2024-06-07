@@ -2,11 +2,14 @@ import {
 	CoreConnection,
 	CoreOptions,
 	DDPConnectorOptions,
+	Observer,
 	PeripheralDeviceAPI,
 	PeripheralDeviceCommand,
 	protectString,
 	StatusCode,
-	unprotectString,
+	stringifyError,
+	PeripheralDevicePubSub,
+	PeripheralDevicePubSubCollectionsNames,
 } from '@sofie-automation/server-core-integration'
 import * as Winston from 'winston'
 
@@ -16,6 +19,7 @@ import { DeviceConfig } from './connector'
 import { MOS_DEVICE_CONFIG_MANIFEST } from './configManifest'
 import { getVersions } from './versions'
 import { CoreMosDeviceHandler } from './CoreMosDeviceHandler'
+import { PeripheralDeviceCommandId } from '@sofie-automation/shared-lib/dist/core/model/Ids'
 
 export interface CoreConfig {
 	host: string
@@ -28,13 +32,12 @@ export interface CoreConfig {
 export class CoreHandler {
 	core: CoreConnection | undefined
 	logger: Winston.Logger
-	public _observers: Array<any> = []
+	public _observers: Array<Observer<any>> = []
 	private _deviceOptions: DeviceConfig
 	private _coreMosHandlers: Array<CoreMosDeviceHandler> = []
 	private _onConnected?: () => any
-	private _subscriptions: Array<any> = []
 	private _isInitialized = false
-	private _executedFunctions: { [id: string]: boolean } = {}
+	private _executedFunctions = new Set<PeripheralDeviceCommandId>()
 	private _coreConfig?: CoreConfig
 	private _certificates?: Buffer[]
 
@@ -153,26 +156,22 @@ export class CoreHandler {
 		let foundI = -1
 		for (let i = 0; i < this._coreMosHandlers.length; i++) {
 			const cmh = this._coreMosHandlers[i]
-			if (cmh._mosDevice.idPrimary === mosDevice.idSecondary) {
+			if (
+				cmh._mosDevice.idPrimary === mosDevice.idPrimary ||
+				cmh._mosDevice.idSecondary === mosDevice.idSecondary
+			) {
 				foundI = i
 				break
 			}
 		}
 		const coreMosHandler = this._coreMosHandlers[foundI]
 		if (coreMosHandler) {
-			return coreMosHandler.dispose().then(() => {
-				this._coreMosHandlers.splice(foundI, 1)
-			})
+			this._coreMosHandlers.splice(foundI, 1)
+			await coreMosHandler.dispose()
 		}
 	}
 	onConnectionRestored(): void {
-		this.setupSubscriptionsAndObservers().catch((e) => {
-			this.logger.error(e)
-		})
 		if (this._onConnected) this._onConnected()
-		this._coreMosHandlers.forEach((cmh: CoreMosDeviceHandler) => {
-			cmh.setupSubscriptionsAndObservers()
-		})
 	}
 	onConnected(fcn: () => any): void {
 		this._onConnected = fcn
@@ -186,32 +185,29 @@ export class CoreHandler {
 			})
 			this._observers = []
 		}
-		this._subscriptions = []
 
 		if (!this.core) {
 			throw Error('core is undefined!')
 		}
 
 		this.logger.info('Core: Setting up subscriptions for ' + this.core.deviceId + '..')
-		const subs = await Promise.all([
-			this.core.autoSubscribe('peripheralDeviceForDevice', this.core.deviceId),
-			this.core.autoSubscribe('peripheralDeviceCommands', this.core.deviceId),
+		await Promise.all([
+			this.core.autoSubscribe(PeripheralDevicePubSub.peripheralDeviceForDevice, this.core.deviceId),
+			this.core.autoSubscribe(PeripheralDevicePubSub.peripheralDeviceCommands, this.core.deviceId),
 		])
-
-		this._subscriptions = this._subscriptions.concat(subs)
 
 		this.setupObserverForPeripheralDeviceCommands(this)
 	}
 	executeFunction(cmd: PeripheralDeviceCommand, fcnObject: CoreHandler | CoreMosDeviceHandler): void {
 		if (cmd) {
-			if (this._executedFunctions[unprotectString(cmd._id)]) return // prevent it from running multiple times
+			if (this._executedFunctions.has(cmd._id)) return // prevent it from running multiple times
 			this.logger.debug(cmd.functionName || cmd.actionId || '', cmd.args)
-			this._executedFunctions[unprotectString(cmd._id)] = true
+			this._executedFunctions.add(cmd._id)
 			// console.log('executeFunction', cmd)
-			const cb = (err: any, res?: any) => {
+			const cb = (errStr: string | null, res?: any) => {
 				// console.log('cb', err, res)
-				if (err) {
-					this.logger.error('executeFunction error', err, err.stack)
+				if (errStr) {
+					this.logger.error(`executeFunction error: ${errStr}`)
 				}
 
 				if (!fcnObject.core) {
@@ -219,7 +215,7 @@ export class CoreHandler {
 				}
 
 				fcnObject.core.coreMethods
-					.functionReply(cmd._id, err, res)
+					.functionReply(cmd._id, errStr, res)
 					.then(() => {
 						// console.log('cb done')
 					})
@@ -238,32 +234,34 @@ export class CoreHandler {
 						cb(null, result)
 					})
 					.catch((e) => {
-						cb(e.toString(), null)
+						cb(stringifyError(e), null)
 					})
 			} catch (e: any) {
-				cb(e.toString(), null)
+				cb(stringifyError(e), null)
 			}
 		}
 	}
-	retireExecuteFunction(cmdId: string): void {
-		delete this._executedFunctions[cmdId]
+	retireExecuteFunction(cmdId: PeripheralDeviceCommandId): void {
+		this._executedFunctions.delete(cmdId)
 	}
 	setupObserverForPeripheralDeviceCommands(functionObject: CoreMosDeviceHandler | CoreHandler): void {
 		if (!functionObject.core) {
 			throw Error('functionObject.core is undefined!')
 		}
 
-		const observer = functionObject.core.observe('peripheralDeviceCommands')
+		const observer = functionObject.core.observe(PeripheralDevicePubSubCollectionsNames.peripheralDeviceCommands)
 		functionObject._observers.push(observer)
-		const addedChangedCommand = (id: string) => {
+		const addedChangedCommand = (id: PeripheralDeviceCommandId) => {
 			if (!functionObject.core) {
 				throw Error('functionObject.core is undefined!')
 			}
 
-			const cmds = functionObject.core.getCollection<PeripheralDeviceCommand>('peripheralDeviceCommands')
+			const cmds = functionObject.core.getCollection(
+				PeripheralDevicePubSubCollectionsNames.peripheralDeviceCommands
+			)
 			if (!cmds) throw Error('"peripheralDeviceCommands" collection not found!')
-			const cmd = cmds.findOne(protectString(id))
-			if (!cmd) throw Error('PeripheralCommand "' + id + '" not found!')
+			const cmd = cmds.findOne(id)
+			if (!cmd) throw Error(`PeripheralCommand "${id}" not found!`)
 			// console.log('addedChangedCommand', id)
 			if (cmd.deviceId === functionObject.core.deviceId) {
 				this.executeFunction(cmd, functionObject)
@@ -271,16 +269,16 @@ export class CoreHandler {
 				// console.log('not mine', cmd.deviceId, this.core.deviceId)
 			}
 		}
-		observer.added = (id: string) => {
+		observer.added = (id) => {
 			addedChangedCommand(id)
 		}
-		observer.changed = (id: string) => {
+		observer.changed = (id) => {
 			addedChangedCommand(id)
 		}
-		observer.removed = (id: string) => {
+		observer.removed = (id) => {
 			this.retireExecuteFunction(id)
 		}
-		const cmds = functionObject.core.getCollection<PeripheralDeviceCommand>('peripheralDeviceCommands')
+		const cmds = functionObject.core.getCollection(PeripheralDevicePubSubCollectionsNames.peripheralDeviceCommands)
 		if (!cmds) throw Error('"peripheralDeviceCommands" collection not found!')
 		// any should be PeripheralDeviceCommand
 		cmds.find({}).forEach((cmd) => {

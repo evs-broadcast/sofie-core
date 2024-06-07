@@ -1,8 +1,7 @@
 import React, { useCallback, useMemo } from 'react'
-import { PubSub } from '../../../../lib/api/pubsub'
 import { PartId } from '@sofie-automation/corelib/dist/dataModel/Ids'
-import { AdLibAction } from '../../../../lib/collections/AdLibActions'
-import { AdLibPiece } from '../../../../lib/collections/AdLibPieces'
+import { AdLibAction } from '@sofie-automation/corelib/dist/dataModel/AdlibAction'
+import { AdLibPiece } from '@sofie-automation/corelib/dist/dataModel/AdLibPiece'
 import { ISourceLayerExtended } from '../../../../lib/Rundown'
 import { useSubscription, useTracker } from '../../../lib/ReactMeteorData/ReactMeteorData'
 import { LinePartIndicator } from './LinePartIndicator'
@@ -11,6 +10,7 @@ import { translateMessage } from '@sofie-automation/corelib/dist/TranslatableMes
 import StudioContext from '../../RundownView/StudioContext'
 import { AdLibActions, AdLibPieces } from '../../../collections'
 import RundownViewEventBus, { RundownViewEvents } from '../../../../lib/api/triggers/RundownViewEventBus'
+import { MeteorPubSub } from '../../../../lib/api/pubsub'
 
 interface IProps {
 	sourceLayers: ISourceLayerExtended[]
@@ -24,19 +24,8 @@ export const LinePartAdLibIndicator: React.FC<IProps> = function LinePartAdLibIn
 	const sourceLayerIds = useMemo(() => sourceLayers.map((sourceLayer) => sourceLayer._id), [sourceLayers])
 	const label = useMemo(() => sourceLayers[0]?.name ?? '', [sourceLayers])
 
-	useSubscription(PubSub.adLibPieces, {
-		partId,
-		sourceLayerId: {
-			$in: sourceLayerIds,
-		},
-	})
-
-	useSubscription(PubSub.adLibActions, {
-		partId,
-		'display.sourceLayerId': {
-			$in: sourceLayerIds,
-		},
-	})
+	useSubscription(MeteorPubSub.adLibPiecesForPart, partId, sourceLayerIds)
+	useSubscription(MeteorPubSub.adLibActionsForPart, partId, sourceLayerIds)
 
 	const adLibPieces = useTracker(
 		() =>

@@ -1,24 +1,21 @@
-import _ from 'underscore'
 import { EvsContent, SourceLayerType } from '@sofie-automation/blueprints-integration'
-import React, { useMemo, useState, useRef } from 'react'
+import React, { useMemo, useRef, useState } from 'react'
 import { PieceExtended } from '../../../../lib/Rundown'
-import { MediaObject } from '../../../../lib/collections/MediaObjects'
-import { PackageInfo, VTContent } from '@sofie-automation/blueprints-integration'
 // TODO: Move to a shared lib file
-import { getSplitItems } from '../../SegmentContainer/getSplitItems'
-import { withMediaObjectStatus } from '../../SegmentTimeline/withMediaObjectStatus'
-import { PieceUi } from '../../SegmentContainer/withResolvedSegment'
-import { PieceElement } from '../../SegmentContainer/PieceElement'
+import { PartId, PartInstanceId } from '@sofie-automation/corelib/dist/dataModel/Ids'
+import classNames from 'classnames'
+import { UIStudio } from '../../../../lib/api/studios'
+import { getNoticeLevelForPieceStatus } from '../../../../lib/notifications/notifications'
+import { LoopingPieceIcon } from '../../../lib/ui/icons/looping'
+import { PieceStatusIcon } from '../../../lib/ui/PieceStatusIcon'
 import { getElementWidth } from '../../../utils/dimensions'
 import { getElementDocumentOffset, OffsetPosition } from '../../../utils/positions'
+import { getSplitItems } from '../../SegmentContainer/getSplitItems'
+import { PieceElement } from '../../SegmentContainer/PieceElement'
+import { getPieceSteps, PieceMultistepChevron } from '../../SegmentContainer/PieceMultistepChevron'
+import { PieceUi } from '../../SegmentContainer/withResolvedSegment'
+import { withMediaObjectStatus } from '../../SegmentTimeline/withMediaObjectStatus'
 import { PieceHoverInspector } from '../PieceHoverInspector'
-import { PartId, PartInstanceId } from '@sofie-automation/corelib/dist/dataModel/Ids'
-import { getNoticeLevelForPieceStatus } from '../../../../lib/notifications/notifications'
-import { PieceStatusIcon } from '../../../lib/ui/PieceStatusIcon'
-import { UIStudio } from '../../../../lib/api/studios'
-import classNames from 'classnames'
-import { PieceMultistepChevron } from '../../SegmentContainer/PieceMultistepChevron'
-import { ScanInfoForPackage } from '../../../../lib/mediaObjects'
 
 interface IProps {
 	partId: PartId
@@ -43,96 +40,15 @@ function getPieceDuration(
 		  Math.min(piece.renderedDuration ?? partDuration, partDuration)
 		: Math.max(
 				// renderedDuration can be null. If there is a sourceDuration, use that, if not, use timelineBase
-				piece.renderedDuration ?? (piece.instance.piece.content.sourceDuration ? 0 : timelineBase),
-				piece.instance.piece.content.sourceDuration ?? 0
+				piece.renderedDuration ??
+					(piece.instance.piece.content?.sourceDuration && !piece.instance.piece.content?.loop ? 0 : timelineBase),
+				piece.instance.piece.content?.sourceDuration ?? 0
 		  )
 }
 
 function widthInBase(pieceMaxDuration: number, timelineBase: number): number {
 	const size = Math.min(1, pieceMaxDuration / timelineBase)
 	return size * 100
-}
-
-function getScenes(piece: PieceUi): Array<number> | undefined {
-	if (piece.contentPackageInfos) {
-		// TODO: support multiple packages:
-		const contentPackageInfos = Object.values<ScanInfoForPackage>(piece.contentPackageInfos)
-		if (contentPackageInfos[0]?.deepScan?.scenes) {
-			return _.compact(contentPackageInfos[0].deepScan.scenes.map((i) => i * 1000)) // convert into milliseconds
-		}
-	} else {
-		// Fallback to media objects:
-		const metadata = piece.contentMetaData as MediaObject
-		if (metadata && metadata.mediainfo && metadata.mediainfo.scenes) {
-			return _.compact(metadata.mediainfo.scenes.map((i) => i * 1000)) // convert into milliseconds
-		}
-	}
-}
-
-function getFreezes(piece: PieceUi): Array<PackageInfo.Anomaly> | undefined {
-	if ((piece.instance.piece.content as VTContent | undefined)?.ignoreFreezeFrame) {
-		return
-	}
-
-	if (piece.contentPackageInfos) {
-		let items: Array<PackageInfo.Anomaly> = []
-		// add freezes
-		// TODO: support multiple packages:
-		const contentPackageInfos = Object.values<ScanInfoForPackage>(piece.contentPackageInfos)
-		if (contentPackageInfos[0]?.deepScan?.freezes?.length) {
-			items = contentPackageInfos[0].deepScan.freezes.map((i): PackageInfo.Anomaly => {
-				return { start: i.start * 1000, end: i.end * 1000, duration: i.duration * 1000 }
-			})
-		}
-		return items
-	} else {
-		// Fallback to media objects:
-		const metadata = piece.contentMetaData as MediaObject
-		let items: Array<PackageInfo.Anomaly> = []
-		// add freezes
-		if (metadata && metadata.mediainfo && metadata.mediainfo.freezes?.length) {
-			items = metadata.mediainfo.freezes.map((i): PackageInfo.Anomaly => {
-				return { start: i.start * 1000, end: i.end * 1000, duration: i.duration * 1000 }
-			})
-		}
-		return items
-	}
-}
-
-function getBlacks(piece: PieceUi): Array<PackageInfo.Anomaly> | undefined {
-	if ((piece.instance.piece.content as VTContent | undefined)?.ignoreBlackFrames) {
-		return
-	}
-
-	if (piece.contentPackageInfos) {
-		let items: Array<PackageInfo.Anomaly> = []
-		// add blacks
-		// TODO: support multiple packages:
-		const contentPackageInfos = Object.values<ScanInfoForPackage>(piece.contentPackageInfos)
-		if (contentPackageInfos[0]?.deepScan?.blacks) {
-			items = [
-				...items,
-				...contentPackageInfos[0].deepScan.blacks.map((i): PackageInfo.Anomaly => {
-					return { start: i.start * 1000, end: i.end * 1000, duration: i.duration * 1000 }
-				}),
-			]
-		}
-		return items
-	} else {
-		// Fallback to media objects:
-		const metadata = piece.contentMetaData as MediaObject
-		let items: Array<PackageInfo.Anomaly> = []
-		// add blacks
-		if (metadata && metadata.mediainfo && metadata.mediainfo.blacks) {
-			items = [
-				...items,
-				...metadata.mediainfo.blacks.map((i): PackageInfo.Anomaly => {
-					return { start: i.start * 1000, end: i.end * 1000, duration: i.duration * 1000 }
-				}),
-			]
-		}
-		return items
-	}
 }
 
 // TODO: Create useMediaObjectStatus that would set up new subscriptions
@@ -163,15 +79,11 @@ export const LinePartMainPiece = withMediaObjectStatus<IProps, {}>()(function Li
 
 	const seek = (piece.instance.piece.content as any).seek ?? 0
 
-	const blacks = useMemo(() => getBlacks(pieceUi), [pieceUi.contentPackageInfos?.[0], pieceUi.contentMetaData])
-	const freezes = useMemo(() => getFreezes(pieceUi), [pieceUi.contentPackageInfos?.[0], pieceUi.contentMetaData])
-	const scenes = useMemo(() => getScenes(pieceUi), [pieceUi.contentPackageInfos?.[0], pieceUi.contentMetaData])
-
 	const anomalies = useMemo(
 		() => (
 			<>
-				{scenes &&
-					scenes.map(
+				{pieceUi.contentStatus?.scenes &&
+					pieceUi.contentStatus?.scenes.map(
 						(i) =>
 							i < pieceMaxDuration &&
 							i - seek >= 0 && (
@@ -182,8 +94,8 @@ export const LinePartMainPiece = withMediaObjectStatus<IProps, {}>()(function Li
 								></span>
 							)
 					)}
-				{freezes &&
-					freezes.map(
+				{pieceUi.contentStatus?.freezes &&
+					pieceUi.contentStatus?.freezes.map(
 						(i) =>
 							i.start < pieceMaxDuration &&
 							i.start - seek >= 0 && (
@@ -197,8 +109,8 @@ export const LinePartMainPiece = withMediaObjectStatus<IProps, {}>()(function Li
 								></span>
 							)
 					)}
-				{blacks &&
-					blacks.map(
+				{pieceUi.contentStatus?.blacks &&
+					pieceUi.contentStatus?.blacks.map(
 						(i) =>
 							i.start < pieceMaxDuration &&
 							i.start - seek >= 0 && (
@@ -214,7 +126,7 @@ export const LinePartMainPiece = withMediaObjectStatus<IProps, {}>()(function Li
 					)}
 			</>
 		),
-		[blacks, freezes, scenes]
+		[pieceUi.contentStatus?.blacks, pieceUi.contentStatus?.freezes, pieceUi.contentStatus?.scenes]
 	)
 
 	const onPointerEnter = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -249,13 +161,13 @@ export const LinePartMainPiece = withMediaObjectStatus<IProps, {}>()(function Li
 		setMousePosition(e.pageX - origin.left)
 	}
 
-	const status = piece.instance.piece.status
-	const noticeLevel = status !== null && status !== undefined ? getNoticeLevelForPieceStatus(status) : null
+	const noticeLevel = getNoticeLevelForPieceStatus(piece.contentStatus?.status)
 
-	const multistepChevron = PieceMultistepChevron({
-		className: 'segment-opl__main-piece__label__step-chevron',
-		piece: piece,
-	})
+	const hasStepChevron = getPieceSteps(piece)
+
+	const multistepChevron = (
+		<PieceMultistepChevron className="segment-opl__main-piece__label__step-chevron" piece={piece} />
+	)
 
 	return (
 		<PieceElement
@@ -275,7 +187,7 @@ export const LinePartMainPiece = withMediaObjectStatus<IProps, {}>()(function Li
 			{anomalies}
 			<div
 				className={classNames('segment-opl__main-piece__label', {
-					mln: !!multistepChevron,
+					mln: hasStepChevron,
 				})}
 			>
 				{noticeLevel !== null && <PieceStatusIcon noticeLevel={noticeLevel} />}
@@ -284,6 +196,9 @@ export const LinePartMainPiece = withMediaObjectStatus<IProps, {}>()(function Li
 					<ColoredMark color={(piece.instance.piece.content as EvsContent).color} />
 				)}
 				{piece.instance.piece.name}
+				{piece.instance.piece.content?.loop && (
+					<LoopingPieceIcon className="segment-opl__main-piece__label-icon" playing={hover} />
+				)}
 			</div>
 			{studio && (
 				<PieceHoverInspector
@@ -300,7 +215,7 @@ export const LinePartMainPiece = withMediaObjectStatus<IProps, {}>()(function Li
 	)
 })
 
-function ColoredMark({ color }: { color: string | undefined }) {
+const ColoredMark = React.memo(function ColoredMark({ color }: { color: string | undefined }) {
 	if (!color) return null
 
 	return (
@@ -309,4 +224,4 @@ function ColoredMark({ color }: { color: string | undefined }) {
 			className="segment-opl__main-piece__label__colored-mark"
 		></span>
 	)
-}
+})

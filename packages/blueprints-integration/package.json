@@ -1,6 +1,6 @@
 {
 	"name": "@sofie-automation/blueprints-integration",
-	"version": "1.50.16",
+	"version": "1.51.0",
 	"description": "Library to define the interaction between core and the blueprints.",
 	"main": "dist/index.js",
 	"typings": "dist/index.d.ts",
@@ -31,7 +31,7 @@
 		"evs-rename:package": "node rename-package.mjs"
 	},
 	"engines": {
-		"node": "^14.19 || ^16.14 || ^18.12"
+		"node": ">=14.19"
 	},
 	"files": [
 		"/dist",
@@ -40,9 +40,9 @@
 		"/LICENSE"
 	],
 	"dependencies": {
-		"@sofie-automation/shared-lib": "1.50.16",
-		"tslib": "^2.5.1",
-		"type-fest": "^2.19.0"
+		"@sofie-automation/shared-lib": "1.51.0",
+		"tslib": "^2.6.2",
+		"type-fest": "^3.13.1"
 	},
 	"lint-staged": {
 		"*.{css,json,md,scss}": [

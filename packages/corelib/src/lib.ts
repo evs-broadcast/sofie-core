@@ -6,16 +6,17 @@ import * as objectPath from 'object-path'
 import { Timecode } from 'timecode'
 import { iterateDeeply, iterateDeeplyEnum, Time } from '@sofie-automation/blueprints-integration'
 import { IStudioSettings } from './dataModel/Studio'
-import { UserError } from './error'
 import { customAlphabet as createNanoid } from 'nanoid'
 
 /**
- * Limited characterset to use for id generation
+ * Limited character set to use for id generation
  * Generating id's using these characters has 2 reasons:
  * 1. By omitting 0, O, I, 1 it makes it easier to read for humans
  * 2. The Timeline only supports A-Za-z0-9 in id's and classnames
  */
 const UNMISTAKABLE_CHARS = '23456789ABCDEFGHJKLMNPQRSTWXYZabcdefghijkmnopqrstuvwxyz'
+// A length of 17 from a pool of 56 characters => ~98 bits of entropy
+// The probability for a collision is around 1.5e-6 in a set of 1e12 items
 const nanoid = createNanoid(UNMISTAKABLE_CHARS, 17)
 
 export * from './hash'
@@ -58,7 +59,7 @@ export function max<T>(vals: T[], iterator: _.ListIterator<T, any>): T | undefin
 	}
 }
 
-export function min<T>(vals: T[], iterator: _.ListIterator<T, any>): T | undefined {
+export function min<T>(vals: T[] | readonly T[], iterator: _.ListIterator<T, any>): T | undefined {
 	if (vals.length <= 1) {
 		return vals[0]
 	} else {
@@ -164,7 +165,7 @@ export function normalizeArrayFunc<T>(array: Array<T>, getKey: (o: T) => string)
  * normalizeArray([{ a: '1', b: 2}], 'a')
  * ```
  */
-export function normalizeArray<T>(array: Array<T>, indexKey: keyof T): { [indexKey: string]: T } {
+export function normalizeArray<T>(array: Array<T> | readonly T[], indexKey: keyof T): { [indexKey: string]: T } {
 	const normalizedObject: any = {}
 	for (const obj of array) {
 		normalizedObject[obj[indexKey]] = obj
@@ -195,7 +196,10 @@ export function normalizeArrayToMap<T, K extends keyof T>(array: readonly T[], i
  * normalizeArrayToMapFunc([{ a: 1, b: 2}], (o) => o.a + o.b)
  * ```
  */
-export function normalizeArrayToMapFunc<T, K>(array: Array<T>, getKey: (o: T) => K | undefined): Map<K, T> {
+export function normalizeArrayToMapFunc<T, K>(
+	array: Array<T> | readonly T[],
+	getKey: (o: T) => K | undefined
+): Map<K, T> {
 	const normalizedObject = new Map<K, T>()
 	for (const item of array) {
 		const key = getKey(item)
@@ -212,7 +216,10 @@ export function normalizeArrayToMapFunc<T, K>(array: Array<T>, getKey: (o: T) =>
  * @param array Array of items to group
  * @param indexKey Name of the property to use as the group-key
  */
-export function groupByToMap<T, K extends keyof T>(array: Array<T> | IterableIterator<T>, indexKey: K): Map<T[K], T[]> {
+export function groupByToMap<T, K extends keyof T>(
+	array: Array<T> | readonly T[] | IterableIterator<T>,
+	indexKey: K
+): Map<T[K], T[]> {
 	const groupedItems = new Map<T[K], T[]>()
 	for (const item of array) {
 		const key = item[indexKey]
@@ -233,7 +240,7 @@ export function groupByToMap<T, K extends keyof T>(array: Array<T> | IterableIte
  * @param getKey Function to get the group-key of the object
  */
 export function groupByToMapFunc<T, K>(
-	array: Array<T> | IterableIterator<T>,
+	array: Array<T> | readonly T[] | IterableIterator<T>,
 	getKey: (o: T) => K | undefined
 ): Map<K, T[]> {
 	const groupedItems = new Map<K, T[]>()
@@ -290,6 +297,11 @@ export function objectPathGet(obj: any, path: string, defaultValue?: any): any {
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export function objectPathSet(obj: any, path: string, value: any): any {
 	objectPath.set(obj, path, value)
+	return obj
+}
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+export function objectPathDelete(obj: any, path: string): any {
+	objectPath.del(obj, path)
 	return obj
 }
 
@@ -403,43 +415,6 @@ export function removeNullyProperties<T>(obj: T): T {
 		}
 	})
 	return obj
-}
-
-/** Make a string out of an error (or other equivalents), including any additional data such as stack trace if available */
-export function stringifyError(error: unknown, noStack = false): string {
-	let str: string | undefined = undefined
-
-	if (error && UserError.isUserError(error)) {
-		// Is a UserError
-		str = UserError.toJSON(error)
-	} else if (error && typeof error === 'object') {
-		if ((error as Error).message) {
-			// Is an Error
-			str = `${(error as Error).message}`
-		} else if ((error as any).reason) {
-			// Is a Meteor.Error
-			str = `${(error as any).reason}`
-		} else if ((error as any).details) {
-			str = `${(error as any).details}`
-		} else {
-			try {
-				// Try to stringify the object:
-				str = JSON.stringify(error)
-			} catch (e) {
-				str = `${error} (stringifyError: ${e})`
-			}
-		}
-	} else {
-		str = `${error}`
-	}
-
-	if (!noStack) {
-		if (error && typeof error === 'object' && (error as any).stack) {
-			str += ', ' + (error as any).stack
-		}
-	}
-
-	return str
 }
 
 /**

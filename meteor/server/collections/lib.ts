@@ -4,7 +4,8 @@ import { MongoFieldSpecifierOnes } from '@sofie-automation/corelib/dist/mongo'
 import { ProtectedString } from '@sofie-automation/corelib/dist/protectedString'
 import { Meteor } from 'meteor/meteor'
 import _ from 'underscore'
-import { stringifyError, stringifyObjects } from '../../lib/lib'
+import { stringifyObjects } from '../../lib/lib'
+import { stringifyError } from '@sofie-automation/shared-lib/dist/lib/stringifyError'
 import { logger } from '../logging'
 import { AsyncOnlyMongoCollection, AsyncOnlyReadOnlyMongoCollection } from './collection'
 
@@ -37,7 +38,7 @@ export async function ObserveChangesForHash<DBInterface extends { _id: Protected
 		if (newHash !== String(obj[hashName])) {
 			logger.debug(`Updating hash: ${obj._id} ${String(hashName)}:${newHash}`)
 			const update: Partial<DBInterface> = {}
-			update[String(hashName)] = newHash
+			update[hashName] = newHash as any
 			await collection.updateAsync(obj._id, { $set: update })
 		}
 	}

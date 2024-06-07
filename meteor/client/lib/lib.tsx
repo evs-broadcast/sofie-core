@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { Meteor } from 'meteor/meteor'
 import _ from 'underscore'
 import { getCurrentTime, systemTime, Time } from '../../lib/lib'
+import { logger } from '../../lib/logging'
 
 export { multilineText, isEventInInputField }
 
@@ -32,7 +33,7 @@ export function isTouchDevice(): boolean {
 }
 
 /**
- * Wrapper around fetch(), which doesn't rejects the promise if the result is an error
+ * Wrapper around fetch(), which rejects the promise if the result is an error
  */
 export function fetchFrom(input: RequestInfo, init?: RequestInit): Promise<Response & { bodyText: string }> {
 	return fetch(input, init).then((response) => {
@@ -49,14 +50,6 @@ export function fetchFrom(input: RequestInfo, init?: RequestInit): Promise<Respo
 			}
 		})
 	})
-}
-
-export function ensureHasTrailingSlash(input: string | null): string | undefined {
-	if (input) {
-		return input.endsWith('/') ? input : input + '/'
-	} else {
-		return undefined
-	}
 }
 
 /**
@@ -144,14 +137,30 @@ export function useInvalidateTimeout<K>(func: () => [K, number], deps: any[]): K
  * @template K
  * @param {K} value value to be debounced
  * @param {number} delay how long to wait after an update before updating the state
- * @return {*} debounced value
+ * @param shouldUpdate optional function to filter whether the value has changed
+ * @return {K} debounced value
  */
-export function useDebounce<K>(value: K, delay: number): K {
+export function useDebounce<K>(value: K, delay: number, shouldUpdate?: (oldVal: K, newVal: K) => boolean): K {
 	const [debouncedValue, setDebouncedValue] = useState(value)
+
+	// Store the function in a ref to avoid the debounce being reactive to the function changing
+	const shouldUpdateFn = useRef<(oldVal: K, newVal: K) => boolean>()
+	shouldUpdateFn.current = shouldUpdate
 
 	useEffect(() => {
 		const handler = setTimeout(() => {
-			setDebouncedValue(value)
+			const shouldUpdate = shouldUpdateFn.current
+			if (typeof shouldUpdate === 'function') {
+				setDebouncedValue((oldVal) => {
+					if (shouldUpdate(oldVal, value)) {
+						return value
+					} else {
+						return oldVal
+					}
+				})
+			} else {
+				setDebouncedValue(value)
+			}
 		}, delay)
 
 		return () => {
@@ -162,7 +171,7 @@ export function useDebounce<K>(value: K, delay: number): K {
 	return debouncedValue
 }
 
-export function useCurrentTime(refreshPeriod: number = 1000): number {
+export function useCurrentTime(refreshPeriod = 1000): number {
 	const [time, setTime] = useState(getCurrentTime())
 
 	useEffect(() => {
@@ -189,4 +198,23 @@ export function getEventTimestamp(e: Event): Time {
 	return e?.timeStamp ? performance.timeOrigin + e.timeStamp + systemTime.timeOriginDiff : getCurrentTime()
 }
 
+export function mapOrFallback<T = any, K = any, L = any>(
+	array: T[],
+	callbackFn: (value: T, index: number, array: T[]) => K,
+	fallbackCallbackFn: () => L
+): K[] | L {
+	if (array.length === 0) return fallbackCallbackFn()
+
+	return array.map(callbackFn)
+}
+
 export const TOOLTIP_DEFAULT_DELAY = 0.5
+
+/**
+ * Returns a function that logs the error along with the context.
+ * @usage Instead of .catch(console.error), do .catch(catchError('myContext'))
+ *
+ */
+export function catchError(context: string): (...errs: any[]) => void {
+	return (...errs: any[]) => logger.error(context, ...errs)
+}

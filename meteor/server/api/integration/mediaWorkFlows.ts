@@ -1,13 +1,13 @@
 import { check, Match } from '../../../lib/check'
 import { Meteor } from 'meteor/meteor'
 import { logger } from '../../logging'
-import { MediaWorkFlow } from '../../../lib/collections/MediaWorkFlows'
-import { MediaWorkFlowStep } from '../../../lib/collections/MediaWorkFlowSteps'
+import { MediaWorkFlow } from '@sofie-automation/shared-lib/dist/core/model/MediaWorkFlows'
+import { MediaWorkFlowStep } from '@sofie-automation/shared-lib/dist/core/model/MediaWorkFlowSteps'
 import {
 	MediaWorkFlowRevision,
 	MediaWorkFlowStepRevision,
 } from '@sofie-automation/shared-lib/dist/peripheralDevice/mediaManager'
-import { PeripheralDeviceType } from '../../../lib/collections/PeripheralDevices'
+import { PeripheralDeviceType } from '@sofie-automation/corelib/dist/dataModel/PeripheralDevice'
 import { MethodContext } from '../../../lib/api/methods'
 import { checkAccessAndGetPeripheralDevice } from '../ingest/lib'
 import { MediaWorkFlowId, MediaWorkFlowStepId, PeripheralDeviceId } from '@sofie-automation/corelib/dist/dataModel/Ids'

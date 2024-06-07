@@ -1,6 +1,6 @@
 import React from 'react'
 
-export function BaseRemoteInputIcon(props: React.PropsWithChildren<{ className: string }>): JSX.Element {
+export function BaseRemoteInputIcon(props: Readonly<React.PropsWithChildren<{ className: string }>>): JSX.Element {
 	return (
 		<svg className="piece_icon" version="1.1" viewBox="0 0 126.5 89" xmlns="http://www.w3.org/2000/svg">
 			<rect width="126.5" height="89" className={props.className} />
@@ -24,7 +24,7 @@ export function BaseRemoteInputIcon(props: React.PropsWithChildren<{ className: 
 	)
 }
 
-export default function RemoteInputIcon(props: { inputIndex?: string; abbreviation?: string }): JSX.Element {
+export default function RemoteInputIcon(props: Readonly<{ inputIndex?: string; abbreviation?: string }>): JSX.Element {
 	return (
 		<BaseRemoteInputIcon className="remote">
 			<tspan
