@@ -137,7 +137,12 @@ class StudiosServerAPI implements StudiosRestAPI {
 			throw new Meteor.Error(409, `Studio ${studioId} has failed validation`, details)
 		}
 
-		return ClientAPI.responseSuccess(await runUpgradeForStudio(studioId))
+		return ClientAPI.responseSuccess(
+			await new Promise<void>((resolve) =>
+				// wait for the upsert to complete before upgrade
+				setTimeout(async () => resolve(await runUpgradeForStudio(studioId)), 200)
+			)
+		)
 	}
 
 	async getStudioConfig(
@@ -207,7 +212,12 @@ class StudiosServerAPI implements StudiosRestAPI {
 			throw new Meteor.Error(409, `Studio ${studioId} has failed validation`, details)
 		}
 
-		return ClientAPI.responseSuccess(await runUpgradeForStudio(studioId))
+		return ClientAPI.responseSuccess(
+			await new Promise<void>((resolve) =>
+				// wait for the upsert to complete before upgrade
+				setTimeout(async () => resolve(await runUpgradeForStudio(studioId)), 200)
+			)
+		)
 	}
 
 	async deleteStudio(
