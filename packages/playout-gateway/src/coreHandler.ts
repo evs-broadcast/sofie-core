@@ -552,11 +552,8 @@ export class CoreTSRDeviceHandler {
 		this._observers.forEach((obs) => obs.stop())
 
 		await this._tsrHandler.tsr.removeDevice(this._deviceId)
-		await this.core.setStatus({
-			statusCode: StatusCode.BAD,
-			messages: ['Uninitialized'],
-		})
 
+		await this.core.unInitialize()
 		await this.core.destroy()
 	}
 	killProcess(): void {

@@ -430,11 +430,7 @@ export class CoreMosDeviceHandler {
 	async dispose(): Promise<void> {
 		this._observers.forEach((obs) => obs.stop())
 
-		await this.core.setStatus({
-			statusCode: StatusCode.BAD,
-			messages: ['Uninitialized'],
-		})
-
+		await this.core.unInitialize()
 		await this.core.destroy()
 	}
 	killProcess(): void {
