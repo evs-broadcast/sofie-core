@@ -1418,7 +1418,7 @@ __metadata:
   resolution: "@sofie-automation/shared-lib@portal:../packages/shared-lib::locator=automation-core%40workspace%3A."
   dependencies:
     "@mos-connection/model": ^4.1.0
-    timeline-state-resolver-types: "npm:@evs/timeline-state-resolver-types@9.1.0"
+    timeline-state-resolver-types: "https://artifactory.evs.tv:443/artifactory/evs-odyssey-snapshot-npm/%40evs/timeline-state-resolver-types/-/%40evs/timeline-state-resolver-types-9.1.0-PA-425-set-transition-for-compositions.389.tgz"
     tslib: ^2.6.2
     type-fest: ^3.13.1
   languageName: node
@@ -11748,12 +11748,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"timeline-state-resolver-types@npm:@evs/timeline-state-resolver-types@9.1.0":
-  version: 9.1.0
-  resolution: "@evs/timeline-state-resolver-types@npm:9.1.0::__archiveUrl=https%3A%2F%2Fartifactory.evs.tv%3A443%2Fartifactory%2Fapi%2Fnpm%2Fevs-snapshot-npm%2F%40evs%2Ftimeline-state-resolver-types%2F-%2F%40evs%2Ftimeline-state-resolver-types-9.1.0.tgz"
+"timeline-state-resolver-types@https://artifactory.evs.tv:443/artifactory/evs-odyssey-snapshot-npm/%40evs/timeline-state-resolver-types/-/%40evs/timeline-state-resolver-types-9.1.0-PA-425-set-transition-for-compositions.389.tgz":
+  version: 9.1.0-PA-425-set-transition-for-compositions.389
+  resolution: "timeline-state-resolver-types@https://artifactory.evs.tv:443/artifactory/evs-odyssey-snapshot-npm/%40evs/timeline-state-resolver-types/-/%40evs/timeline-state-resolver-types-9.1.0-PA-425-set-transition-for-compositions.389.tgz"
   dependencies:
     tslib: ^2.5.1
-  checksum: 5e693971a52eb1e3b5327996122b069d13780c036365556a94f6928f4d1ade067030a2b4dd2f23538fea1f5b8933c976f099649325e488d8892081ecb718dd7b
+  checksum: 2edb8e9d6408bb969d805f3a2766260978243a9cc9bb431018f2a9e53b09a6c2ca1e01af0143f4839eccdbc377246758f2f99ec93e9a02184a6f5d7736366527
   languageName: node
   linkType: hard
 
