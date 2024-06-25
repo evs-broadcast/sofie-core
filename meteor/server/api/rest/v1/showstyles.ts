@@ -531,6 +531,37 @@ export function registerRoutes(registerRoute: APIRegisterHook<ShowStylesRestAPI>
 		}
 	)
 
+	registerRoute<{ showStyleBaseId: string }, never, object>(
+		'get',
+		'/showstyles/:showStyleBaseId/config',
+		new Map([[404, [UserErrorMessage.ShowStyleBaseNotFound]]]),
+		showStylesAPIFactory,
+		async (serverAPI, connection, event, params, _) => {
+			const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleBaseId)
+			logger.info(`API GET: ShowStyleBase config ${showStyleBaseId}`)
+
+			check(showStyleBaseId, String)
+			return await serverAPI.getShowStyleConfig(connection, event, showStyleBaseId)
+		}
+	)
+
+	registerRoute<{ showStyleBaseId: string }, object, void>(
+		'put',
+		'/showstyles/:showStyleBaseId/config',
+		new Map([
+			[404, [UserErrorMessage.ShowStyleBaseNotFound]],
+			[409, [UserErrorMessage.ValidationFailed]],
+		]),
+		showStylesAPIFactory,
+		async (serverAPI, connection, event, params, body) => {
+			const showStyleBaseId = protectString<ShowStyleBaseId>(params.showStyleBaseId)
+			logger.info(`API PUT: Update ShowStyleBase config ${showStyleBaseId}`)
+
+			check(showStyleBaseId, String)
+			return await serverAPI.updateShowStyleConfig(connection, event, showStyleBaseId, body)
+		}
+	)
+
 	registerRoute<{ showStyleBaseId: string }, never, Array<{ id: string }>>(
 		'get',
 		'/showstyles/:showStyleBaseId/variants',
