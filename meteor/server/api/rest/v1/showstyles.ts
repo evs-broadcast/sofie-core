@@ -156,11 +156,11 @@ class ShowStylesServerAPI implements ShowStylesRestAPI {
 		_connection: Meteor.Connection,
 		_event: string,
 		showStyleBaseId: ShowStyleBaseId
-	): Promise<ClientAPI.ClientResponse<APIShowStyleBase>> {
+	): Promise<ClientAPI.ClientResponse<object>> {
 		const showStyleBase = await ShowStyleBases.findOneAsync(showStyleBaseId)
 		if (!showStyleBase) throw new Meteor.Error(404, `ShowStyleBase ${showStyleBaseId} does not exist`)
 
-		return ClientAPI.responseSuccess(await APIShowStyleBaseFrom(showStyleBase))
+		return ClientAPI.responseSuccess((await APIShowStyleBaseFrom(showStyleBase)).config)
 	}
 
 	async updateShowStyleConfig(
