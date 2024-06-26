@@ -149,7 +149,12 @@ class ShowStylesServerAPI implements ShowStylesRestAPI {
 			throw new Meteor.Error(409, `ShowStyleBase ${showStyleBaseId} has failed validation`, details)
 		}
 
-		return ClientAPI.responseSuccess(await runUpgradeForShowStyleBase(showStyleBaseId))
+		return ClientAPI.responseSuccess(
+			await new Promise<void>((resolve) =>
+				// wait for the upsert to complete before upgrade
+				setTimeout(async () => resolve(await runUpgradeForShowStyleBase(showStyleBaseId)), 200)
+			)
+		)
 	}
 
 	async getShowStyleConfig(
@@ -236,7 +241,12 @@ class ShowStylesServerAPI implements ShowStylesRestAPI {
 			throw new Meteor.Error(409, `ShowStyleBase ${showStyleBaseId} has failed validation`, details)
 		}
 
-		return ClientAPI.responseSuccess(await runUpgradeForShowStyleBase(showStyleBaseId))
+		return ClientAPI.responseSuccess(
+			await new Promise<void>((resolve) =>
+				// wait for the upsert to complete before upgrade
+				setTimeout(async () => resolve(await runUpgradeForShowStyleBase(showStyleBaseId)), 200)
+			)
+		)
 	}
 
 	async deleteShowStyleBase(

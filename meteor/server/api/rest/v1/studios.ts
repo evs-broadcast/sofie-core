@@ -137,7 +137,12 @@ class StudiosServerAPI implements StudiosRestAPI {
 			throw new Meteor.Error(409, `Studio ${studioId} has failed validation`, details)
 		}
 
-		return ClientAPI.responseSuccess(await runUpgradeForStudio(studioId))
+		return ClientAPI.responseSuccess(
+			await new Promise<void>((resolve) =>
+				// wait for the upsert to complete before upgrade
+				setTimeout(async () => resolve(await runUpgradeForStudio(studioId)), 200)
+			)
+		)
 	}
 
 	async getStudioConfig(
@@ -158,19 +163,9 @@ class StudiosServerAPI implements StudiosRestAPI {
 		config: object
 	): Promise<ClientAPI.ClientResponse<void>> {
 		const existingStudio = await Studios.findOneAsync(studioId)
-		if (existingStudio) {
-			const playlists = (await RundownPlaylists.findFetchAsync(
-				{ studioId },
-				{
-					projection: {
-						activationId: 1,
-					},
-				}
-			)) as Array<Pick<DBRundownPlaylist, 'activationId'>>
-			if (playlists.some((p) => p.activationId !== undefined)) {
-				throw new Meteor.Error(412, `Studio ${studioId} cannot be updated, it is in use in an active Playlist`)
-			}
-		} else throw new Meteor.Error(404, `Studio ${studioId} not found`)
+		if (!existingStudio) {
+			throw new Meteor.Error(404, `Studio ${studioId} not found`)
+		}
 
 		const apiStudio = await APIStudioFrom(existingStudio)
 		apiStudio.config = config
@@ -207,7 +202,12 @@ class StudiosServerAPI implements StudiosRestAPI {
 			throw new Meteor.Error(409, `Studio ${studioId} has failed validation`, details)
 		}
 
-		return ClientAPI.responseSuccess(await runUpgradeForStudio(studioId))
+		return ClientAPI.responseSuccess(
+			await new Promise<void>((resolve) =>
+				// wait for the upsert to complete before upgrade
+				setTimeout(async () => resolve(await runUpgradeForStudio(studioId)), 200)
+			)
+		)
 	}
 
 	async deleteStudio(
