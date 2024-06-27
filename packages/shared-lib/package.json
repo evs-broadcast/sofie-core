@@ -40,7 +40,7 @@
 	],
 	"dependencies": {
 		"@mos-connection/model": "^4.1.0",
-		"timeline-state-resolver-types": "https://artifactory.evs.tv:443/artifactory/evs-odyssey-snapshot-npm/%40evs/timeline-state-resolver-types/-/%40evs/timeline-state-resolver-types-9.1.0-PA-425-set-transition-for-compositions.389.tgz",
+		"timeline-state-resolver-types": "https://artifactory.evs.tv:443/artifactory/evs-odyssey-snapshot-npm/%40evs/timeline-state-resolver-types/-/%40evs/timeline-state-resolver-types-9.1.0-PA-425-set-transition-for-compositions.390.tgz",
 		"tslib": "^2.6.2",
 		"type-fest": "^3.13.1"
 	},

@@ -1418,7 +1418,7 @@ __metadata:
   resolution: "@sofie-automation/shared-lib@portal:../packages/shared-lib::locator=automation-core%40workspace%3A."
   dependencies:
     "@mos-connection/model": ^4.1.0
-    timeline-state-resolver-types: "https://artifactory.evs.tv:443/artifactory/evs-odyssey-snapshot-npm/%40evs/timeline-state-resolver-types/-/%40evs/timeline-state-resolver-types-9.1.0-PA-425-set-transition-for-compositions.389.tgz"
+    timeline-state-resolver-types: "https://artifactory.evs.tv:443/artifactory/evs-odyssey-snapshot-npm/%40evs/timeline-state-resolver-types/-/%40evs/timeline-state-resolver-types-9.1.0-PA-425-set-transition-for-compositions.390.tgz"
     tslib: ^2.6.2
     type-fest: ^3.13.1
   languageName: node
@@ -11748,12 +11748,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"timeline-state-resolver-types@https://artifactory.evs.tv:443/artifactory/evs-odyssey-snapshot-npm/%40evs/timeline-state-resolver-types/-/%40evs/timeline-state-resolver-types-9.1.0-PA-425-set-transition-for-compositions.389.tgz":
-  version: 9.1.0-PA-425-set-transition-for-compositions.389
-  resolution: "timeline-state-resolver-types@https://artifactory.evs.tv:443/artifactory/evs-odyssey-snapshot-npm/%40evs/timeline-state-resolver-types/-/%40evs/timeline-state-resolver-types-9.1.0-PA-425-set-transition-for-compositions.389.tgz"
+"timeline-state-resolver-types@https://artifactory.evs.tv:443/artifactory/evs-odyssey-snapshot-npm/%40evs/timeline-state-resolver-types/-/%40evs/timeline-state-resolver-types-9.1.0-PA-425-set-transition-for-compositions.390.tgz":
+  version: 9.1.0-PA-425-set-transition-for-compositions.390
+  resolution: "timeline-state-resolver-types@https://artifactory.evs.tv:443/artifactory/evs-odyssey-snapshot-npm/%40evs/timeline-state-resolver-types/-/%40evs/timeline-state-resolver-types-9.1.0-PA-425-set-transition-for-compositions.390.tgz"
   dependencies:
     tslib: ^2.5.1
-  checksum: 2edb8e9d6408bb969d805f3a2766260978243a9cc9bb431018f2a9e53b09a6c2ca1e01af0143f4839eccdbc377246758f2f99ec93e9a02184a6f5d7736366527
+  checksum: ec146b59622daadb7cf1982793d59fded9e9b13ef62bc92c6f20bea2c9673285eed5081e244fe94cad85922a7f486bfd558ed3c62d349f80972202fc48f8c6ff
   languageName: node
   linkType: hard
 
